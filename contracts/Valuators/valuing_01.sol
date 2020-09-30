@@ -109,8 +109,12 @@ contract Valuing_01 {
 
     // grants an LLC permission //
     function addLLC (address LLC, uint256 loan, uint256 fee) public onlyOwner {
-        // prevents setting fee greater than 5%;
-        // require(fee > 20, "max fee rate of 5%");
+
+        // To prevent division by zero
+        require(loan != 0, "Valuing: cannot accept 0");
+        require(fee != 0, "Valuing: cannot accept 0");
+
+        // Assign variables
         listOfLLC[LLC].feeRate = fee;
         listOfLLC[LLC].loanRate = loan;
         listOfLLC[LLC].active = true;
