@@ -122,8 +122,6 @@ contract Valuing_01 {
 
     // Disables an LLC:
     function disableLLC (address LLC) public onlyOwner {
-        listOfLLC[LLC].feeRate = 0;
-        listOfLLC[LLC].loanRate = 0;
         listOfLLC[LLC].active = false;
     }
 
