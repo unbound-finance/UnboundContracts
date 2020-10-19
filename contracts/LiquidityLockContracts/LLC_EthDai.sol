@@ -108,52 +108,8 @@ contract LLC_EthDai {
         require(LPTContract.balanceOf(msg.sender) >= LPTamt, "LLC: Insufficient LPTs");
         uint256 totalLPTokens = LPTContract.totalSupply();
         
-        // obtain amounts of tokens in both reserves.
-        (uint112 _token0, uint112 _token1, ) = LPTContract.getReserves();
-
-        // obtain total USD value
-        uint256 totalUSD;
-        if (_position == 0) {
-            totalUSD = _token0 * 2; // pricing();
-        } else {
-            totalUSD = _token1 * 2;
-        }
-
-        // Token Decimal Normalization
-        //
-        // The following block ensures that all stablecoin valuations follow consistency with decimals
-        // and match the 18 decimals used by UND. This block also solves a potential vulnerability,
-        // where a stablecoin pair which contains beyond 18 decimals could be used to calculate significantly
-        // more UND (by orders of 10). Likewise, stablecoins such as USDC or USDT with 6 decimals would also 
-        // in far less UND being minted than desired.
-        //
-        // this should only happen if stablecoin decimals is NOT 18.
-        if (stablecoinDecimal != 18) {
-            
-            uint8 difference;
-
-            // first case: tokenDecimal is smaller than 18
-            // for stablecoins with less than 18 decimals
-            if (stablecoinDecimal < 18 && stablecoinDecimal >= 0) {
-
-                // calculate amount of decimals under 18
-                difference = 18 - stablecoinDecimal;
-
-                // adds decimals to match 18
-                totalUSD = totalUSD * (10 ** uint256(difference));
-            }
-
-            // second case: tokenDecimal is greater than 18
-            // for tokens with more than 18 decimals 
-            else if (stablecoinDecimal > 18) {
-
-                // caclulate amount of decimals over 18
-                difference = stablecoinDecimal - 18;
-
-                // removes decimals to match 18
-                totalUSD = totalUSD / (10 ** uint256(difference));
-            }
-        }
+        // Acquire total stablecoin value of pair
+        uint256 totalUSD = getValue();
         
         // This should compute % value of Liq pool in Dai. Cannot have decimals in Solidity
         uint256 LPTValueInDai = totalUSD.mul(LPTamt).div(totalLPTokens);  
@@ -175,18 +131,33 @@ contract LLC_EthDai {
         require(LPTContract.balanceOf(msg.sender) >= LPTamt, "LLC: Insufficient LPTs");
         uint256 totalLPTokens = LPTContract.totalSupply();
         
+        // Acquire total stablecoin value of pair
+        uint256 totalUSD = getValue();
+
+        // This should compute % value of Liq pool in Dai. Cannot have decimals in Solidity
+        uint256 LPTValueInDai = totalUSD.mul(LPTamt).div(totalLPTokens);  
+        
+        // map locked tokens to user
+        _tokensLocked[msg.sender] = _tokensLocked[msg.sender].add(LPTamt);
+
+        // transfer LPT to the address
+        transferLPT(LPTamt);
+
+        // Call Valuing Contract
+        valuingContract.unboundCreate(LPTValueInDai, msg.sender, uTokenAddr); // Hardcode "0" for AAA rating
+        
+    }
+
+    // Acquires total value of liquidity pool (in stablecoin) and normalizes decimals to 18.
+    function getValue() internal view returns (uint256 _totalUSD) {
         // obtain amounts of tokens in both reserves.
         (uint112 _token0, uint112 _token1, ) = LPTContract.getReserves();
 
-        // calculates value of pool in stablecoin
-        uint256 totalUSD;
-
-        // checks which of the reserve tokens is stablecoin
-        // assumes stablecoin amount is equal to erc20 value
+        // obtain total USD value
         if (_position == 0) {
-            totalUSD = _token0 * 2; 
+            _totalUSD = _token0 * 2; // pricing();
         } else {
-            totalUSD = _token1 * 2;
+            _totalUSD = _token1 * 2;
         }
 
         // Token Decimal Normalization
@@ -195,7 +166,7 @@ contract LLC_EthDai {
         // and match the 18 decimals used by UND. This block also solves a potential vulnerability,
         // where a stablecoin pair which contains beyond 18 decimals could be used to calculate significantly
         // more UND (by orders of 10). Likewise, stablecoins such as USDC or USDT with 6 decimals would also 
-        // in far less UND being minted than desired.
+        // result in far less UND minted than desired.
         //
         // this should only happen if stablecoin decimals is NOT 18.
         if (stablecoinDecimal != 18) {
@@ -210,7 +181,7 @@ contract LLC_EthDai {
                 difference = 18 - stablecoinDecimal;
 
                 // adds decimals to match 18
-                totalUSD = totalUSD * (10 ** uint256(difference));
+                _totalUSD = _totalUSD * (10 ** uint256(difference));
             }
 
             // second case: tokenDecimal is greater than 18
@@ -221,22 +192,10 @@ contract LLC_EthDai {
                 difference = stablecoinDecimal - 18;
 
                 // removes decimals to match 18
-                totalUSD = totalUSD / (10 ** uint256(difference));
+                _totalUSD = _totalUSD / (10 ** uint256(difference));
             }
         }
 
-        // This should compute % value of Liq pool in Dai. Cannot have decimals in Solidity
-        uint256 LPTValueInDai = totalUSD.mul(LPTamt).div(totalLPTokens);  
-        
-        // map locked tokens to user
-        _tokensLocked[msg.sender] = _tokensLocked[msg.sender].add(LPTamt);
-
-        // transfer LPT to the address
-        transferLPT(LPTamt);
-
-        // Call Valuing Contract
-        valuingContract.unboundCreate(LPTValueInDai, msg.sender, uTokenAddr); // Hardcode "0" for AAA rating
-        
     }
 
     // calls transfer only, for use with non-permit lock function
