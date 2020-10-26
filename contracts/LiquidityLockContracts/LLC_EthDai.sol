@@ -13,20 +13,19 @@ import "../Interfaces/IERC20.sol";
 // ---------------------------------------------------------------------------------------
 //                                Liquidity Lock Contract V1
 //                                          
-//                                for stablecoin/erc20 pairs  
+//                                for erc20/erc20 pairs  
 // ---------------------------------------------------------------------------------------
 // This contract enables the user to take out a loan using their existing liquidity 
 // pool tokens (from the associated liquidity pool) as collateral. The loan is issued 
 // in the form of the UND token which carries a peg to the Dai.
 // 
 // This contract can be used as a factory to enable multiple liquidity pools access 
-// to mint UND. At this time, the Unbound protocol requires one of the reserve tokens 
-// in the liquidity pool to be a stablecoin. 
+// to mint uTokens. At this time, the Unbound protocol requires one of the reserve tokens 
+// in the liquidity pool to be a supported by Unbound as uToken. 
 // 
 // In V1, we offer the ability to take out a loan after giving permission to the LLC
 // to "transferFrom", as well as an option utilizing the permit() function from within
-// the uniswap liquidity pool contract. At this time, Unbound.finance can only support
-// liquidity pools which contain a USD stablecoin (i.e. DAI-ETH, USDC-UNI, etc),
+// the uniswap liquidity pool contract. 
 //
 // This is the main contract that the user will interact with. It is connected to Valuing, 
 // and then the UND mint functions. Upon deployment of the LLC, its address must first be 
@@ -58,16 +57,16 @@ contract LLC_EthDai {
     // tokens locked by users
     mapping (address => uint256) _tokensLocked;
 
-    // token position of Stablecoin
+    // token position of baseAsset
     uint8 public _position;
 
-    // set this in constructor, tracks decimals of stablecoin
-    uint8 public stablecoinDecimal;
+    // set this in constructor, tracks decimals of baseAsset
+    uint8 public baseAssetDecimal;
 
     // Interfaced Contracts
     IValuing_01 private valuingContract;
     IUniswapV2Pair_0 private LPTContract;
-    IERC20_2 private stableCoinErc20;
+    IERC20_2 private baseAssetErc20;
 
     // Modifiers
     modifier onlyOwner() {
@@ -76,14 +75,14 @@ contract LLC_EthDai {
     }
 
     // Constructor - must provide valuing contract address, the associated Liquidity pool address (i.e. eth/dai uniswap pool token address),
-    //               and the address of the stablecoin in the uniswap pair.
+    //               and the address of the baseAsset in the uniswap pair.
     constructor (address valuingAddress, address LPTaddress, address baseAsset) public {
         _owner = msg.sender;
         
         // initiates interfacing contracts
         valuingContract = IValuing_01(valuingAddress);
         LPTContract = IUniswapV2Pair_0(LPTaddress);
-        stableCoinErc20 = IERC20_2(baseAsset);
+        baseAssetErc20 = IERC20_2(baseAsset);
 
         // killSwitch MUST be false for lockLPT to work
         killSwitch = false;
@@ -95,10 +94,10 @@ contract LLC_EthDai {
         address toke0 = LPTContract.token0();
         address toke1 = LPTContract.token1();
 
-        // sets the decimals value of the stablecoin
-        stablecoinDecimal = stableCoinErc20.decimals();
+        // sets the decimals value of the baseAsset
+        baseAssetDecimal = baseAssetErc20.decimals();
 
-        // assigns which token in the pair is a stablecoin
+        // assigns which token in the pair is a baseAsset
         require (baseAsset == toke0 || baseAsset == toke1, "invalid");
         if (baseAsset == toke0) {
             _position = 0;
@@ -114,7 +113,7 @@ contract LLC_EthDai {
         require(LPTContract.balanceOf(msg.sender) >= LPTamt, "LLC: Insufficient LPTs");
         uint256 totalLPTokens = LPTContract.totalSupply();
         
-        // Acquire total stablecoin value of pair
+        // Acquire total baseAsset value of pair
         uint256 totalUSD = getValue();
         
         // This should compute % value of Liq pool in Dai. Cannot have decimals in Solidity
@@ -139,7 +138,7 @@ contract LLC_EthDai {
         require(LPTContract.balanceOf(msg.sender) >= LPTamt, "LLC: Insufficient LPTs");
         uint256 totalLPTokens = LPTContract.totalSupply();
         
-        // Acquire total stablecoin value of pair
+        // Acquire total baseAsset value of pair
         uint256 totalUSD = getValue();
 
         // This should compute % value of Liq pool in Dai. Cannot have decimals in Solidity
@@ -158,7 +157,7 @@ contract LLC_EthDai {
         emit LockLPT(LPTamt, msg.sender, uTokenAddr);
     }
 
-    // Acquires total value of liquidity pool (in stablecoin) and normalizes decimals to 18.
+    // Acquires total value of liquidity pool (in baseAsset) and normalizes decimals to 18.
     function getValue() internal view returns (uint256 _totalUSD) {
         // obtain amounts of tokens in both reserves.
         (uint112 _token0, uint112 _token1, ) = LPTContract.getReserves();
@@ -172,23 +171,23 @@ contract LLC_EthDai {
 
         // Token Decimal Normalization
         //
-        // The following block ensures that all stablecoin valuations follow consistency with decimals
+        // The following block ensures that all baseAsset valuations follow consistency with decimals
         // and match the 18 decimals used by UND. This block also solves a potential vulnerability,
-        // where a stablecoin pair which contains beyond 18 decimals could be used to calculate significantly
-        // more UND (by orders of 10). Likewise, stablecoins such as USDC or USDT with 6 decimals would also 
+        // where a baseAsset pair which contains beyond 18 decimals could be used to calculate significantly
+        // more UND (by orders of 10). Likewise, baseAssets such as USDC or USDT with 6 decimals would also 
         // result in far less UND minted than desired.
         //
-        // this should only happen if stablecoin decimals is NOT 18.
-        if (stablecoinDecimal != 18) {
+        // this should only happen if baseAsset decimals is NOT 18.
+        if (baseAssetDecimal != 18) {
             
             uint8 difference;
 
             // first case: tokenDecimal is smaller than 18
-            // for stablecoins with less than 18 decimals
-            if (stablecoinDecimal < 18 && stablecoinDecimal >= 0) {
+            // for baseAssets with less than 18 decimals
+            if (baseAssetDecimal < 18 && baseAssetDecimal >= 0) {
 
                 // calculate amount of decimals under 18
-                difference = 18 - stablecoinDecimal;
+                difference = 18 - baseAssetDecimal;
 
                 // adds decimals to match 18
                 _totalUSD = _totalUSD * (10 ** uint256(difference));
@@ -196,10 +195,10 @@ contract LLC_EthDai {
 
             // second case: tokenDecimal is greater than 18
             // for tokens with more than 18 decimals 
-            else if (stablecoinDecimal > 18) {
+            else if (baseAssetDecimal > 18) {
 
                 // caclulate amount of decimals over 18
-                difference = stablecoinDecimal - 18;
+                difference = baseAssetDecimal - 18;
 
                 // removes decimals to match 18
                 _totalUSD = _totalUSD / (10 ** uint256(difference));
