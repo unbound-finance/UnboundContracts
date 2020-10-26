@@ -77,13 +77,13 @@ contract LLC_EthDai {
 
     // Constructor - must provide valuing contract address, the associated Liquidity pool address (i.e. eth/dai uniswap pool token address),
     //               and the address of the stablecoin in the uniswap pair.
-    constructor (address valuingAddress, address LPTaddress, address stableCoin) public {
+    constructor (address valuingAddress, address LPTaddress, address baseAsset) public {
         _owner = msg.sender;
         
         // initiates interfacing contracts
         valuingContract = IValuing_01(valuingAddress);
         LPTContract = IUniswapV2Pair_0(LPTaddress);
-        stableCoinErc20 = IERC20_2(stableCoin);
+        stableCoinErc20 = IERC20_2(baseAsset);
 
         // killSwitch MUST be false for lockLPT to work
         killSwitch = false;
@@ -99,10 +99,10 @@ contract LLC_EthDai {
         stablecoinDecimal = stableCoinErc20.decimals();
 
         // assigns which token in the pair is a stablecoin
-        require (stableCoin == toke0 || stableCoin == toke1, "invalid");
-        if (stableCoin == toke0) {
+        require (baseAsset == toke0 || baseAsset == toke1, "invalid");
+        if (baseAsset == toke0) {
             _position = 0;
-        } else if (stableCoin == toke1) {
+        } else if (baseAsset == toke1) {
             _position = 1;
         }
     }
