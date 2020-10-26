@@ -109,7 +109,7 @@ contract LLC_EthDai {
 
     // Lock/Unlock functions
     // Mint path
-    function lockLPTWithPermit (uint256 LPTamt, address uTokenAddr, uint deadline, uint8 v, bytes32 r, bytes32 s) public {
+    function lockLPTWithPermit (uint256 LPTamt, address uTokenAddr, uint deadline, uint8 v, bytes32 r, bytes32 s, uint256 minTokenAmount) public {
         require(!killSwitch, "LLC: This LLC is Deprecated");
         require(LPTContract.balanceOf(msg.sender) >= LPTamt, "LLC: Insufficient LPTs");
         uint256 totalLPTokens = LPTContract.totalSupply();
@@ -127,14 +127,14 @@ contract LLC_EthDai {
         transferLPTPermit(msg.sender, LPTamt, deadline, v, r, s);
 
         // Call Valuing Contract
-        valuingContract.unboundCreate(LPTValueInDai, msg.sender, uTokenAddr); // Hardcode "0" for AAA rating
+        valuingContract.unboundCreate(LPTValueInDai, msg.sender, uTokenAddr, minTokenAmount); // Hardcode "0" for AAA rating
 
         // emit lockLPT event
         emit LockLPT(LPTamt, msg.sender, uTokenAddr);
     }
 
     // Requires approval first (permit excluded for simplicity)
-    function lockLPT (uint256 LPTamt, address uTokenAddr) public {
+    function lockLPT (uint256 LPTamt, address uTokenAddr, uint256 minTokenAmount) public {
         require(!killSwitch, "LLC: This LLC is Deprecated");
         require(LPTContract.balanceOf(msg.sender) >= LPTamt, "LLC: Insufficient LPTs");
         uint256 totalLPTokens = LPTContract.totalSupply();
@@ -152,7 +152,7 @@ contract LLC_EthDai {
         transferLPT(LPTamt);
 
         // Call Valuing Contract
-        valuingContract.unboundCreate(LPTValueInDai, msg.sender, uTokenAddr); 
+        valuingContract.unboundCreate(LPTValueInDai, msg.sender, uTokenAddr, minTokenAmount); 
 
         // emit lockLPT event
         emit LockLPT(LPTamt, msg.sender, uTokenAddr);

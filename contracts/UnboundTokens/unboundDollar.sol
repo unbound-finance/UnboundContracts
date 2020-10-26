@@ -223,10 +223,11 @@ contract UnboundDollar is Context, IERC20 {
 
     
     // MINT: Only callable by valuing contract - Now splits fees
-    function _mint(address account, uint256 loanAmount, uint256 feeAmount, address LLCAddr) external virtual {
+    function _mint(address account, uint256 loanAmount, uint256 feeAmount, address LLCAddr, uint256 minTokenAmount) external virtual {
         require(account != address(0), "ERC20: mint to the zero address");
         require(msg.sender == _valuator, "Call does not originate from Valuator");
-        
+        require(minTokenAmount >= loanAmount.sub(feeAmount), "UND: Tx took too long");
+
         if (feeAmount == 0) {
             // Credits user with their UND loan, minus fees
             _balances[account] = _balances[account].add(loanAmount);
