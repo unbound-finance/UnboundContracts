@@ -17,11 +17,11 @@ module.exports = async (deployer, network, accounts) => {
   let unboundDai = await uDai.deployed();
   let valueContract = await valuing.deployed();
 
-  await valueContract.addLLC.sendTransaction(
-    lockContract.address,
-    loanRate,
-    feeRate
-  );
+  // await valueContract.addLLC.sendTransaction(
+  //   lockContract.address,
+  //   loanRate,
+  //   feeRate
+  // );
   await valueContract.allowToken.sendTransaction(
     unboundDai.address
   );

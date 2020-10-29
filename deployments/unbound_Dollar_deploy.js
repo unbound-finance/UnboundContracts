@@ -15,7 +15,7 @@ module.exports = async (deployer, network, accounts) => {
     UBD = instance;
     return deployer.deploy(valuing, unbound).then((ins) => {
       valuer = ins.address;
-      return deployer.deploy(LLC, valuer, LPT, stablecoin).then( async (resu) => {
+      return deployer.deploy(LLC, valuer, LPT, stablecoin, unbound).then( async (resu) => {
         unbound = await uDai.deployed();
         valuer = await valuing.deployed();
         let permissionLLC = await valuer.addLLC.sendTransaction(
