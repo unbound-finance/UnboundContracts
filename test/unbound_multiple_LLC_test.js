@@ -108,7 +108,7 @@ contract('unboundSystem multiple LLC', function (_accounts) {
       const { loanAmount, feeAmount, stakingAmount } = await getAmounts(daiAmount, pairEthDai, LPtokens, rates.eth);
 
       await pairEthDai.approve(lockContractEth.address, LPtokens);
-      const receipt = await lockContractEth.lockLPT(LPtokens, und.address, loanAmount - feeAmount);
+      const receipt = await lockContractEth.lockLPT(LPtokens, loanAmount - feeAmount);
       expectEvent.inTransaction(receipt.tx, und, 'Mint', {
         user: owner,
         newMint: loanAmount.toString(),
@@ -141,7 +141,7 @@ contract('unboundSystem multiple LLC', function (_accounts) {
       const { loanAmount, feeAmount, stakingAmount } = await getAmounts(daiAmount, pairLinkDai, LPtokens, rates.link);
 
       await pairLinkDai.approve(lockContractLink.address, LPtokens);
-      const receipt = await lockContractLink.lockLPT(LPtokens, und.address, loanAmount - feeAmount);
+      const receipt = await lockContractLink.lockLPT(LPtokens, loanAmount - feeAmount);
       expectEvent.inTransaction(receipt.tx, und, 'Mint', {
         user: owner,
         newMint: loanAmount.toString(),
@@ -182,7 +182,7 @@ contract('unboundSystem multiple LLC', function (_accounts) {
       const loanedAmount = parseInt(await und.checkLoan(owner, lockContractEth.address));
 
       // burn
-      const receipt = await lockContractEth.unlockLPT(lockedTokenAmount, und.address);
+      const receipt = await lockContractEth.unlockLPT(lockedTokenAmount);
       expectEvent.inTransaction(receipt.tx, und, 'Burn', {
         user: owner,
         burned: loanedAmount.toString(),
@@ -206,7 +206,7 @@ contract('unboundSystem multiple LLC', function (_accounts) {
 
       // burn
       await expectRevert(
-        lockContractLink.unlockLPT(lockedTokenAmount, und.address),
+        lockContractLink.unlockLPT(lockedTokenAmount),
         'Insufficient UND to pay back loan'
       );
     });
@@ -220,7 +220,7 @@ contract('unboundSystem multiple LLC', function (_accounts) {
       const loanedAmount = loanedAmountBefore / 2;
 
       // burn
-      const receipt = await lockContractLink.unlockLPT(tokenAmount, und.address);
+      const receipt = await lockContractLink.unlockLPT(tokenAmount);
       expectEvent.inTransaction(receipt.tx, und, 'Burn', {
         user: owner,
         burned: loanedAmount.toString(),

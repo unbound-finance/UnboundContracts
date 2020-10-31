@@ -229,12 +229,12 @@ contract LLC_EthDai {
     // Burn Path
     // 
     // allows for partial loan payment by using the ratio of LPtokens to unlock and total LPtokens locked
-    function unlockLPT (uint256 LPToken, address uTokenAddr) public {
+    function unlockLPT (uint256 LPToken) public {
         require (_tokensLocked[msg.sender] >= LPToken, "Insufficient liquidity locked");
         require (LPToken > 0, "Cannot unlock nothing");
 
         // Burning of UND will happen first
-        valuingContract.unboundRemove(LPToken, _tokensLocked[msg.sender], msg.sender, uTokenAddr);
+        valuingContract.unboundRemove(LPToken, _tokensLocked[msg.sender], msg.sender, uToken);
 
         // update mapping
         _tokensLocked[msg.sender] = _tokensLocked[msg.sender].sub(LPToken);
@@ -243,7 +243,7 @@ contract LLC_EthDai {
         require(LPTContract.transfer(msg.sender, LPToken), "LLC: Transfer Failed");
 
         // emit unlockLPT event
-        emit UnlockLPT(LPToken, msg.sender, uTokenAddr);
+        emit UnlockLPT(LPToken, msg.sender, uToken);
         
     }
     

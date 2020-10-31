@@ -72,7 +72,7 @@ contract('unboundSystem decimals13', function (_accounts) {
       const pairAddr = await factory.createPair(tDai.address, tEth.address);
       pair = await uniPair.at(pairAddr.logs[0].args.pair);
 
-      lockContract = await LLC.new(valueContract.address, pairAddr.logs[0].args.pair, tDai.address);
+      lockContract = await LLC.new(valueContract.address, pairAddr.logs[0].args.pair, tDai.address, unboundDai.address);
 
       let permissionLLC = await valueContract.addLLC(lockContract.address, loanRate, feeRate);
       let permissionUdai = await valueContract.allowToken(unboundDai.address);
@@ -169,7 +169,7 @@ contract('unboundSystem decimals13', function (_accounts) {
       const anyNumber = 123;
 
       await expectRevert(
-        lockContract.lockLPT(lockAmount, unboundDai.address, anyNumber, {
+        lockContract.lockLPT(lockAmount, anyNumber, {
           from: user,
         }),
         'LLC: Insufficient LPTs'
@@ -203,7 +203,7 @@ contract('unboundSystem decimals13', function (_accounts) {
       const stakingAmount = parseInt((feeAmount * stakeSharesPercent) / 100);
 
       await pair.approve(lockContract.address, LPtokens);
-      await lockContract.lockLPT(LPtokens, unboundDai.address, loanAmount - feeAmount);
+      await lockContract.lockLPT(LPtokens, loanAmount - feeAmount);
       const ownerBal = parseInt(await unboundDai.balanceOf.call(owner));
       const stakingBal = parseInt(await unboundDai.balanceOf.call(stakePair.address));
 
@@ -230,7 +230,7 @@ contract('unboundSystem decimals13', function (_accounts) {
 
       // second mint
       let approveLP = await pair.approve(lockContract.address, LPtokens);
-      let mint0 = await lockContract.lockLPT(LPtokens, unboundDai.address, loanAmount - feeAmount);
+      let mint0 = await lockContract.lockLPT(LPtokens, loanAmount - feeAmount);
       let newBal = await pair.balanceOf.call(owner);
       assert.equal(newBal, LPTbal - LPtokens, 'valuing incorrect');
       console.log(`staking: ${stakingAmount}`);
@@ -247,7 +247,7 @@ contract('unboundSystem decimals13', function (_accounts) {
       let tokenBal0 = await unboundDai.balanceOf.call(owner);
 
       // burn
-      let burn = await lockContract.unlockLPT(lockedTokens, unboundDai.address);
+      let burn = await lockContract.unlockLPT(lockedTokens);
       let tokenBal1 = await unboundDai.balanceOf.call(owner);
       let newBal = parseInt(await pair.balanceOf.call(owner));
 
@@ -317,7 +317,7 @@ contract('unboundSystem decimals13', function (_accounts) {
 
       // first mint
       await pair.approve(lockContract.address, LPtokens);
-      await lockContract.lockLPT(LPtokens, unboundDai.address, loanAmount - feeAmount);
+      await lockContract.lockLPT(LPtokens, loanAmount - feeAmount);
 
       // user A balance before
       let tokenBal = await unboundDai.balanceOf.call(owner);
@@ -332,7 +332,7 @@ contract('unboundSystem decimals13', function (_accounts) {
 
       // Trys to unlockLPT with User B
       await expectRevert(
-        lockContract.unlockLPT(LPtokens, unboundDai.address, {
+        lockContract.unlockLPT(LPtokens, {
           from: user,
         }),
         'Insufficient liquidity locked'

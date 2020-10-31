@@ -145,7 +145,7 @@ contract('unboundSystem', function (_accounts) {
       const anyNumber = 123;
 
       await expectRevert(
-        lockContract.lockLPT(lockAmount, und.address, anyNumber, {
+        lockContract.lockLPT(lockAmount, anyNumber, {
           from: user,
         }),
         'LLC: Insufficient LPTs'
@@ -157,7 +157,7 @@ contract('unboundSystem', function (_accounts) {
       const anyNumber = 123;
 
       await pair.approve(lockContract.address, lockAmount);
-      await expectRevert(lockContract.lockLPT(lockAmount, und.address, anyNumber), 'amount is too small');
+      await expectRevert(lockContract.lockLPT(lockAmount, anyNumber), 'amount is too small');
     });
 
     it('fails to lockLPT() with minTokenAmount which is more than minting amount', async () => {
@@ -171,7 +171,7 @@ contract('unboundSystem', function (_accounts) {
 
       await pair.approve(lockContract.address, LPtokens);
       await expectRevert(
-        lockContract.lockLPT(LPtokens, und.address, loanAmount - feeAmount + 1),
+        lockContract.lockLPT(LPtokens, loanAmount - feeAmount + 1),
         'UND: Tx took too long'
       );
     });
@@ -189,7 +189,7 @@ contract('unboundSystem', function (_accounts) {
       const stakingAmount = 0;
 
       await pair.approve(lockContract.address, LPtokens);
-      const receipt = await lockContract.lockLPT(LPtokens, und.address, loanAmount - feeAmount);
+      const receipt = await lockContract.lockLPT(LPtokens, loanAmount - feeAmount);
       expectEvent.inTransaction(receipt.tx, und, 'Mint', {
         user: owner,
         newMint: loanAmount.toString(),
@@ -250,7 +250,7 @@ contract('unboundSystem', function (_accounts) {
       const stakingAmount = parseInt((feeAmount * stakeSharesPercent) / 100);
 
       await pair.approve(lockContract.address, LPtokens);
-      const receipt = await lockContract.lockLPT(LPtokens, und.address, loanAmount - feeAmount);
+      const receipt = await lockContract.lockLPT(LPtokens, loanAmount - feeAmount);
       expectEvent.inTransaction(receipt.tx, und, 'Mint', {
         user: owner,
         newMint: loanAmount.toString(),
@@ -275,7 +275,7 @@ contract('unboundSystem', function (_accounts) {
       const burnTokenAmount = parseInt((loanedAmount * burnTokens) / LPtokens);
 
       // burn
-      await lockContract.unlockLPT(burnTokens, und.address);
+      await lockContract.unlockLPT(burnTokens);
       const tokenBal = parseInt(await und.balanceOf(owner));
       const newBal = parseInt(await pair.balanceOf(owner));
       const uDaiBalFinal = parseInt(await und.balanceOf(owner));
@@ -350,7 +350,7 @@ contract('unboundSystem', function (_accounts) {
 
       // first mint
       await pair.approve(lockContract.address, LPtokens);
-      await lockContract.lockLPT(LPtokens, und.address, anyNumber);
+      await lockContract.lockLPT(LPtokens, anyNumber);
 
       // user A balance before
       const tokenBal = parseInt(await und.balanceOf(owner));
@@ -364,7 +364,7 @@ contract('unboundSystem', function (_accounts) {
 
       // Trys to unlockLPT with User B
       await expectRevert(
-        lockContract.unlockLPT(LPtokens, und.address, {
+        lockContract.unlockLPT(LPtokens, {
           from: user,
         }),
         'Insufficient liquidity locked'
@@ -389,11 +389,11 @@ contract('unboundSystem', function (_accounts) {
       const anyNumber = 123;
       const b32 = web3.utils.asciiToHex('1');
       await expectRevert(
-        lockContract.lockLPTWithPermit(1, und.address, 1, b32, b32, b32, anyNumber),
+        lockContract.lockLPTWithPermit(1, 1, b32, b32, b32, anyNumber),
         'LLC: This LLC is Deprecated'
       );
-      await expectRevert(lockContract.lockLPT(1, und.address, anyNumber), 'LLC: This LLC is Deprecated');
-      await lockContract.unlockLPT(1, und.address); // Be able to unlock under killed status
+      await expectRevert(lockContract.lockLPT(1, anyNumber), 'LLC: This LLC is Deprecated');
+      await lockContract.unlockLPT(1); // Be able to unlock under killed status
 
       // Rechange kill switch
       expectEvent(await lockContract.disableLock(), 'KillSwitch', { position: false });
