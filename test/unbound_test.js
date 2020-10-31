@@ -170,10 +170,7 @@ contract('unboundSystem', function (_accounts) {
       const feeAmount = parseInt((loanAmount * feeRate) / rateBalance); // Amount of fee
 
       await pair.approve(lockContract.address, LPtokens);
-      await expectRevert(
-        lockContract.lockLPT(LPtokens, loanAmount - feeAmount + 1),
-        'UND: Tx took too long'
-      );
+      await expectRevert(lockContract.lockLPT(LPtokens, loanAmount - feeAmount + 1), 'UND: Tx took too long');
     });
 
     it('UND mint - first(not auto fee distribution)', async () => {
@@ -393,10 +390,8 @@ contract('unboundSystem', function (_accounts) {
       // Check public functions
       const anyNumber = 123;
       const b32 = web3.utils.asciiToHex('1');
-      await expectRevert(
-        lockContract.lockLPTWithPermit(1, 1, b32, b32, b32, anyNumber),
-        'LLC: This LLC is Deprecated'
-      );
+
+      await expectRevert(lockContract.lockLPTWithPermit(1, 1, b32, b32, b32, anyNumber), 'LLC: This LLC is Deprecated');
       await expectRevert(lockContract.lockLPT(1, anyNumber), 'LLC: This LLC is Deprecated');
       await lockContract.unlockLPT(1); // Be able to unlock under killed status
 
