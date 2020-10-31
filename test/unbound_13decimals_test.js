@@ -179,13 +179,14 @@ contract('unboundSystem decimals13', function (_accounts) {
     // This never happen in 13 decimals
     // it("cannot call lockLPT() small amount", async () => {
     //   const lockAmount = 1;
+    //   const anyNumber = 123;
 
     //   let approveLP = await pair.approve(
     //     lockContract.address,
     //     lockAmount
     //   );
     //   await expectRevert(
-    //     lockContract.lockLPT(lockAmount, unboundDai.address),
+    //     lockContract.lockLPT(lockAmount, anyNumber),
     //     "amount is too small"
     //   );
     // });

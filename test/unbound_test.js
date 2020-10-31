@@ -190,6 +190,11 @@ contract('unboundSystem', function (_accounts) {
 
       await pair.approve(lockContract.address, LPtokens);
       const receipt = await lockContract.lockLPT(LPtokens, loanAmount - feeAmount);
+      expectEvent(receipt, 'LockLPT', {
+        LPTamt: LPtokens.toString(),
+        user: owner,
+        uToken: und.address,
+      });
       expectEvent.inTransaction(receipt.tx, und, 'Mint', {
         user: owner,
         newMint: loanAmount.toString(),
