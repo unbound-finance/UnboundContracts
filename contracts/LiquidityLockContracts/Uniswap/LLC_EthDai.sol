@@ -5,9 +5,9 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 
 // Interfaces
-import "../Interfaces/IUniswapV2Pair.sol";
-import "../Interfaces/IValuing_01.sol";
-import "../Interfaces/IERC20.sol";
+import "../../Interfaces/IUniswapV2Pair.sol";
+import "../../Interfaces/IValuing_01.sol";
+import "../../Interfaces/IERC20.sol";
 
 
 // ---------------------------------------------------------------------------------------
