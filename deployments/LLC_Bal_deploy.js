@@ -32,7 +32,7 @@ const feeRate = "ENTER DESIRED FEE RATE"
 // Deploys UND and 
 module.exports = async (deployer, network, accounts) => {
 
-  const lockContract = await deployer.deploy(LLC, valueAddress, LPTAddress, stableCoin, uTokenAddr);
+  const lockContract = await deployer.deploy(LLC_Bal, valueAddress, LPTAddress, stableCoin, uTokenAddr);
   
   const valueContract = valuing.at(valueAddress);
 
