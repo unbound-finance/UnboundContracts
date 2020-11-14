@@ -3,6 +3,7 @@ pragma solidity >=0.4.23 <0.8.0;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "../Interfaces/IUnboundToken.sol";
 
@@ -151,6 +152,13 @@ contract Valuing_01 {
     // Changes owner
     function setOwner(address _newOwner) public onlyOwner {
         _owner = _newOwner;
+    }
+
+    // Claim - remove any airdropped tokens
+    // currently sends all tokens to "to" address (in param)
+    function claimTokens(address _tokenAddr, address to) public onlyOwner {
+        uint256 tokenBal = IERC20(_tokenAddr).balanceOf(address(this));
+        require(IERC20(_tokenAddr).transfer(to, tokenBal), "UND: misc. Token Transfer Failed");
     }
 
 }
