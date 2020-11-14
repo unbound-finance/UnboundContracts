@@ -101,8 +101,8 @@ contract LLC_EthDai_Bal {
         // saves pair token addresses to memory
         address[] memory tokens = LPTContract.getCurrentTokens();
 
-        // this can eventually be removed
-        require(tokens.length == 2, "Too many tokens");
+        // makes sure we have a list of tokens.
+        require(tokens.length > 0, "Not Enough Tokens");
 
         // makes sure baseAsset is present in pair
         bool isPresent;
