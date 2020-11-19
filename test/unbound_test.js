@@ -399,5 +399,21 @@ contract('unboundSystem', function (_accounts) {
       expectEvent(await lockContract.disableLock(), 'KillSwitch', { position: false });
       assert.isFalse(await lockContract.killSwitch(), 'Changed killSwitch incorrect');
     });
+    
+    it('Valuator can claim tokens', async () => {
+      let sendEth = await tEth.transfer(valueContract.address, 10);
+      let claim = await valueContract.claimTokens(tEth.address, user);
+      let finalBalance = await tEth.balanceOf(user);
+
+      assert.equal(20, finalBalance.words[0], 'Valuator Claim is not working');
+    });
+
+    it('UND can claim tokens', async () => {
+      let sendEth = await tEth.transfer(und.address, 10);
+      let claim = await und.claimTokens(tEth.address, user);
+      let finalBalance = await tEth.balanceOf(user);
+
+      assert.equal(30, finalBalance.words[0], 'UND Claim is not working');
+    });
   });
 });

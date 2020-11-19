@@ -10,7 +10,7 @@ import "../Interfaces/IUnboundToken.sol";
 
 // ---------------------------------------------------------------------------------------
 //                                   Unbound Valuing Contract
-//         
+//        
 //                                     By: Unbound Finance
 // ---------------------------------------------------------------------------------------
 // This contract contains the logic of applying the LTV rate to the baseAsset value of 
