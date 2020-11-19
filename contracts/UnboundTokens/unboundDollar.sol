@@ -379,4 +379,11 @@ contract UnboundDollar is Context, IERC20 {
     function setOwner(address _newOwner) public onlyOwner {
         _owner = _newOwner;
     }
+
+    // Claim - remove any airdropped tokens
+    // currently sends all tokens to "to" address (in param)
+    function claimTokens(address _tokenAddr, address to) public onlyOwner {
+        uint256 tokenBal = IERC20(_tokenAddr).balanceOf(address(this));
+        require(IERC20(_tokenAddr).transfer(to, tokenBal), "UND: misc. Token Transfer Failed");
+    }
 }
