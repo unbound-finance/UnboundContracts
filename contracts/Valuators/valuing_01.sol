@@ -1,5 +1,5 @@
+// SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.7.5;
-// SPDX-License-Identifier: MIT
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
@@ -52,7 +52,7 @@ contract Valuing_01 {
     }
 
     // Constructor
-    constructor (address uToken) public {
+    constructor (address uToken) {
         isUnbound[uToken] = true;
         _owner = msg.sender;
     }

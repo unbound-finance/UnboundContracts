@@ -1,5 +1,4 @@
-// SPDX-License-Identifier: MIT
-
+// SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.7.5;
 
 import "@openzeppelin/contracts/GSN/Context.sol";
@@ -82,7 +81,7 @@ contract UnboundDollar is Context, IERC20 {
         _;
     }
 
-    constructor (string memory name, string memory symbol, address Safu, address devFund) public {
+    constructor (string memory name, string memory symbol, address Safu, address devFund) {
         _name = name;
         _symbol = symbol;
         _decimals = 18;

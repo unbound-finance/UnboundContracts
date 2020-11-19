@@ -1,4 +1,5 @@
 pragma solidity >=0.4.23 <0.8.0;
+// SPDX-License-Identifier: MIT
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
@@ -24,7 +25,7 @@ contract TestDai is IERC20 {
     // event Approval(address indexed owner, address indexed spender, uint value);
     // event Transfer(address indexed from, address indexed to, uint value);
 
-    constructor(address tester, uint256 chainId_) public {
+    constructor(address tester, uint256 chainId_) {
         balanceOf[msg.sender] = balanceOf[msg.sender].add(100000000000 * (10 ** 18));
         balanceOf[tester] = balanceOf[tester].add(100000000000 * (10 ** 18));
         totalSupply = totalSupply.add(1000000 * (10 ** 18));
