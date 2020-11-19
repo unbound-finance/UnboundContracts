@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity >=0.4.23 <0.8.0;
+pragma solidity 0.7.5;
 
 import "@openzeppelin/contracts/GSN/Context.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -114,12 +114,12 @@ contract UnboundDollar is Context, IERC20 {
         ));
     }
 
-    function name() public view returns (string memory) {
+    function showName() public view returns (string memory) {
         return _name;
     }
 
    
-    function symbol() public view returns (string memory) {
+    function showSymbol() public view returns (string memory) {
         return _symbol;
     }
 

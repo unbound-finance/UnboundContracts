@@ -1,4 +1,4 @@
-pragma solidity >=0.4.23 <0.8.0;
+pragma solidity 0.7.5;
 // SPDX-License-Identifier: MIT
 
 import "./LLC_EthDai.sol";
