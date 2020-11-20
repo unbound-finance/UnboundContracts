@@ -190,7 +190,7 @@ contract LLC_EthDai {
 
             // first case: tokenDecimal is smaller than 18
             // for baseAssets with less than 18 decimals
-            if (baseAssetDecimal < 18 && baseAssetDecimal >= 0) {
+            if (baseAssetDecimal < 18) {
 
                 // calculate amount of decimals under 18
                 difference = 18 - baseAssetDecimal;
