@@ -81,9 +81,9 @@ contract UnboundDollar is Context, IERC20 {
         _;
     }
 
-    constructor (string memory name, string memory symbol, address Safu, address devFund) {
-        _name = name;
-        _symbol = symbol;
+    constructor (string memory tokenName, string memory tokenSymbol, address Safu, address devFund) {
+        _name = tokenName;
+        _symbol = tokenSymbol;
         _decimals = 18;
         _owner = msg.sender;
         _totalSupply = 0;
@@ -106,7 +106,7 @@ contract UnboundDollar is Context, IERC20 {
         // To verify permit() signature
         DOMAIN_SEPARATOR = keccak256(abi.encode(
             keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
-            keccak256(bytes(name)),
+            keccak256(bytes(tokenName)),
             keccak256(bytes('1')),
             chainId,
             address(this)
