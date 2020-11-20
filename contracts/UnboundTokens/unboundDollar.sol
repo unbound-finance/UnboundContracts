@@ -113,12 +113,12 @@ contract UnboundDollar is Context, IERC20 {
         ));
     }
 
-    function showName() public view returns (string memory) {
+    function name() public view returns (string memory) {
         return _name;
     }
 
    
-    function showSymbol() public view returns (string memory) {
+    function symbol() public view returns (string memory) {
         return _symbol;
     }
 
