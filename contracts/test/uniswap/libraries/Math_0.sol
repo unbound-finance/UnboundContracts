@@ -1,4 +1,5 @@
 pragma solidity >=0.4.23 <0.8.0;
+// SPDX-License-Identifier: MIT
 
 // a library for performing various math operations
 

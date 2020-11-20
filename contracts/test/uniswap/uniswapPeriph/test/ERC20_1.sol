@@ -1,4 +1,5 @@
-pragma solidity =0.6.6;
+// SPDX-License-Identifier: MIT
+pragma solidity >=0.4.23 <0.8.0;
 
 import '../libraries/SafeMath_1.sol';
 
@@ -20,7 +21,7 @@ contract ERC20_1 {
     event Approval(address indexed owner, address indexed spender, uint value);
     event Transfer(address indexed from, address indexed to, uint value);
 
-    constructor(uint _totalSupply) public {
+    constructor(uint _totalSupply) {
         uint chainId;
         assembly {
             chainId := chainid()

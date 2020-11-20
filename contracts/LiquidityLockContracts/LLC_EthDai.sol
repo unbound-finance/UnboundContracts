@@ -1,5 +1,5 @@
-pragma solidity >=0.4.23 <0.8.0;
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity 0.7.5;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
@@ -79,7 +79,7 @@ contract LLC_EthDai {
 
     // Constructor - must provide valuing contract address, the associated Liquidity pool address (i.e. eth/dai uniswap pool token address),
     //               and the address of the baseAsset in the uniswap pair.
-    constructor (address valuingAddress, address LPTaddress, address baseAsset, address _uToken) public {
+    constructor (address valuingAddress, address LPTaddress, address baseAsset, address _uToken) {
         _owner = msg.sender;
         
         // initiates interfacing contracts

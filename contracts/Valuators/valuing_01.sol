@@ -1,5 +1,5 @@
-pragma solidity >=0.4.23 <0.8.0;
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity 0.7.5;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
@@ -10,7 +10,7 @@ import "../Interfaces/IUnboundToken.sol";
 
 // ---------------------------------------------------------------------------------------
 //                                   Unbound Valuing Contract
-//         
+//        
 //                                     By: Unbound Finance
 // ---------------------------------------------------------------------------------------
 // This contract contains the logic of applying the LTV rate to the baseAsset value of 
@@ -52,7 +52,7 @@ contract Valuing_01 {
     }
 
     // Constructor
-    constructor (address uToken) public {
+    constructor (address uToken) {
         isUnbound[uToken] = true;
         _owner = msg.sender;
     }

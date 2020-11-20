@@ -1,5 +1,5 @@
-pragma solidity >=0.4.23 <0.8.0;
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity 0.7.5;
 
 import "./LLC_EthDai.sol";
 
@@ -12,5 +12,5 @@ contract LLC_LinkDai is LLC_EthDai {
         address LPTaddress,
         address stableCoin,
         address uToken
-    ) public LLC_EthDai(valuingAddress, LPTaddress, stableCoin, uToken) {}
+    ) LLC_EthDai(valuingAddress, LPTaddress, stableCoin, uToken) {}
 }
