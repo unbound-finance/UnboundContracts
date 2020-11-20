@@ -33,11 +33,11 @@ contract UnboundDollar is Context, IERC20 {
     mapping (address => uint256) private _balances;
     mapping (address => mapping (address => uint256)) private _allowances;
 
-    uint256 _totalSupply;
+    uint256 private _totalSupply;
 
-    string _name;
-    string _symbol;
-    uint8 _decimals;
+    string private _name;
+    string private _symbol;
+    uint8 private _decimals;
 
     // PERMIT VARIABLES
     bytes32 public DOMAIN_SEPARATOR;
@@ -46,13 +46,13 @@ contract UnboundDollar is Context, IERC20 {
     mapping(address => uint) public nonces;
 
     // staking contract address (40%)
-    address _stakeAddr;
+    address private _stakeAddr;
 
     // Emergency fund (40%)
-    address _safuAddr;
+    address private _safuAddr;
 
     // Dev fund (20%)
-    address _devFundAddr;
+    address private _devFundAddr;
 
     // auto fee deposit
     bool public autoFeeDistribution;

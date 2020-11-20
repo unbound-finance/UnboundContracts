@@ -26,7 +26,7 @@ contract Valuing_01 {
     using Address for address;
 
     //Owner Address
-    address _owner;
+    address private _owner;
 
      // Liquidity Lock Contract structs - contains fee and loan rate
     struct LiquidityLock {
@@ -76,7 +76,7 @@ contract Valuing_01 {
         } 
 
         // computes fee amount
-        uint256 feeAmt;
+        uint256 feeAmt = 0;
         if (listOfLLC[msg.sender].feeRate != 0) {
             require(loanAmt.mul(listOfLLC[msg.sender].feeRate) >= rateBalance, "amount is too small");
             feeAmt = loanAmt.mul(listOfLLC[msg.sender].feeRate).div(rateBalance);
