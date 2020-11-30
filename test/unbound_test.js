@@ -86,6 +86,21 @@ contract('unboundSystem', function (_accounts) {
     });
 
     //=== UnboundDai ===//
+    it('UND should return its name', async () => {
+      const retval = await und.name();
+      assert.equal(retval, 'Unbound Dollar', 'Incorrect name');
+    });
+
+    it('UND should return its symbol', async () => {
+      const retval = await und.symbol();
+      assert.equal(retval, 'UND', 'Incorrect symbol');
+    });
+
+    it('UND should return its decimals', async () => {
+      const retval = await und.decimals();
+      assert.equal(parseInt(retval), 18, 'Incorrect decimals');
+    });
+
     it('UND should have 0 as total suply', async () => {
       const retval = await und.totalSupply();
       assert.equal(retval, totalSupply * decimal, 'Total suply is not 0');
@@ -125,6 +140,34 @@ contract('unboundSystem', function (_accounts) {
 
     it('UND should be not auto fee distribution', async () => {
       assert.isFalse(await und.autoFeeDistribution(), 'incorrect autoFeeDistribution');
+    });
+
+    it('UND should not be able to changeSafuShare more than 100', async () => {
+      await expectRevert(und.changeSafuShare(101), 'bad input');
+    });
+
+    it('UND should not be able to changeStakeShare more than 100', async () => {
+      await expectRevert(und.changeStakeShare(101), 'bad input');
+    });
+
+    it('UND should be able to changeSafuShare', async () => {
+      const safuShareTemp = 10;
+      await und.changeSafuShare(safuShareTemp);
+
+      const share = await und.safuSharesOfStoredFee();
+      assert.equal(parseInt(share), safuShareTemp, 'Invalid stake share');
+
+      await und.changeSafuShare(safuSharesPercent);
+    });
+
+    it('UND should be able to changeStakeShare', async () => {
+      const stakeShareTemp = 10;
+      await und.changeStakeShare(stakeShareTemp);
+
+      const share = await und.stakeShares();
+      assert.equal(parseInt(share), stakeShareTemp, 'Invalid stake share');
+
+      await und.changeStakeShare(stakeSharesPercent);
     });
 
     //=== LLC ===//
@@ -171,6 +214,34 @@ contract('unboundSystem', function (_accounts) {
 
       await pair.approve(lockContract.address, LPtokens);
       await expectRevert(lockContract.lockLPT(LPtokens, loanAmount - feeAmount + 1), 'UND: Tx took too long');
+    });
+
+    it('fails to mint zero address', async () => {
+      const zeroAddress = '0x0000000000000000000000000000000000000000';
+      const anyNumber = 123;
+      await expectRevert(
+        und._mint(zeroAddress, anyNumber, anyNumber, zeroAddress, anyNumber),
+        'ERC20: mint to the zero address'
+      );
+    });
+
+    it('fails to mint by not valuator', async () => {
+      const anyNumber = 123;
+      await expectRevert(
+        und._mint(owner, anyNumber, anyNumber, lockContract.address, anyNumber),
+        'Call does not originate from Valuator'
+      );
+    });
+
+    it('fails to burn zero address', async () => {
+      const zeroAddress = '0x0000000000000000000000000000000000000000';
+      const anyNumber = 123;
+      await expectRevert(und._burn(zeroAddress, anyNumber, zeroAddress), 'ERC20: burn from the zero address');
+    });
+
+    it('fails to burn by not valuator', async () => {
+      const anyNumber = 123;
+      await expectRevert(und._burn(owner, anyNumber, lockContract.address), 'Call does not originate from Valuator');
     });
 
     it('UND mint - first(not auto fee distribution)', async () => {
@@ -332,6 +403,10 @@ contract('unboundSystem', function (_accounts) {
       assert.equal(storedFee, storedFeeTotal, 'incorrect stored fee');
     });
 
+    it('UND cannot distribute after distributed', async () => {
+      await expectRevert(und.distributeFee({ from: user }), 'There is nothing to distribute');
+    });
+
     it('LLC can claim tokens', async () => {
       let sendEth = await tEth.transfer(lockContract.address, 10);
       let claim = await lockContract.claimTokens(tEth.address, user);
@@ -399,7 +474,7 @@ contract('unboundSystem', function (_accounts) {
       expectEvent(await lockContract.disableLock(), 'KillSwitch', { position: false });
       assert.isFalse(await lockContract.killSwitch(), 'Changed killSwitch incorrect');
     });
-    
+
     it('Valuator can claim tokens', async () => {
       let sendEth = await tEth.transfer(valueContract.address, 10);
       let claim = await valueContract.claimTokens(tEth.address, user);
