@@ -34,6 +34,7 @@ contract('unboundSystem', function (_accounts) {
   const feeRate = 5000;
   const stakeSharesPercent = 50;
   const safuSharesPercent = 50;
+  const zeroAddress = '0x0000000000000000000000000000000000000000';
 
   let und;
   let valueContract;
@@ -170,6 +171,26 @@ contract('unboundSystem', function (_accounts) {
       await und.changeStakeShare(stakeSharesPercent);
     });
 
+    it('UND should be able to changeSafuFund', async () => {
+      const newFund = _accounts[5];
+      await und.changeSafuFund(newFund);
+
+      const address = await und.safuAddr();
+      assert.equal(address, newFund, 'Invalid safu address');
+
+      await und.changeSafuFund(safu);
+    });
+
+    it('UND should be able to changeDevFund', async () => {
+      const newFund = _accounts[5];
+      await und.changeDevFund(newFund);
+
+      const address = await und.devFundAddr();
+      assert.equal(address, newFund, 'Invalid dev fund');
+
+      await und.changeDevFund(devFund);
+    });
+
     //=== LLC ===//
     it('valuator has correct LLC', async () => {
       let LLCstruct = await valueContract.getLLCStruct(lockContract.address);
@@ -217,7 +238,6 @@ contract('unboundSystem', function (_accounts) {
     });
 
     it('fails to mint zero address', async () => {
-      const zeroAddress = '0x0000000000000000000000000000000000000000';
       const anyNumber = 123;
       await expectRevert(
         und._mint(zeroAddress, anyNumber, anyNumber, zeroAddress, anyNumber),
@@ -234,7 +254,6 @@ contract('unboundSystem', function (_accounts) {
     });
 
     it('fails to burn zero address', async () => {
-      const zeroAddress = '0x0000000000000000000000000000000000000000';
       const anyNumber = 123;
       await expectRevert(und._burn(zeroAddress, anyNumber, zeroAddress), 'ERC20: burn from the zero address');
     });
@@ -340,6 +359,38 @@ contract('unboundSystem', function (_accounts) {
       console.log(`staking: ${stakingAmount}`);
     });
 
+    // it('UND mint - third(no fee)', async () => {
+    //   const LPtokens = 5;
+    //   const beforeOwnerBal = parseInt(await und.balanceOf(owner));
+    //   const beforeStakingBal = parseInt(await und.balanceOf(stakePair.address));
+    //   const beforeLoanedAmount = parseInt(await und.checkLoan(owner, lockContract.address));
+
+    //   const totalUSD = daiAmount * 2; // Total value in Liquidity pool
+    //   const totalLPTokens = parseInt(await pair.totalSupply()); // Total token amount of Liq pool
+    //   const LPTValueInDai = parseInt((totalUSD * LPtokens) / totalLPTokens); //% value of Liq pool in Dai
+    //   const loanAmount = parseInt((LPTValueInDai * loanRate) / rateBalance); // Loan amount that user can get
+    //   const feeAmount = parseInt((loanAmount * feeRate) / rateBalance); // Amount of fee
+    //   console.log(feeAmount);
+    //   const stakingAmount = parseInt((feeAmount * stakeSharesPercent) / 100);
+
+    //   await pair.approve(lockContract.address, LPtokens);
+    //   const receipt = await lockContract.lockLPT(LPtokens, loanAmount - feeAmount);
+    //   expectEvent.inTransaction(receipt.tx, und, 'Mint', {
+    //     user: owner,
+    //     newMint: loanAmount.toString(),
+    //   });
+
+    //   const ownerBal = parseInt(await und.balanceOf(owner));
+    //   const stakingBal = parseInt(await und.balanceOf(stakePair.address));
+    //   const loanedAmount = parseInt(await und.checkLoan(owner, lockContract.address));
+
+    //   assert.equal(ownerBal, beforeOwnerBal + (loanAmount - feeAmount), 'owner balance incorrect');
+    //   assert.equal(stakingBal, beforeStakingBal + stakingAmount, 'staking balance incorrect');
+    //   assert.equal(loanedAmount, beforeLoanedAmount + loanAmount, 'loaned amount incorrect');
+    //   storedFeeTotal += feeAmount - stakingAmount;
+    //   console.log(`staking: ${stakingAmount}`);
+    // });
+
     it('UND burn', async () => {
       const uDaiBal = parseInt(await und.balanceOf(owner));
       const loanedAmount = await und.checkLoan(owner, lockContract.address);
@@ -364,7 +415,7 @@ contract('unboundSystem', function (_accounts) {
       beforeBal = parseInt(beforeBal.words[0]);
       beforeUser = parseInt(beforeUser.words[0]);
 
-      let theTransfer = await und.transfer(user, transferAmount);
+      await und.transfer(user, transferAmount);
       let finalBal = await und.balanceOf(owner);
       let userBal = await und.balanceOf(user);
       finalBal = parseInt(finalBal.words[0]);
@@ -372,6 +423,49 @@ contract('unboundSystem', function (_accounts) {
 
       assert.equal(userBal, beforeUser + transferAmount, 'receiver balance incorrect');
       assert.equal(finalBal, beforeBal - transferAmount, 'sender balance incorrect');
+    });
+
+    it('UND cannot approve with 0 address', async () => {
+      const transferAmount = 10;
+
+      // await expectRevert(und.approve(zeroAddress, transferAmount), 'ERC20: approve from the zero address');
+      await expectRevert(und.approve(zeroAddress, transferAmount), 'ERC20: approve to the zero address');
+    });
+
+    it('UND cannot transferFrom with 0 address', async () => {
+      const transferAmount = 10;
+
+      await expectRevert(und.transferFrom(zeroAddress, user, transferAmount), 'ERC20: transfer from the zero address');
+      await expectRevert(und.transferFrom(owner, zeroAddress, transferAmount), 'ERC20: transfer to the zero address');
+    });
+
+    it('UND can increase and decrease arrowance', async () => {
+      const transferAmount = 10;
+      const allowanceBefore = parseInt(await und.allowance(user, owner));
+
+      await und.increaseAllowance(owner, transferAmount, { from: user });
+      const allowanceIncreased = parseInt(await und.allowance(user, owner));
+      assert.equal(allowanceIncreased, allowanceBefore + transferAmount, 'increased allowance incorrect');
+
+      await und.decreaseAllowance(owner, transferAmount, { from: user });
+      const allowanceDecreased = parseInt(await und.allowance(user, owner));
+      assert.equal(allowanceDecreased, allowanceBefore, 'decreased allowance incorrect');
+    });
+
+    it('UND can transferFrom', async () => {
+      const transferAmount = 10;
+      let beforeBal = await und.balanceOf(owner);
+      let beforeUser = await und.balanceOf(user);
+      beforeBal = parseInt(beforeBal.words[0]);
+      beforeUser = parseInt(beforeUser.words[0]);
+
+      await und.approve(owner, transferAmount, { from: user });
+      await und.transferFrom(user, owner, transferAmount);
+      let finalBal = parseInt(await und.balanceOf(owner));
+      let userBal = parseInt(await und.balanceOf(user));
+
+      assert.equal(userBal, beforeUser - transferAmount, 'receiver balance incorrect');
+      assert.equal(finalBal, beforeBal + transferAmount, 'sender balance incorrect');
     });
 
     it('UND can distribute the fee to safu and devFund', async () => {
@@ -489,6 +583,13 @@ contract('unboundSystem', function (_accounts) {
       let finalBalance = await tEth.balanceOf(user);
 
       assert.equal(30, finalBalance.words[0], 'UND Claim is not working');
+    });
+
+    it('UND can set owner', async () => {
+      await und.setOwner(user);
+      assert.isTrue(await und.isOwner({ from: user }), 'Set owner is not working');
+      await expectRevert(und.setOwner(user), 'Ownable: caller is not the owner');
+      await und.setOwner(owner, { from: user });
     });
   });
 });
