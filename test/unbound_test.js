@@ -359,38 +359,6 @@ contract('unboundSystem', function (_accounts) {
       console.log(`staking: ${stakingAmount}`);
     });
 
-    // it('UND mint - third(no fee)', async () => {
-    //   const LPtokens = 5;
-    //   const beforeOwnerBal = parseInt(await und.balanceOf(owner));
-    //   const beforeStakingBal = parseInt(await und.balanceOf(stakePair.address));
-    //   const beforeLoanedAmount = parseInt(await und.checkLoan(owner, lockContract.address));
-
-    //   const totalUSD = daiAmount * 2; // Total value in Liquidity pool
-    //   const totalLPTokens = parseInt(await pair.totalSupply()); // Total token amount of Liq pool
-    //   const LPTValueInDai = parseInt((totalUSD * LPtokens) / totalLPTokens); //% value of Liq pool in Dai
-    //   const loanAmount = parseInt((LPTValueInDai * loanRate) / rateBalance); // Loan amount that user can get
-    //   const feeAmount = parseInt((loanAmount * feeRate) / rateBalance); // Amount of fee
-    //   console.log(feeAmount);
-    //   const stakingAmount = parseInt((feeAmount * stakeSharesPercent) / 100);
-
-    //   await pair.approve(lockContract.address, LPtokens);
-    //   const receipt = await lockContract.lockLPT(LPtokens, loanAmount - feeAmount);
-    //   expectEvent.inTransaction(receipt.tx, und, 'Mint', {
-    //     user: owner,
-    //     newMint: loanAmount.toString(),
-    //   });
-
-    //   const ownerBal = parseInt(await und.balanceOf(owner));
-    //   const stakingBal = parseInt(await und.balanceOf(stakePair.address));
-    //   const loanedAmount = parseInt(await und.checkLoan(owner, lockContract.address));
-
-    //   assert.equal(ownerBal, beforeOwnerBal + (loanAmount - feeAmount), 'owner balance incorrect');
-    //   assert.equal(stakingBal, beforeStakingBal + stakingAmount, 'staking balance incorrect');
-    //   assert.equal(loanedAmount, beforeLoanedAmount + loanAmount, 'loaned amount incorrect');
-    //   storedFeeTotal += feeAmount - stakingAmount;
-    //   console.log(`staking: ${stakingAmount}`);
-    // });
-
     it('UND burn', async () => {
       const uDaiBal = parseInt(await und.balanceOf(owner));
       const loanedAmount = await und.checkLoan(owner, lockContract.address);
