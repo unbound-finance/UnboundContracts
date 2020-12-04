@@ -274,6 +274,12 @@ contract LLC_EthDai {
 
     // onlyOwner Functions
 
+    // Change blocksToWait variable
+    function changeBlocksToWait(uint newBlocksToWait) public onlyOwner {
+        require(newBlocksToWait > 0, "Cannot be 0");
+        blocksToWait = newBlocksToWait;
+    }
+
     // Claim - remove any airdropped tokens
     // currently sends all tokens to "to" address (in param)
     function claimTokens(address _tokenAddr, address to) public onlyOwner {
