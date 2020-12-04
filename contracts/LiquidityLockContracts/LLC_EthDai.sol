@@ -124,6 +124,7 @@ contract LLC_EthDai {
     // Lock/Unlock functions
     // Mint path
     function lockLPTWithPermit (uint256 LPTamt, uint deadline, uint8 v, bytes32 r, bytes32 s, uint256 minTokenAmount) public {
+        require(block.number - _lastBlock[msg.sender] > blocksToWait, "LLC: Insufficient Time Has Passed");
         require(!killSwitch, "LLC: This LLC is Deprecated");
         require(LPTContract.balanceOf(msg.sender) >= LPTamt, "LLC: Insufficient LPTs");
         uint256 totalLPTokens = LPTContract.totalSupply();
@@ -143,12 +144,16 @@ contract LLC_EthDai {
         // Call Valuing Contract
         valuingContract.unboundCreate(LPTValueInDai, msg.sender, uToken, minTokenAmount); // Hardcode "0" for AAA rating
 
+        // sets the last block user calls a function. Prevents user from calling lock/unlock more than once within a specified number of blocks.
+        _lastBlock[msg.sender] = block.number;
+
         // emit lockLPT event
         emit LockLPT(LPTamt, msg.sender, uToken);
     }
 
     // Requires approval first (permit excluded for simplicity)
     function lockLPT (uint256 LPTamt, uint256 minTokenAmount) public {
+        require(block.number - _lastBlock[msg.sender] > blocksToWait, "LLC: Insufficient Time Has Passed");
         require(!killSwitch, "LLC: This LLC is Deprecated");
         require(LPTContract.balanceOf(msg.sender) >= LPTamt, "LLC: Insufficient LPTs");
         uint256 totalLPTokens = LPTContract.totalSupply();
@@ -167,6 +172,9 @@ contract LLC_EthDai {
 
         // Call Valuing Contract
         valuingContract.unboundCreate(LPTValueInDai, msg.sender, uToken, minTokenAmount); 
+
+        // sets the last block user calls a function. Prevents user from calling lock/unlock more than once within a specified number of blocks.
+        _lastBlock[msg.sender] = block.number;
 
         // emit lockLPT event
         emit LockLPT(LPTamt, msg.sender, uToken);
@@ -239,6 +247,7 @@ contract LLC_EthDai {
     // 
     // allows for partial loan payment by using the ratio of LPtokens to unlock and total LPtokens locked
     function unlockLPT (uint256 LPToken) public {
+        require(block.number - _lastBlock[msg.sender] > blocksToWait, "LLC: Insufficient Time Has Passed");
         require (_tokensLocked[msg.sender] >= LPToken, "Insufficient liquidity locked");
         require (LPToken > 0, "Cannot unlock nothing");
 
@@ -250,6 +259,9 @@ contract LLC_EthDai {
         
         // send LP tokens back to user
         require(LPTContract.transfer(msg.sender, LPToken), "LLC: Transfer Failed");
+
+        // sets the last block user calls a function. Prevents user from calling lock/unlock more than once within a specified number of blocks.
+        _lastBlock[msg.sender] = block.number;
 
         // emit unlockLPT event
         emit UnlockLPT(LPToken, msg.sender, uToken);
