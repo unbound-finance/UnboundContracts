@@ -26,12 +26,15 @@ const valueAddress = "!!!!ENTER VALUING ADDRESS HERE!!!!";
 
 const loanRate = "ENTER DESIRED LOAN RATE";
 
-const feeRate = "ENTER DESIRED FEE RATE"
+const feeRate = "ENTER DESIRED FEE RATE";
+
+// this can be changed. 20 as default
+const blockInterval = 20;
 
 // Deploys UND and 
 module.exports = async (deployer, network, accounts) => {
 
-  const lockContract = await deployer.deploy(LLC, valueAddress, LPTAddress, stableCoin, uTokenAddr);
+  const lockContract = await deployer.deploy(LLC, valueAddress, LPTAddress, stableCoin, uTokenAddr, blockInterval);
   
   const valueContract = valuing.at(valueAddress);
 
