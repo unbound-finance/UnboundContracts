@@ -11,6 +11,7 @@ contract LLC_LinkDai is LLC_EthDai {
         address valuingAddress,
         address LPTaddress,
         address stableCoin,
-        address uToken
-    ) LLC_EthDai(valuingAddress, LPTaddress, stableCoin, uToken) {}
+        address uToken,
+        uint blockInterval
+    ) LLC_EthDai(valuingAddress, LPTaddress, stableCoin, uToken, blockInterval) {}
 }
