@@ -60,7 +60,7 @@ contract('LLC', function (_accounts) {
       factory = await uniFactory.deployed();
       pair = await uniPair.at(await lockContract.pair());
 
-      await tDai.approve(route.address, 400000);
+      await tDai.approve(route.address, daiAmount);
       await tEth.approve(route.address, 1000);
 
       let d = new Date();
@@ -132,15 +132,18 @@ contract('LLC', function (_accounts) {
     });
 
     it('can set valuing address', async () => {
-      const newValuing = new valuing(und.address);
+      const newValuing = await valuing.new(und.address);
+      await newValuing.addLLC(lockContract.address, loanRate, feeRate);
+      await und.changeValuator(newValuing.address);
+
       const beforeBalance = parseInt(await und.balanceOf(owner));
 
       await lockContract.setValuingAddress(newValuing.address);
-      await pair.approve(lockContract.address, 1000);
-      lockContract.lockLPT(1000, 1);
+      await pair.approve(lockContract.address, 10);
+      await lockContract.lockLPT(10, 1);
 
       const balance = parseInt(await und.balanceOf(owner));
-      assert.equal(balance, beforeBalance, 'valuing address is incorrect');
+      assert.isTrue(balance > beforeBalance, 'valuing address is incorrect');
     });
   });
 });

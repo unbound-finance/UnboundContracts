@@ -51,7 +51,7 @@ contract('Scenario', function (_accounts) {
   // Default Functionality
   //=================
   describe('Lock and burn LPT scenario', () => {
-    before(async function () {
+    before(async () => {
       tEth = await testEth.deployed();
       tDai = await testDai.deployed();
       route = await router.deployed();
@@ -60,10 +60,8 @@ contract('Scenario', function (_accounts) {
       lockContract = await LLC.deployed();
       factory = await uniFactory.deployed();
       pair = await uniPair.at(await lockContract.pair());
-
       await tDai.approve(route.address, 400000);
       await tEth.approve(route.address, 1000);
-
       let d = new Date();
       let time = d.getTime();
       await route.addLiquidity(
@@ -76,7 +74,6 @@ contract('Scenario', function (_accounts) {
         owner,
         parseInt(time / 1000 + 100)
       );
-
       let stakePool = await factory.createPair(tDai.address, und.address);
       stakePair = await uniPair.at(stakePool.logs[0].args.pair);
       await und.changeStaking(stakePair.address);
