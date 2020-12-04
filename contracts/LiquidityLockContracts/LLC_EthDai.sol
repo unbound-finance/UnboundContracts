@@ -60,6 +60,12 @@ contract LLC_EthDai {
     // tokens locked by users
     mapping (address => uint256) _tokensLocked;
 
+    // records the last block user made a function call
+    mapping (address => uint256) _lastBlock;
+
+    // number of blocks to wait since last function call
+    uint public blocksToWait;
+
     // token position of baseAsset
     uint8 public _position;
 
