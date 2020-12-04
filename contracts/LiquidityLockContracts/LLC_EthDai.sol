@@ -86,6 +86,7 @@ contract LLC_EthDai {
     // Constructor - must provide valuing contract address, the associated Liquidity pool address (i.e. eth/dai uniswap pool token address),
     //               and the address of the baseAsset in the uniswap pair.
     constructor (address valuingAddress, address LPTaddress, address baseAsset, address _uToken, uint _blocksToWait) {
+        require(_blocksToWait > 0, "Cannot be zero");
         _owner = msg.sender;
 
         // sets blocksToWait (this many blocks must pass before lockLPT or unlockLPT is called)
