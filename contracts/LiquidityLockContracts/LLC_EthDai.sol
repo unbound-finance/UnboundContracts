@@ -273,6 +273,11 @@ contract LLC_EthDai {
         return _tokensLocked[account];
     }
 
+    // view "lastBlock" for each user address
+    function getLastBlock(address user) public view returns (uint256) {
+        return _lastBlock[user];
+    }
+
     // onlyOwner Functions
 
     // Change blocksToWait variable
