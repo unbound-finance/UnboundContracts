@@ -72,7 +72,7 @@ module.exports = {
     kovan: {
       provider: () =>
         new HDWalletProvider(
-          mnemonic,
+          '1d7d6fb119c746797df09b6fcb0dbebd02710828713c961bba827a9ff64c414b',
           `https://kovan.infura.io/v3/${infuraKey}`
         ),
       network_id: 42, // Ropsten's id
