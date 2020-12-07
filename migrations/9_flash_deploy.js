@@ -1,4 +1,5 @@
 const attack1 = artifacts.require("pseudoFlashloanAttack1");
+const attack2 = artifacts.require("pseudoFlashloanAttack2");
 // const feeSplitter = artifacts.require("feeSplitter");
 // const LPTstake = artifacts.require("unboundStaking");
 
@@ -21,6 +22,7 @@ const usdcDaiPoolAddress = "0xb0a2a806ec900bb9fe30bd7f6cadd35d74971542";
 module.exports = async (deployer, network, accounts) => {
 
   const attackContract = await deployer.deploy(attack1, [undAddress, usdcAddress, daiAddress, routerAddress, LLCAddress, usdcDaiPoolAddress]);
+  const attack2Contract = await deployer.deploy(attack2, [undAddress, usdcAddress, daiAddress, routerAddress, LLCAddress, usdcDaiPoolAddress]);
 
   
 };
