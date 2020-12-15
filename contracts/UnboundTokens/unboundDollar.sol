@@ -223,19 +223,14 @@ contract UnboundDollar is Context, IERC20 {
         require(account != address(0), "ERC20: mint to the zero address");
         require(msg.sender == _valuator, "Call does not originate from Valuator");
         require(minTokenAmount <= loanAmount.sub(feeAmount), "UND: Tx took too long");
+        require(feeAmount > 0, "UND: Not allowed 0 fee");
 
-        if (feeAmount == 0) {
-            // Credits user with their UND loan, minus fees
-            _balances[account] = _balances[account].add(loanAmount);
+        // Credits user with their UND loan, minus fees
+        _balances[account] = _balances[account].add(loanAmount.sub(feeAmount));
 
-        } else {
-            // Credits user with their UND loan, minus fees
-            _balances[account] = _balances[account].add(loanAmount.sub(feeAmount));
-
-            // store total to distribute later
-            storedFee = storedFee.add(feeAmount);
-        }
-
+        // store total to distribute later
+        storedFee = storedFee.add(feeAmount);
+        
         // adding total amount of new tokens to totalSupply
         _totalSupply = _totalSupply.add(loanAmount);
 
