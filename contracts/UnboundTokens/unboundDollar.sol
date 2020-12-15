@@ -55,8 +55,8 @@ contract UnboundDollar is Context, IERC20 {
     address private _devFundAddr;
 
     // Dev Fund split variables
-    uint256 public stakeShares;// % of staking to total fee
-    uint256 public safuSharesOfStoredFee;// % of safu to stored fee
+    uint8 public stakeShares;// % of staking to total fee
+    uint8 public safuSharesOfStoredFee;// % of safu to stored fee
     uint256 public storedFee;
 
     // tracks user loan amount in UND. This is the amount of UND they need to pay back to get all locked tokens returned. 
@@ -296,13 +296,13 @@ contract UnboundDollar is Context, IERC20 {
     // onlyOwner Functions
 
     // change safuShare
-    function changeSafuShare(uint256 rate) public onlyOwner {
+    function changeSafuShare(uint8 rate) public onlyOwner {
         require(rate <= 100, "bad input");
         safuSharesOfStoredFee = rate;
     }
 
     // change stakeShare
-    function changeStakeShare(uint256 rate) public onlyOwner {
+    function changeStakeShare(uint8 rate) public onlyOwner {
         require(rate <= 100, "bad input");
         stakeShares = rate;
     }
