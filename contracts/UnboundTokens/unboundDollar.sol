@@ -263,7 +263,7 @@ contract UnboundDollar is Context, IERC20 {
     }
 
     // Checks how much UND the user has minted (and owes to get liquidity back)
-    function checkLoan(address user, address lockLocation) public view returns (uint256 owed) {
+    function checkLoan(address user, address lockLocation) external view returns (uint256 owed) {
         owed = _loaned[user][lockLocation];
     }
 
