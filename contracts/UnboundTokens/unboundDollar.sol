@@ -54,9 +54,6 @@ contract UnboundDollar is Context, IERC20 {
     // Dev fund (20%)
     address private _devFundAddr;
 
-    // auto fee deposit
-    bool public autoFeeDistribution;
-
     // Dev Fund split variables
     uint256 public stakeShares;// % of staking to total fee
     uint256 public safuSharesOfStoredFee;// % of safu to stored fee
@@ -235,20 +232,8 @@ contract UnboundDollar is Context, IERC20 {
             // Credits user with their UND loan, minus fees
             _balances[account] = _balances[account].add(loanAmount.sub(feeAmount));
 
-            if (autoFeeDistribution) {
-
-                // distribute the fee to staking right away
-                uint256 stakeShare = feeAmount.mul(stakeShares).div(100);
-                
-                // Send fee to staking pool
-                _balances[_stakeAddr] = _balances[_stakeAddr].add(stakeShare);
-                
-                // store remaining fees
-                storedFee = storedFee.add(feeAmount.sub(stakeShare));
-            } else {
-                // store total to distribute later
-                storedFee = storedFee.add(feeAmount);
-            }
+            // store total to distribute later
+            storedFee = storedFee.add(feeAmount);
         }
 
         // adding total amount of new tokens to totalSupply
@@ -290,37 +275,23 @@ contract UnboundDollar is Context, IERC20 {
     function distributeFee() public returns (bool) {
         require (storedFee > 0, "There is nothing to distribute");
 
-        if (!autoFeeDistribution) {
+        // amount of fee for safu
+        uint256 stakeShare = storedFee.mul(stakeShares).div(100);
 
-            // amount of fee for safu
-            uint256 stakeShare = storedFee.mul(stakeShares).div(100);
+        uint256 remainingShare = storedFee.sub(stakeShare);
 
-            uint256 remainingShare = storedFee.sub(stakeShare);
+        // amount of fee for staking
+        uint256 safuShare = remainingShare.mul(safuSharesOfStoredFee).div(100);
 
-            // amount of fee for staking
-            uint256 safuShare = remainingShare.mul(safuSharesOfStoredFee).div(100);
+        // send fee to safu
+        _balances[_safuAddr] = _balances[_safuAddr].add(safuShare);
 
-            // send fee to safu
-            _balances[_safuAddr] = _balances[_safuAddr].add(safuShare);
+        // send fee to staking
+        _balances[_stakeAddr] = _balances[_stakeAddr].add(stakeShare);
 
-            // send fee to staking
-            _balances[_stakeAddr] = _balances[_stakeAddr].add(stakeShare);
-
-            // send remaining fee to the devfund
-            _balances[_devFundAddr] = _balances[_devFundAddr].add(remainingShare.sub(safuShare));
+        // send remaining fee to the devfund
+        _balances[_devFundAddr] = _balances[_devFundAddr].add(remainingShare.sub(safuShare));
             
-        } else {
-            // amount of fee for safu
-            uint256 safuShare = storedFee.mul(safuSharesOfStoredFee).div(100);
-
-            // sends to Safu Fund
-            _balances[_safuAddr] = _balances[_safuAddr].add(safuShare);
-
-            // sends the remaineder to dev fund
-            // this formula is to ensure remainders dropped by integer division are not accidentally burned
-            _balances[_devFundAddr] = _balances[_devFundAddr].add(storedFee.sub(safuShare));
-
-        }
         // set the fees to zero
         storedFee = 0;
 
@@ -328,14 +299,6 @@ contract UnboundDollar is Context, IERC20 {
     }
     
     // onlyOwner Functions
-
-    // change autoFeeDistribution
-    function flipFeeDistribution() public onlyOwner {
-        if (storedFee > 0) {
-            require(distributeFee(), "Distribution Error");
-        }
-        autoFeeDistribution = !autoFeeDistribution;
-    }
 
     // change safuShare
     function changeSafuShare(uint256 rate) public onlyOwner {
