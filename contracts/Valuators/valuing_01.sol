@@ -30,8 +30,8 @@ contract Valuing_01 {
 
      // Liquidity Lock Contract structs - contains fee and loan rate
     struct LiquidityLock {
-        uint8 feeRate; // this will contain the number by obtained by multiplying the rate by 10 ^ 6
-        uint8 loanRate; // i.e. for 50%, this value would be 500000, because 100.mul(500000).div(10**6) will return 50% of the original number
+        uint32 feeRate; // this will contain the number by obtained by multiplying the rate by 10 ^ 6
+        uint32 loanRate; // i.e. for 50%, this value would be 500000, because 100.mul(500000).div(10**6) will return 50% of the original number
 
         bool active; // bool that indicates if address is allowed for use.
     }
@@ -106,7 +106,7 @@ contract Valuing_01 {
     }
 
     // returns the fee and loanrate variables attached to an LLC
-    function getLLCStruct(address LLC) public view returns (uint8 fee, uint8 loanrate) {
+    function getLLCStruct(address LLC) public view returns (uint32 fee, uint32 loanrate) {
         fee = listOfLLC[LLC].feeRate;
         loanrate = listOfLLC[LLC].loanRate;
     }
@@ -119,7 +119,7 @@ contract Valuing_01 {
     }
 
     // grants an LLC permission //
-    function addLLC (address LLC, uint8 loan, uint8 fee) public onlyOwner {
+    function addLLC (address LLC, uint32 loan, uint32 fee) public onlyOwner {
         
         // Enter 2500 for 0.25%, 250 for 2.5%, and 25 for 25%.
         listOfLLC[LLC].loanRate = loan;
@@ -128,12 +128,12 @@ contract Valuing_01 {
     }
 
     // changes loanRate only
-    function changeLoanRate (address LLC, uint8 loan) public onlyOwner {
+    function changeLoanRate (address LLC, uint32 loan) public onlyOwner {
         listOfLLC[LLC].loanRate = loan;
     }
 
     // changes feeRate only
-    function changeFeeRate (address LLC, uint8 fee) public onlyOwner {
+    function changeFeeRate (address LLC, uint32 fee) public onlyOwner {
         listOfLLC[LLC].feeRate = fee;
     }
 
