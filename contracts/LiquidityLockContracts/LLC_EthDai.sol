@@ -40,10 +40,10 @@ contract LLC_EthDai {
     event KillSwitch(bool position);
 
     // lockLPTEvent
-    event LockLPT(uint256 LPTamt, address indexed user, address indexed uToken);
+    event LockLPT(uint256 LPTamt, address indexed user);
 
     // unlockLPTEvent
-    event UnlockLPT(uint256 LPTamt, address indexed user, address indexed uToken);
+    event UnlockLPT(uint256 LPTamt, address indexed user);
 
     //Owner Address
     address private _owner;
@@ -53,9 +53,6 @@ contract LLC_EthDai {
 
     // LPT address
     address public pair;
-
-    // uToken ADdress
-    address public uToken;
 
     // tokens locked by users
     mapping (address => uint256) _tokensLocked;
@@ -79,7 +76,7 @@ contract LLC_EthDai {
 
     // Constructor - must provide valuing contract address, the associated Liquidity pool address (i.e. eth/dai uniswap pool token address),
     //               and the address of the baseAsset in the uniswap pair.
-    constructor (address valuingAddress, address LPTaddress, address baseAsset, address _uToken) {
+    constructor (address valuingAddress, address LPTaddress, address baseAsset) {
         _owner = msg.sender;
         
         // initiates interfacing contracts
@@ -92,9 +89,6 @@ contract LLC_EthDai {
 
         // set LPT address
         pair = LPTaddress;
-
-        // set uToken Address
-        uToken = _uToken;
 
         // saves pair token addresses to memory
         address toke0 = LPTContract.token0();
@@ -132,10 +126,10 @@ contract LLC_EthDai {
         transferLPTPermit(msg.sender, LPTamt, deadline, v, r, s);
 
         // Call Valuing Contract
-        valuingContract.unboundCreate(LPTValueInDai, msg.sender, uToken, minTokenAmount); // Hardcode "0" for AAA rating
+        valuingContract.unboundCreate(LPTValueInDai, msg.sender, minTokenAmount); // Hardcode "0" for AAA rating
 
         // emit lockLPT event
-        emit LockLPT(LPTamt, msg.sender, uToken);
+        emit LockLPT(LPTamt, msg.sender);
     }
 
     // Requires approval first (permit excluded for simplicity)
@@ -157,10 +151,10 @@ contract LLC_EthDai {
         transferLPT(LPTamt);
 
         // Call Valuing Contract
-        valuingContract.unboundCreate(LPTValueInDai, msg.sender, uToken, minTokenAmount); 
+        valuingContract.unboundCreate(LPTValueInDai, msg.sender, minTokenAmount); 
 
         // emit lockLPT event
-        emit LockLPT(LPTamt, msg.sender, uToken);
+        emit LockLPT(LPTamt, msg.sender);
     }
 
     // Acquires total value of liquidity pool (in baseAsset) and normalizes decimals to 18.
@@ -234,7 +228,7 @@ contract LLC_EthDai {
         require (LPToken > 0, "Cannot unlock nothing");
 
         // Burning of UND will happen first
-        valuingContract.unboundRemove(LPToken, _tokensLocked[msg.sender], msg.sender, uToken);
+        valuingContract.unboundRemove(LPToken, _tokensLocked[msg.sender], msg.sender);
 
         // update mapping
         _tokensLocked[msg.sender] = _tokensLocked[msg.sender].sub(LPToken);
@@ -243,7 +237,7 @@ contract LLC_EthDai {
         require(LPTContract.transfer(msg.sender, LPToken), "LLC: Transfer Failed");
 
         // emit unlockLPT event
-        emit UnlockLPT(LPToken, msg.sender, uToken);
+        emit UnlockLPT(LPToken, msg.sender);
         
     }
     

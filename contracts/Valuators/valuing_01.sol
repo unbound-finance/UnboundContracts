@@ -32,15 +32,12 @@ contract Valuing_01 {
     struct LiquidityLock {
         uint32 feeRate; // this will contain the number by obtained by multiplying the rate by 10 ^ 6
         uint32 loanRate; // i.e. for 50%, this value would be 500000, because 100.mul(500000).div(10**6) will return 50% of the original number
-
+        address uToken; // address of uToken to mint for the specific LLC.
         bool active; // bool that indicates if address is allowed for use.
     }
 
     // mapping of Approved LLC Contract structs
     mapping (address => LiquidityLock) listOfLLC;
-
-    // mapping of Approved unbound token address
-    mapping (address => bool) isUnbound;
 
     // number of decimals by which to divide fee multiple by.
     uint256 public constant rateBalance = (10 ** 6);
@@ -52,8 +49,7 @@ contract Valuing_01 {
     }
 
     // Constructor
-    constructor (address uToken) {
-        isUnbound[uToken] = true;
+    constructor () {
         _owner = msg.sender;
     }
 
@@ -61,12 +57,11 @@ contract Valuing_01 {
     //
     // receives the total value (in uToken) of the locked liquidity from LLC,
     // calculates loan amount in uToken using loanRate variable from struct
-    function unboundCreate(uint256 amount, address user, address token, uint256 minTokenAmount) external {
+    function unboundCreate(uint256 amount, address user, uint256 minTokenAmount) external {
         require (amount > 0, "Cannot valuate nothing");
         require (listOfLLC[msg.sender].active, "LLC not authorized");
-        require (isUnbound[token], "invalid unbound contract");
         
-        IUnboundToken unboundContract = IUnboundToken(token);
+        IUnboundToken unboundContract = IUnboundToken(listOfLLC[msg.sender].uToken);
 
         // computes loan amount
         uint256 loanAmt = amount;
@@ -89,12 +84,11 @@ contract Valuing_01 {
     }
 
     // Loan repayment Intermediary - only called from LLC
-    function unboundRemove(uint256 toUnlock, uint256 totalLocked, address user, address token) external {
+    function unboundRemove(uint256 toUnlock, uint256 totalLocked, address user) external {
         require (listOfLLC[msg.sender].active, "LLC not authorized");
-        require (isUnbound[token], "invalid unbound contract");
 
         // obtains amount of loan user owes (in uToken)
-        IUnboundToken unboundContract = IUnboundToken(token);
+        IUnboundToken unboundContract = IUnboundToken(listOfLLC[msg.sender].uToken);
         uint256 userLoaned = unboundContract.checkLoan(user, msg.sender);
 
         // compute amount of uToken necessary to unlock LPT
@@ -113,14 +107,10 @@ contract Valuing_01 {
 
     // onlyOwner Functions
 
-    // grant permission for an unbound token to be called
-    function allowToken (address uToken) public onlyOwner {
-        isUnbound[uToken] = true;
-    }
-
     // grants an LLC permission //
-    function addLLC (address LLC, uint32 loan, uint32 fee) public onlyOwner {
-        
+    function addLLC (address LLC, address uToken, uint32 loan, uint32 fee) public onlyOwner {
+        // add uToken to mint
+        listOfLLC[LLC].uToken = uToken;
         // Enter 2500 for 0.25%, 250 for 2.5%, and 25 for 25%.
         listOfLLC[LLC].loanRate = loan;
         listOfLLC[LLC].feeRate = fee;
