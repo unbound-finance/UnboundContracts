@@ -10,7 +10,6 @@ contract LLC_LinkDai is LLC_EthDai {
     constructor(
         address valuingAddress,
         address LPTaddress,
-        address stableCoin,
-        address uToken
-    ) LLC_EthDai(valuingAddress, LPTaddress, stableCoin, uToken) {}
+        address stableCoin
+    ) LLC_EthDai(valuingAddress, LPTaddress, stableCoin) {}
 }
