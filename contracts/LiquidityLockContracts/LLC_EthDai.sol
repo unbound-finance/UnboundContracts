@@ -325,6 +325,11 @@ contract LLC_EthDai {
         // send LP tokens back to user
         require(LPTContract.transfer(msg.sender, LPToken), "LLC: Transfer Failed");
 
+        // check if time to update oracle
+        if (block.timestamp.sub(_oldTimeStamp) > _timeToUpdate) {
+            updateOracle();
+        }
+
         // emit unlockLPT event
         emit UnlockLPT(LPToken, msg.sender);
         
