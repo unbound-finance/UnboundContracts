@@ -104,26 +104,10 @@ contract('Valuing', function (_accounts) {
       await expectRevert(valueContract.unboundCreate(20, owner, anyNumber), 'LLC not authorized');
     });
 
-    // it('cannot call unboundCreate() with wrong token address', async () => {
-    //   const anyNumber = 123;
-    //   await expectRevert(
-    //     valueContract.unboundCreate(20, owner, _accounts[5], anyNumber, { from: fakeLLC }),
-    //     'invalid unbound contract'
-    //   );
-    // });
-
     it('cannot call unboundRemove() on valuator', async () => {
       const anyNumber = 123;
       await expectRevert(valueContract.unboundRemove(20, anyNumber, owner), 'LLC not authorized');
     });
-
-    // it('cannot call unboundRemove() with wrong token address', async () => {
-    //   const anyNumber = 123;
-    //   await expectRevert(
-    //     valueContract.unboundCreate(20, owner, _accounts[5], anyNumber, { from: fakeLLC }),
-    //     'invalid unbound contract'
-    //   );
-    // });
 
     it('can claim tokens', async () => {
       await tEth.transfer(valueContract.address, 10);

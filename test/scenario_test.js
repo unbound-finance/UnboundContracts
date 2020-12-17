@@ -112,36 +112,6 @@ contract('Scenario', function (_accounts) {
       storedFeeTotal += feeAmount - stakingAmount;
     });
 
-    // it('UND should be able to change autoFeeDistribution', async () => {
-    //   const beforeStoredFee = parseInt(await und.storedFee());
-    //   assert.equal(beforeStoredFee, storedFeeTotal, 'incorrect before stored fee');
-
-    //   const beforeStakingBal = parseInt(await und.balanceOf(stakePair.address));
-    //   const beforeSafuBal = parseInt(await und.balanceOf(safu));
-    //   const beforeDevFundBal = parseInt(await und.balanceOf(devFund));
-
-    //   const stakingShare = parseInt((storedFeeTotal * stakeSharesPercent) / 100);
-    //   const safuShare = parseInt(((storedFeeTotal - stakingShare) * safuSharesPercent) / 100);
-    //   const devShare = storedFeeTotal - stakingShare - safuShare;
-
-    //   await und.flipFeeDistribution();
-
-    //   const stakingBal = parseInt(await und.balanceOf(stakePair.address));
-    //   const safuBal = parseInt(await und.balanceOf(safu));
-    //   const devFundBal = parseInt(await und.balanceOf(devFund));
-    //   const storedFee = parseInt(await und.storedFee());
-
-    //   assert.equal(stakingBal, beforeStakingBal + stakingShare, 'incorrect staking balance');
-    //   assert.equal(safuBal, beforeSafuBal + safuShare, 'incorrect safu balance');
-    //   assert.equal(devFundBal, beforeDevFundBal + devShare, 'incorrect dev fund balance');
-    //   console.log(`staking: ${stakingShare}`);
-    //   console.log(`safa: ${safuShare}`);
-    //   console.log(`devFund: ${devShare}`);
-    //   storedFeeTotal = 0;
-    //   assert.equal(storedFee, storedFeeTotal, 'incorrect stored fee');
-    //   assert.isTrue(await und.autoFeeDistribution(), 'incorrect autoFeeDistribution');
-    // });
-
     it('Lock LPT - second', async () => {
       const LPTbal = parseInt(await pair.balanceOf(owner));
       const LPtokens = parseInt(LPTbal / 3); // Amount of token to be lock
