@@ -134,10 +134,6 @@ contract('UND', function (_accounts) {
       await expectRevert(und.transferFrom(user, owner, transferAmount), 'ERC20: transfer amount exceeds balance');
     });
 
-    it('should be not auto fee distribution', async () => {
-      assert.isFalse(await und.autoFeeDistribution(), 'incorrect autoFeeDistribution');
-    });
-
     it('should not be able to changeSafuShare more than 100', async () => {
       await expectRevert(und.changeSafuShare(101), 'bad input');
     });

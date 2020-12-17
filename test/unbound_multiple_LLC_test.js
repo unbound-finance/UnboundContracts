@@ -89,9 +89,6 @@ contract('unboundSystem multiple LLC', function (_accounts) {
       owner,
       parseInt(time / 1000 + 100)
     );
-
-    // Turn on the fee distribution
-    await und.flipFeeDistribution();
   });
 
   //=================
@@ -171,7 +168,7 @@ contract('unboundSystem multiple LLC', function (_accounts) {
       const LPTValueInDai = parseInt((totalUSD * LPtokens) / totalLPTokens); //% value of Liq pool in Dai
       const loanAmount = parseInt((LPTValueInDai * rates.loanRate) / rateBalance); // Loan amount that user can get
       const feeAmount = parseInt((loanAmount * rates.feeRate) / rateBalance); // Amount of fee
-      const stakingAmount = parseInt((feeAmount * stakeSharesPercent) / 100);
+      const stakingAmount = 0;
       return { loanAmount, feeAmount, stakingAmount };
     }
 
@@ -205,10 +202,7 @@ contract('unboundSystem multiple LLC', function (_accounts) {
       const lockedTokenAmount = parseInt(await lockContractLink.tokensLocked(owner));
 
       // burn
-      await expectRevert(
-        lockContractLink.unlockLPT(lockedTokenAmount),
-        'Insufficient UND to pay back loan'
-      );
+      await expectRevert(lockContractLink.unlockLPT(lockedTokenAmount), 'Insufficient UND to pay back loan');
     });
 
     it('UND burn - LinkDai', async () => {

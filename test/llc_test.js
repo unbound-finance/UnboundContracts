@@ -132,8 +132,8 @@ contract('LLC', function (_accounts) {
     });
 
     it('can set valuing address', async () => {
-      const newValuing = await valuing.new(und.address);
-      await newValuing.addLLC(lockContract.address, loanRate, feeRate);
+      const newValuing = await valuing.new();
+      await newValuing.addLLC(lockContract.address, und.address, loanRate, feeRate);
       await und.changeValuator(newValuing.address);
 
       const beforeBalance = parseInt(await und.balanceOf(owner));

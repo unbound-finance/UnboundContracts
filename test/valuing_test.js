@@ -84,7 +84,7 @@ contract('Valuing', function (_accounts) {
       stakePair = await uniPair.at(stakePool.logs[0].args.pair);
       await und.changeStaking(stakePair.address);
       // Register fake LLC
-      await valueContract.addLLC(fakeLLC, 10, 10);
+      await valueContract.addLLC(fakeLLC, und.address, 10, 10);
     });
 
     it('valuator has correct LLC', async () => {
@@ -96,34 +96,34 @@ contract('Valuing', function (_accounts) {
     it('cannot call unboundCreate() with 0 amount', async () => {
       const anyNumber = 123;
 
-      await expectRevert(valueContract.unboundCreate(0, owner, und.address, anyNumber), 'Cannot valuate nothing');
+      await expectRevert(valueContract.unboundCreate(0, owner, anyNumber), 'Cannot valuate nothing');
     });
 
     it('cannot call unboundCreate() on valuator', async () => {
       const anyNumber = 123;
-      await expectRevert(valueContract.unboundCreate(20, owner, und.address, anyNumber), 'LLC not authorized');
+      await expectRevert(valueContract.unboundCreate(20, owner, anyNumber), 'LLC not authorized');
     });
 
-    it('cannot call unboundCreate() with wrong token address', async () => {
-      const anyNumber = 123;
-      await expectRevert(
-        valueContract.unboundCreate(20, owner, _accounts[5], anyNumber, { from: fakeLLC }),
-        'invalid unbound contract'
-      );
-    });
+    // it('cannot call unboundCreate() with wrong token address', async () => {
+    //   const anyNumber = 123;
+    //   await expectRevert(
+    //     valueContract.unboundCreate(20, owner, _accounts[5], anyNumber, { from: fakeLLC }),
+    //     'invalid unbound contract'
+    //   );
+    // });
 
     it('cannot call unboundRemove() on valuator', async () => {
       const anyNumber = 123;
-      await expectRevert(valueContract.unboundCreate(20, owner, und.address, anyNumber), 'LLC not authorized');
+      await expectRevert(valueContract.unboundRemove(20, anyNumber, owner), 'LLC not authorized');
     });
 
-    it('cannot call unboundRemove() with wrong token address', async () => {
-      const anyNumber = 123;
-      await expectRevert(
-        valueContract.unboundCreate(20, owner, _accounts[5], anyNumber, { from: fakeLLC }),
-        'invalid unbound contract'
-      );
-    });
+    // it('cannot call unboundRemove() with wrong token address', async () => {
+    //   const anyNumber = 123;
+    //   await expectRevert(
+    //     valueContract.unboundCreate(20, owner, _accounts[5], anyNumber, { from: fakeLLC }),
+    //     'invalid unbound contract'
+    //   );
+    // });
 
     it('can claim tokens', async () => {
       await tEth.transfer(valueContract.address, 10);
@@ -151,7 +151,7 @@ contract('Valuing', function (_accounts) {
       let LLCstruct = await valueContract.getLLCStruct(fakeLLC);
       assert.equal(parseInt(LLCstruct.loanrate), 0, 'Disable loan rate is wrong');
       assert.equal(parseInt(LLCstruct.fee), 0, 'Disable fee rate is wrong');
-      await expectRevert(valueContract.unboundCreate(10, owner, und.address, 10), 'LLC not authorized');
+      await expectRevert(valueContract.unboundCreate(10, owner, 10), 'LLC not authorized');
     });
 
     it('can set owner', async () => {
