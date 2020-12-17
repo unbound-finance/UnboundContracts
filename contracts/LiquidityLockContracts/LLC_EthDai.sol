@@ -63,6 +63,22 @@ contract LLC_EthDai {
     // set this in constructor, tracks decimals of baseAsset
     uint8 public baseAssetDecimal;
 
+    // which token to get oracle for
+    uint8 public oracleNum;
+
+    // maximum percent difference in oracle vs. standard valuation
+    uint8 public maxPercentDiff;
+
+    // Oracle Variables: Old PriceCumulativeLast and Old Timestamp
+    uint256 public _oldPriceCumulativeLast;
+    uint256 public _oldTimeStamp;
+
+    // Time to update oracle
+    uint256 public _timeToUpdate;
+
+    // records block that oracle is updated
+    uint256 public _lastBlockUpdate;
+
     // Interfaced Contracts
     IValuing_01 private valuingContract;
     IUniswapV2Pair_0 private LPTContract;
@@ -79,6 +95,9 @@ contract LLC_EthDai {
     constructor (address valuingAddress, address LPTaddress, address baseAsset) {
         _owner = msg.sender;
         
+        // set timeToUpdate to 1hr
+        _timeToUpdate = 3600;
+
         // initiates interfacing contracts
         valuingContract = IValuing_01(valuingAddress);
         LPTContract = IUniswapV2Pair_0(LPTaddress);
@@ -97,13 +116,31 @@ contract LLC_EthDai {
         // sets the decimals value of the baseAsset
         baseAssetDecimal = baseAssetErc20.decimals();
 
-        // assigns which token in the pair is a baseAsset
+        // assigns which token in the pair is a baseAsset, updates first oracle.
         require (baseAsset == toke0 || baseAsset == toke1, "invalid");
         if (baseAsset == toke0) {
             _position = 0;
+
+            // oracle numbers
+            _oldPriceCumulativeLast = LPTContract.price1CumulativeLast();
+            oracleNum = 1;
+
         } else if (baseAsset == toke1) {
             _position = 1;
+
+            // oracle numbers
+            _oldPriceCumulativeLast = LPTContract.price0CumulativeLast();
+            oracleNum = 0;
         }
+
+        // record timestamp old
+        _oldTimeStamp = block.timestamp;
+
+        // last block updated
+        _lastBlockUpdate = block.number;
+
+        // set maxPercentDiff
+        maxPercentDiff = 5;
     }
 
     // Lock/Unlock functions
@@ -111,6 +148,7 @@ contract LLC_EthDai {
     function lockLPTWithPermit (uint256 LPTamt, uint deadline, uint8 v, bytes32 r, bytes32 s, uint256 minTokenAmount) public {
         require(!killSwitch, "LLC: This LLC is Deprecated");
         require(LPTContract.balanceOf(msg.sender) >= LPTamt, "LLC: Insufficient LPTs");
+        require(_lastBlockUpdate < block.number, "LLC: Must Wait Longer");
         uint256 totalLPTokens = LPTContract.totalSupply();
         
         // Acquire total baseAsset value of pair
@@ -128,6 +166,11 @@ contract LLC_EthDai {
         // Call Valuing Contract
         valuingContract.unboundCreate(LPTValueInDai, msg.sender, minTokenAmount); // Hardcode "0" for AAA rating
 
+        // check if time to update oracle
+        if (block.timestamp.sub(_oldTimeStamp) > _timeToUpdate) {
+            updateOracle();
+        }
+
         // emit lockLPT event
         emit LockLPT(LPTamt, msg.sender);
     }
@@ -136,6 +179,7 @@ contract LLC_EthDai {
     function lockLPT (uint256 LPTamt, uint256 minTokenAmount) public {
         require(!killSwitch, "LLC: This LLC is Deprecated");
         require(LPTContract.balanceOf(msg.sender) >= LPTamt, "LLC: Insufficient LPTs");
+        require(_lastBlockUpdate < block.number, "LLC: Must Wait Longer");
         uint256 totalLPTokens = LPTContract.totalSupply();
         
         // Acquire total baseAsset value of pair
@@ -152,6 +196,11 @@ contract LLC_EthDai {
 
         // Call Valuing Contract
         valuingContract.unboundCreate(LPTValueInDai, msg.sender, minTokenAmount); 
+
+        // check if time to update oracle
+        if (block.timestamp.sub(_oldTimeStamp) > _timeToUpdate) {
+            updateOracle();
+        }
 
         // emit lockLPT event
         emit LockLPT(LPTamt, msg.sender);
@@ -205,6 +254,46 @@ contract LLC_EthDai {
             }
         }
 
+        // oracle price value calculation:
+        uint256 newPriceCumulative;
+        uint256 _totalUSDOracle;
+
+        // Need to test if these values are correct (_token0 or _token1)
+        if (oracleNum == 0) {
+            newPriceCumulative = LPTContract.price0CumulativeLast();
+            _totalUSDOracle = _token0 * (newPriceCumulative.sub(_oldPriceCumulativeLast)).div(block.timestamp.sub(_oldTimeStamp));
+        } else {
+            newPriceCumulative = LPTContract.price1CumulativeLast();
+            _totalUSDOracle = _token1 * (newPriceCumulative.sub(_oldPriceCumulativeLast)).div(block.timestamp.sub(_oldTimeStamp));
+        }
+        
+        // Calculate percent difference (x2 - x1 / x1)
+        uint256 percentDiff;
+        if (_totalUSDOracle > _totalUSD) {
+            percentDiff = 100 * (_totalUSDOracle.sub(_totalUSD)).div(_totalUSD);
+        } else {
+            percentDiff = 100 * (_totalUSD.sub(_totalUSDOracle)).div(_totalUSDOracle);
+        }
+        require (percentDiff < maxPercentDiff, "LLC: Manipulation Evident");
+        
+    }
+
+    // update ORACLE value.
+    function updateOracle() public {
+        require(block.timestamp.sub(_oldTimeStamp) > _timeToUpdate, "LLC: Not enough time since prior update");
+
+        if (oracleNum == 0) {
+            _oldPriceCumulativeLast = LPTContract.price0CumulativeLast();
+        } else {
+            _oldPriceCumulativeLast = LPTContract.price1CumulativeLast();
+        }
+
+        // update old timestamp
+        _oldTimeStamp = block.timestamp;
+
+        // update the block at which oracle is updated
+        _lastBlockUpdate = block.number;
+
     }
 
     // calls transfer only, for use with non-permit lock function
@@ -246,6 +335,12 @@ contract LLC_EthDai {
     }
 
     // onlyOwner Functions
+
+    // set Max Percent Difference
+    function setMaxPercentDifference(uint8 amount) public onlyOwner {
+        require(amount <= 100, "cannot be beyond 100");
+        maxPercentDiff = amount;
+    }
 
     // Claim - remove any airdropped tokens
     // currently sends all tokens to "to" address (in param)
