@@ -63,9 +63,6 @@ contract LLC_EthDai {
     // set this in constructor, tracks decimals of baseAsset
     uint8 public baseAssetDecimal;
 
-    // which token to get oracle for
-    uint8 public oracleNum;
-
     // maximum percent difference in oracle vs. standard valuation
     uint8 public maxPercentDiff;
 
@@ -123,14 +120,14 @@ contract LLC_EthDai {
 
             // oracle numbers
             _oldPriceCumulativeLast = LPTContract.price1CumulativeLast();
-            oracleNum = 1;
+            
 
         } else if (baseAsset == toke1) {
             _position = 1;
 
             // oracle numbers
             _oldPriceCumulativeLast = LPTContract.price0CumulativeLast();
-            oracleNum = 0;
+            
         }
 
         // record timestamp old
@@ -261,10 +258,10 @@ contract LLC_EthDai {
         // Need to test if these values are correct (_token0 or _token1)
         if (oracleNum == 0) {
             newPriceCumulative = LPTContract.price0CumulativeLast();
-            _totalUSDOracle = _token0 * (newPriceCumulative.sub(_oldPriceCumulativeLast)).div(block.timestamp.sub(_oldTimeStamp));
+            _totalUSDOracle = (_token0 * (newPriceCumulative.sub(_oldPriceCumulativeLast)).div(block.timestamp.sub(_oldTimeStamp))) + _token1;
         } else {
             newPriceCumulative = LPTContract.price1CumulativeLast();
-            _totalUSDOracle = _token1 * (newPriceCumulative.sub(_oldPriceCumulativeLast)).div(block.timestamp.sub(_oldTimeStamp));
+            _totalUSDOracle = (_token1 * (newPriceCumulative.sub(_oldPriceCumulativeLast)).div(block.timestamp.sub(_oldTimeStamp))) + _token0;
         }
         
         // Calculate percent difference (x2 - x1 / x1)
@@ -282,7 +279,7 @@ contract LLC_EthDai {
     function updateOracle() public {
         require(block.timestamp.sub(_oldTimeStamp) > _timeToUpdate, "LLC: Not enough time since prior update");
 
-        if (oracleNum == 0) {
+        if (_position == 1) {
             _oldPriceCumulativeLast = LPTContract.price0CumulativeLast();
         } else {
             _oldPriceCumulativeLast = LPTContract.price1CumulativeLast();
