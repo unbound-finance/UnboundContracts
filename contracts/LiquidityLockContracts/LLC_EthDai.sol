@@ -166,9 +166,7 @@ contract LLC_EthDai {
         valuingContract.unboundCreate(LPTValueInDai, msg.sender, minTokenAmount); // Hardcode "0" for AAA rating
 
         // check if time to update oracle
-        if (block.timestamp.sub(_oldTimeStamp) > _timeToUpdate) {
-            updateOracle();
-        }
+        updateOracle();
 
         // emit lockLPT event
         emit LockLPT(LPTamt, msg.sender);
@@ -197,9 +195,8 @@ contract LLC_EthDai {
         valuingContract.unboundCreate(LPTValueInDai, msg.sender, minTokenAmount);
 
         // check if time to update oracle
-        if (block.timestamp.sub(_oldTimeStamp) > _timeToUpdate) {
-            updateOracle();
-        }
+        updateOracle();
+        
 
         // emit lockLPT event
         emit LockLPT(LPTamt, msg.sender);
@@ -280,7 +277,7 @@ contract LLC_EthDai {
     // update ORACLE value.
     function updateOracle() public {
         if (block.timestamp.sub(_oldTimeStamp) > _timeToUpdate) {
-            
+
             if (_position == 1) {
                 _oldPriceCumulativeLast = LPTContract.price0CumulativeLast();
             } else {
