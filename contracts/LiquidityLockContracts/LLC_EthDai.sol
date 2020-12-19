@@ -256,7 +256,7 @@ contract LLC_EthDai {
         uint256 _totalUSDOracle;
 
         // Need to test if these values are correct (_token0 or _token1)
-        if (oracleNum == 0) {
+        if (_position == 1) {
             newPriceCumulative = LPTContract.price0CumulativeLast();
             _totalUSDOracle = (_token0 * (newPriceCumulative.sub(_oldPriceCumulativeLast)).div(block.timestamp.sub(_oldTimeStamp))) + _token1;
         } else {
