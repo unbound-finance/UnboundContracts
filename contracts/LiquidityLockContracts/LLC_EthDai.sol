@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.7.5;
+pragma solidity 0.7 .5;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
@@ -33,8 +33,10 @@ import "../Interfaces/IERC20.sol";
 // eventually a DAO).
 // ----------------------------------------------------------------------------------------
 contract LLC_EthDai {
-    using SafeMath for uint256;
-    using Address for address;
+    using SafeMath
+    for uint256;
+    using Address
+    for address;
 
     // killswitch event
     event KillSwitch(bool position);
@@ -55,7 +57,7 @@ contract LLC_EthDai {
     address public pair;
 
     // tokens locked by users
-    mapping (address => uint256) _tokensLocked;
+    mapping(address => uint256) _tokensLocked;
 
     // token position of baseAsset
     uint8 public _position;
@@ -89,9 +91,9 @@ contract LLC_EthDai {
 
     // Constructor - must provide valuing contract address, the associated Liquidity pool address (i.e. eth/dai uniswap pool token address),
     //               and the address of the baseAsset in the uniswap pair.
-    constructor (address valuingAddress, address LPTaddress, address baseAsset) {
+    constructor(address valuingAddress, address LPTaddress, address baseAsset) {
         _owner = msg.sender;
-        
+
         // set timeToUpdate to 1hr
         _timeToUpdate = 3600;
 
@@ -114,20 +116,20 @@ contract LLC_EthDai {
         baseAssetDecimal = baseAssetErc20.decimals();
 
         // assigns which token in the pair is a baseAsset, updates first oracle.
-        require (baseAsset == toke0 || baseAsset == toke1, "invalid");
+        require(baseAsset == toke0 || baseAsset == toke1, "invalid");
         if (baseAsset == toke0) {
             _position = 0;
 
             // oracle numbers
             _oldPriceCumulativeLast = LPTContract.price1CumulativeLast();
-            
+
 
         } else if (baseAsset == toke1) {
             _position = 1;
 
             // oracle numbers
             _oldPriceCumulativeLast = LPTContract.price0CumulativeLast();
-            
+
         }
 
         // record timestamp old
@@ -142,18 +144,18 @@ contract LLC_EthDai {
 
     // Lock/Unlock functions
     // Mint path
-    function lockLPTWithPermit (uint256 LPTamt, uint deadline, uint8 v, bytes32 r, bytes32 s, uint256 minTokenAmount) public {
+    function lockLPTWithPermit(uint256 LPTamt, uint deadline, uint8 v, bytes32 r, bytes32 s, uint256 minTokenAmount) public {
         require(!killSwitch, "LLC: This LLC is Deprecated");
         require(LPTContract.balanceOf(msg.sender) >= LPTamt, "LLC: Insufficient LPTs");
         require(_lastBlockUpdate < block.number, "LLC: Must Wait Longer");
         uint256 totalLPTokens = LPTContract.totalSupply();
-        
+
         // Acquire total baseAsset value of pair
         uint256 totalUSD = getValue();
-        
+
         // This should compute % value of Liq pool in Dai. Cannot have decimals in Solidity
-        uint256 LPTValueInDai = totalUSD.mul(LPTamt).div(totalLPTokens);  
-        
+        uint256 LPTValueInDai = totalUSD.mul(LPTamt).div(totalLPTokens);
+
         // map locked tokens to user address
         _tokensLocked[msg.sender] = _tokensLocked[msg.sender].add(LPTamt);
 
@@ -173,18 +175,18 @@ contract LLC_EthDai {
     }
 
     // Requires approval first (permit excluded for simplicity)
-    function lockLPT (uint256 LPTamt, uint256 minTokenAmount) public {
+    function lockLPT(uint256 LPTamt, uint256 minTokenAmount) public {
         require(!killSwitch, "LLC: This LLC is Deprecated");
         require(LPTContract.balanceOf(msg.sender) >= LPTamt, "LLC: Insufficient LPTs");
         require(_lastBlockUpdate < block.number, "LLC: Must Wait Longer");
         uint256 totalLPTokens = LPTContract.totalSupply();
-        
+
         // Acquire total baseAsset value of pair
         uint256 totalUSD = getValue();
 
         // This should compute % value of Liq pool in Dai. Cannot have decimals in Solidity
-        uint256 LPTValueInDai = totalUSD.mul(LPTamt).div(totalLPTokens);  
-        
+        uint256 LPTValueInDai = totalUSD.mul(LPTamt).div(totalLPTokens);
+
         // map locked tokens to user
         _tokensLocked[msg.sender] = _tokensLocked[msg.sender].add(LPTamt);
 
@@ -192,7 +194,7 @@ contract LLC_EthDai {
         transferLPT(LPTamt);
 
         // Call Valuing Contract
-        valuingContract.unboundCreate(LPTValueInDai, msg.sender, minTokenAmount); 
+        valuingContract.unboundCreate(LPTValueInDai, msg.sender, minTokenAmount);
 
         // check if time to update oracle
         if (block.timestamp.sub(_oldTimeStamp) > _timeToUpdate) {
@@ -204,7 +206,7 @@ contract LLC_EthDai {
     }
 
     // Acquires total value of liquidity pool (in baseAsset) and normalizes decimals to 18.
-    function getValue() internal view returns (uint256 _totalUSD) {
+    function getValue() internal view returns(uint256 _totalUSD) {
         // obtain amounts of tokens in both reserves.
         (uint112 _token0, uint112 _token1, ) = LPTContract.getReserves();
 
@@ -225,7 +227,7 @@ contract LLC_EthDai {
         //
         // this should only happen if baseAsset decimals is NOT 18.
         if (baseAssetDecimal != 18) {
-            
+
             uint8 difference;
 
             // first case: tokenDecimal is smaller than 18
@@ -263,7 +265,7 @@ contract LLC_EthDai {
             newPriceCumulative = LPTContract.price1CumulativeLast();
             _totalUSDOracle = (_token1 * (newPriceCumulative.sub(_oldPriceCumulativeLast)).div(block.timestamp.sub(_oldTimeStamp))) + _token0;
         }
-        
+
         // Calculate percent difference (x2 - x1 / x1)
         uint256 percentDiff;
         if (_totalUSDOracle > _totalUSD) {
@@ -271,26 +273,25 @@ contract LLC_EthDai {
         } else {
             percentDiff = 100 * (_totalUSD.sub(_totalUSDOracle)).div(_totalUSDOracle);
         }
-        require (percentDiff < maxPercentDiff, "LLC: Manipulation Evident");
-        
+        require(percentDiff < maxPercentDiff, "LLC: Manipulation Evident");
+
     }
 
     // update ORACLE value.
     function updateOracle() public {
-        require(block.timestamp.sub(_oldTimeStamp) > _timeToUpdate, "LLC: Not enough time since prior update");
+        if (block.timestamp.sub(_oldTimeStamp) > _timeToUpdate) {
+            
+            if (_position == 1) {
+                _oldPriceCumulativeLast = LPTContract.price0CumulativeLast();
+            } else {
+                _oldPriceCumulativeLast = LPTContract.price1CumulativeLast();
+            }
+            // update old timestamp
+            _oldTimeStamp = block.timestamp;
 
-        if (_position == 1) {
-            _oldPriceCumulativeLast = LPTContract.price0CumulativeLast();
-        } else {
-            _oldPriceCumulativeLast = LPTContract.price1CumulativeLast();
+            // update the block at which oracle is updated
+            _lastBlockUpdate = block.number;
         }
-
-        // update old timestamp
-        _oldTimeStamp = block.timestamp;
-
-        // update the block at which oracle is updated
-        _lastBlockUpdate = block.number;
-
     }
 
     // calls transfer only, for use with non-permit lock function
@@ -303,22 +304,22 @@ contract LLC_EthDai {
     function transferLPTPermit(address user, uint256 amount, uint deadline, uint8 v, bytes32 r, bytes32 s) internal {
         LPTContract.permit(user, address(this), amount, deadline, v, r, s);
         require(LPTContract.transferFrom(msg.sender, address(this), amount), "LLC: Transfer From failed");
-        
+
     }
 
     // Burn Path
     // 
     // allows for partial loan payment by using the ratio of LPtokens to unlock and total LPtokens locked
-    function unlockLPT (uint256 LPToken) public {
-        require (_tokensLocked[msg.sender] >= LPToken, "Insufficient liquidity locked");
-        require (LPToken > 0, "Cannot unlock nothing");
+    function unlockLPT(uint256 LPToken) public {
+        require(_tokensLocked[msg.sender] >= LPToken, "Insufficient liquidity locked");
+        require(LPToken > 0, "Cannot unlock nothing");
 
         // Burning of UND will happen first
         valuingContract.unboundRemove(LPToken, _tokensLocked[msg.sender], msg.sender);
 
         // update mapping
         _tokensLocked[msg.sender] = _tokensLocked[msg.sender].sub(LPToken);
-        
+
         // send LP tokens back to user
         require(LPTContract.transfer(msg.sender, LPToken), "LLC: Transfer Failed");
 
@@ -329,10 +330,10 @@ contract LLC_EthDai {
 
         // emit unlockLPT event
         emit UnlockLPT(LPToken, msg.sender);
-        
+
     }
-    
-    function tokensLocked(address account) public view returns (uint256) {
+
+    function tokensLocked(address account) public view returns(uint256) {
         return _tokensLocked[account];
     }
 
@@ -359,7 +360,7 @@ contract LLC_EthDai {
     }
 
     // Checks if sender is owner
-    function isOwner() public view returns (bool) {
+    function isOwner() public view returns(bool) {
         return msg.sender == _owner;
     }
 
@@ -369,7 +370,7 @@ contract LLC_EthDai {
     }
 
     // Sets new Valuing Address
-    function setValuingAddress (address _newValuing) public onlyOwner {
-        valuingContract =IValuing_01(_newValuing);
+    function setValuingAddress(address _newValuing) public onlyOwner {
+        valuingContract = IValuing_01(_newValuing);
     }
 }
