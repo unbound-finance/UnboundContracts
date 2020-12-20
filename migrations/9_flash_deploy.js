@@ -27,7 +27,6 @@ const weth = artifacts.require("WETH9");
 
 // const usdcDaiPoolAddress = "0xb0a2a806ec900bb9fe30bd7f6cadd35d74971542";
 
-const owner = "0x751D87CB75b4caf08902177ab31a2d8431a07A59";
 const testAddr = "0xd17BCe6b5BEb015f399c4C20024B76e82e85Fe60";
 const loanReceiver = "0xbAC374b151AD65875cA7fDD900AdA25373A3D5Ce";
 
@@ -35,6 +34,9 @@ const loanReceiver = "0xbAC374b151AD65875cA7fDD900AdA25373A3D5Ce";
 
 // Deploys UND and 
 module.exports = async (deployer, network, accounts) => {
+
+const owner = accounts[0];
+
 
   // deploy UND and valuing
   await deployer.deploy(uDai, "unbound", "und", testAddr, testAddr);
@@ -95,14 +97,14 @@ module.exports = async (deployer, network, accounts) => {
   const newLLC = await LLC.deployed();
 
   // allow LLC in valuator
-  await valuing.addLLC.sendTransaction(newLLC.address, 75, 2500);
+  await valuing.addLLC.sendTransaction(newLLC.address, 950000, 2500);
 
   // mint some UND
   const LPPool = await uniPair.at(pairAddr.receipt.logs[0].args.pair);
   let poolTokens = await LPPool.balanceOf(owner);
-  console.log(poolTokens.toString());
+  console.log('pooltokens', poolTokens.toString());
   await LPPool.approve.sendTransaction(newLLC.address, poolTokens);
-  await newLLC.lockLPT.sendTransaction(poolTokens, 100);
+  await newLLC.lockLPT.sendTransaction(poolTokens, 1000);
 
   // create UND/USDC pool
   const undPool = await factory.createPair.sendTransaction(UND.address, USDC.address);
@@ -128,8 +130,11 @@ module.exports = async (deployer, network, accounts) => {
   const attackContract = await attack1.deployed();
 
   // Give Attack1 2M USDC loan
-  let twoMil = new BigNumber(2000000 * (10 ** 6));
+  let twoMil = new BigNumber(2500000 * (10 ** 6));
   USDC.transfer.sendTransaction(attackContract.address, twoMil);
+
+
+  console.log("attacking")
 
   // Initiate flashLoan attack
   await attackContract.flashLoanAttack.sendTransaction(loanReceiver);

