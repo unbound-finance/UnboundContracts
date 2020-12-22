@@ -68,27 +68,8 @@ contract('unboundSystem multiple LLC', function (_accounts) {
     let stakePool = await factory.createPair(tDai.address, und.address);
     stakePair = await uniPair.at(stakePool.logs[0].args.pair);
     await und.changeStaking(stakePair.address);
-
-    // Ethereum
-    await tDai.approve(route.address, daiAmount);
-    await tEth.approve(route.address, 1000);
-    let d = new Date();
-    let time = d.getTime();
-    await route.addLiquidity(tDai.address, tEth.address, daiAmount, 1000, 3000, 10, owner, parseInt(time / 1000 + 100));
-
-    // Link
-    await tDai.approve(route.address, daiAmount);
-    await tLink.approve(route.address, 1000);
-    await route.addLiquidity(
-      tDai.address,
-      tLink.address,
-      daiAmount,
-      1000,
-      3000,
-      10,
-      owner,
-      parseInt(time / 1000 + 100)
-    );
+    await pairEthDai.sync();
+    await pairLinkDai.sync();
   });
 
   //=================
@@ -96,6 +77,7 @@ contract('unboundSystem multiple LLC', function (_accounts) {
   //=================
   describe('Check default functionality', () => {
     it('UND mint - EthDai first', async () => {
+      await pairEthDai.sync();
       const lptBalanceBefore = parseInt(await pairEthDai.balanceOf(owner));
       const LPtokens = parseInt(lptBalanceBefore / 4); // Amount of token to be lock
       const lockedTokenBefore = parseInt(await lockContractEth.tokensLocked(owner));
@@ -130,6 +112,7 @@ contract('unboundSystem multiple LLC', function (_accounts) {
     });
 
     it('UND mint - LinkDai first', async () => {
+      await pairLinkDai.sync();
       const lptBalanceBefore = parseInt(await pairLinkDai.balanceOf(owner));
       const LPtokens = parseInt(lptBalanceBefore / 4); // Amount of token to be lock
       const lockedTokenBefore = parseInt(await lockContractLink.tokensLocked(owner));

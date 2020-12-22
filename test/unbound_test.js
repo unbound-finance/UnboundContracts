@@ -60,22 +60,7 @@ contract('UND', function (_accounts) {
       lockContract = await LLC.deployed();
       factory = await uniFactory.deployed();
       pair = await uniPair.at(await lockContract.pair());
-
-      await tDai.approve(route.address, 400000);
-      await tEth.approve(route.address, 1000);
-
-      let d = new Date();
-      let time = d.getTime();
-      await route.addLiquidity(
-        tDai.address,
-        tEth.address,
-        daiAmount,
-        1000,
-        3000,
-        10,
-        owner,
-        parseInt(time / 1000 + 100)
-      );
+      await pair.sync();
 
       let stakePool = await factory.createPair(tDai.address, und.address);
       stakePair = await uniPair.at(stakePool.logs[0].args.pair);
@@ -258,7 +243,7 @@ contract('UND', function (_accounts) {
     it('mint for test', async () => {
       // Lock some pool token
       await pair.approve(lockContract.address, 1000);
-      lockContract.lockLPT(1000, 1);
+      await lockContract.lockLPT(1000, 1);
     });
 
     it('can transfer', async () => {

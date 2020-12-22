@@ -9,6 +9,7 @@ import "../Interfaces/IUniswapV2Pair.sol";
 import "../Interfaces/IValuing_01.sol";
 import "../Interfaces/IERC20.sol";
 
+import "../Uniswap/lib/FixedPoint.sol";
 
 // ---------------------------------------------------------------------------------------
 //                                Liquidity Lock Contract V1
@@ -37,6 +38,7 @@ contract LLC_EthDai {
     for uint256;
     using Address
     for address;
+    using FixedPoint for *;
 
     // killswitch event
     event KillSwitch(bool position);
@@ -205,7 +207,7 @@ contract LLC_EthDai {
     // Acquires total value of liquidity pool (in baseAsset) and normalizes decimals to 18.
     function getValue() internal view returns(uint256 _totalUSD) {
         // obtain amounts of tokens in both reserves.
-        (uint112 _token0, uint112 _token1, ) = LPTContract.getReserves();
+        (uint112 _token0, uint112 _token1, uint32 blockTimestampLast) = LPTContract.getReserves();
 
         // obtain total USD value
         if (_position == 0) {
@@ -213,6 +215,34 @@ contract LLC_EthDai {
         } else {
             _totalUSD = _token1 * 2;
         }
+
+        // oracle price value calculation:
+        uint256 newPriceCumulative;
+        uint256 _totalUSDOracle;
+        uint32 old = uint32(_oldTimeStamp % 2 ** 32);
+        uint32 timeElapsed = blockTimestampLast - old;
+        require(timeElapsed>0, 'timeElapsed is 0');
+        // Need to test if these values are correct (_token0 or _token1)
+        if (_position == 1) {
+            newPriceCumulative = LPTContract.price0CumulativeLast();
+            FixedPoint.uq112x112 memory price0Average = FixedPoint.uq112x112(uint224((newPriceCumulative - _oldPriceCumulativeLast) / timeElapsed));
+            uint256 token0value = uint256(price0Average.muli(_token0));
+            _totalUSDOracle = token0value.add(_token1);
+        } else {
+            newPriceCumulative = LPTContract.price1CumulativeLast();
+            FixedPoint.uq112x112 memory price1Average = FixedPoint.uq112x112(uint224((newPriceCumulative - _oldPriceCumulativeLast) / timeElapsed));
+            uint256 token1value = uint256(price1Average.muli(_token1));
+            _totalUSDOracle = token1value.add(_token0);
+        }
+
+        // Calculate percent difference (x2 - x1 / x1)
+        uint256 percentDiff;
+        if (_totalUSDOracle > _totalUSD) {
+            percentDiff = (100 * (_totalUSDOracle).sub(_totalUSD)).div(_totalUSD);
+        } else {
+            percentDiff = (100 * (_totalUSD).sub(_totalUSDOracle)).div(_totalUSDOracle);
+        }
+        require(percentDiff < maxPercentDiff, "LLC: Manipulation Evident");
 
         // Token Decimal Normalization
         //
@@ -249,29 +279,6 @@ contract LLC_EthDai {
                 _totalUSD = _totalUSD / (10 ** uint256(difference));
             }
         }
-
-        // oracle price value calculation:
-        uint256 newPriceCumulative;
-        uint256 _totalUSDOracle;
-
-        // Need to test if these values are correct (_token0 or _token1)
-        if (_position == 1) {
-            newPriceCumulative = LPTContract.price0CumulativeLast();
-            _totalUSDOracle = (_token0 * (newPriceCumulative.sub(_oldPriceCumulativeLast)).div(block.timestamp.sub(_oldTimeStamp))) + _token1;
-        } else {
-            newPriceCumulative = LPTContract.price1CumulativeLast();
-            _totalUSDOracle = (_token1 * (newPriceCumulative.sub(_oldPriceCumulativeLast)).div(block.timestamp.sub(_oldTimeStamp))) + _token0;
-        }
-
-        // Calculate percent difference (x2 - x1 / x1)
-        uint256 percentDiff;
-        if (_totalUSDOracle > _totalUSD) {
-            percentDiff = 100 * (_totalUSDOracle.sub(_totalUSD)).div(_totalUSD);
-        } else {
-            percentDiff = 100 * (_totalUSD.sub(_totalUSDOracle)).div(_totalUSDOracle);
-        }
-        require(percentDiff < maxPercentDiff, "LLC: Manipulation Evident");
-
     }
 
     // update ORACLE value.

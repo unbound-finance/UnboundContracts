@@ -17,10 +17,10 @@ const testDai = artifacts.require('TestDai13');
 const testEth = artifacts.require('TestEth');
 const uniFactory = artifacts.require('UniswapV2Factory');
 const uniPair = artifacts.require('UniswapV2Pair');
-
 const weth9 = artifacts.require('WETH9');
-
 const router = artifacts.require('UniswapV2Router02');
+
+const _sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 contract('unboundSystem decimals13', function (_accounts) {
   // Initial settings
@@ -72,12 +72,6 @@ contract('unboundSystem decimals13', function (_accounts) {
       const pairAddr = await factory.createPair(tDai.address, tEth.address);
       pair = await uniPair.at(pairAddr.logs[0].args.pair);
 
-      lockContract = await LLC.new(valueContract.address, pairAddr.logs[0].args.pair, tDai.address);
-
-      let permissionLLC = await valueContract.addLLC(lockContract.address, unboundDai.address, loanRate, feeRate);
-
-      let newValuator = await unboundDai.changeValuator(valueContract.address);
-
       let approveTdai = await tDai.approve(route.address, 400000);
       let approveTeth = await tEth.approve(route.address, 1000);
 
@@ -93,6 +87,12 @@ contract('unboundSystem decimals13', function (_accounts) {
         owner,
         parseInt(time / 1000 + 100)
       );
+      await pair.sync();
+      _sleep(2000);
+
+      lockContract = await LLC.new(valueContract.address, pairAddr.logs[0].args.pair, tDai.address);
+      let permissionLLC = await valueContract.addLLC(lockContract.address, unboundDai.address, loanRate, feeRate);
+      let newValuator = await unboundDai.changeValuator(valueContract.address);
 
       let stakePool = await factory.createPair(tDai.address, unboundDai.address);
       stakePair = await uniPair.at(stakePool.logs[0].args.pair);
@@ -186,14 +186,20 @@ contract('unboundSystem decimals13', function (_accounts) {
       lockedTokens = LPtokens;
       const totalUSD = daiAmount * 2; // Total value in Liquidity pool
 
-      const totalLPTokens = parseInt(await pair.totalSupply.call()); // Total token amount of Liq pool
+      const totalLPTokens = parseInt(await pair.totalSupply()); // Total token amount of Liq pool
+      console.log(totalLPTokens);
       const LPTValueInDai = parseInt(((totalUSD * LPtokens) / totalLPTokens) * (decimal / stablecoinDecimal)); //% value of Liq pool in Dai
+      console.log(LPTValueInDai);
       const loanAmount = parseInt((LPTValueInDai * loanRate) / rateBalance); // Loan amount that user can get
       const feeAmount = parseInt((loanAmount * feeRate) / rateBalance); // Amount of fee
       // const stakingAmount = parseInt((feeAmount * stakeSharesPercent) / 100);
       const stakingAmount = 0;
 
       await pair.approve(lockContract.address, LPtokens);
+      console.log(LPtokens);
+      console.log(loanAmount);
+      console.log(feeAmount);
+      await pair.sync();
       await lockContract.lockLPT(LPtokens, loanAmount - feeAmount);
       const ownerBal = parseInt(await unboundDai.balanceOf.call(owner));
       const stakingBal = parseInt(await unboundDai.balanceOf.call(stakePair.address));

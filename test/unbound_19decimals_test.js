@@ -17,10 +17,10 @@ const testDai = artifacts.require('TestDai19');
 const testEth = artifacts.require('TestEth');
 const uniFactory = artifacts.require('UniswapV2Factory');
 const uniPair = artifacts.require('UniswapV2Pair');
-
 const weth9 = artifacts.require('WETH9');
-
 const router = artifacts.require('UniswapV2Router02');
+
+const _sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 contract('unboundSystem decimals19', function (_accounts) {
   // Initial settings
@@ -72,12 +72,6 @@ contract('unboundSystem decimals19', function (_accounts) {
       const pairAddr = await factory.createPair(tDai.address, tEth.address);
       pair = await uniPair.at(pairAddr.logs[0].args.pair);
 
-      lockContract = await LLC.new(valueContract.address, pairAddr.logs[0].args.pair, tDai.address);
-
-      const permissionLLC = await valueContract.addLLC(lockContract.address, unboundDai.address, loanRate, feeRate);
-
-      const newValuator = await unboundDai.changeValuator(valueContract.address);
-
       const approveTdai = await tDai.approve(route.address, 400000);
       const approveTeth = await tEth.approve(route.address, 1000);
 
@@ -93,6 +87,12 @@ contract('unboundSystem decimals19', function (_accounts) {
         owner,
         parseInt(time / 1000 + 100)
       );
+      await pair.sync();
+      _sleep(2000);
+
+      lockContract = await LLC.new(valueContract.address, pairAddr.logs[0].args.pair, tDai.address);
+      let permissionLLC = await valueContract.addLLC(lockContract.address, unboundDai.address, loanRate, feeRate);
+      let newValuator = await unboundDai.changeValuator(valueContract.address);
 
       const stakePool = await factory.createPair(tDai.address, unboundDai.address);
       stakePair = await uniPair.at(stakePool.logs[0].args.pair);
@@ -170,6 +170,7 @@ contract('unboundSystem decimals19', function (_accounts) {
       const anyNumber = 123;
 
       await pair.approve(lockContract.address, lockAmount);
+      await pair.sync();
       await expectRevert(lockContract.lockLPT(lockAmount, anyNumber), 'amount is too small');
     });
 

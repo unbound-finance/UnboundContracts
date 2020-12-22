@@ -59,29 +59,15 @@ contract('LLC', function (_accounts) {
       lockContract = await LLC.deployed();
       factory = await uniFactory.deployed();
       pair = await uniPair.at(await lockContract.pair());
-
-      await tDai.approve(route.address, daiAmount);
-      await tEth.approve(route.address, 1000);
-
-      let d = new Date();
-      let time = d.getTime();
-      await route.addLiquidity(
-        tDai.address,
-        tEth.address,
-        daiAmount,
-        1000,
-        3000,
-        10,
-        owner,
-        parseInt(time / 1000 + 100)
-      );
+      await pair.sync();
 
       let stakePool = await factory.createPair(tDai.address, und.address);
       stakePair = await uniPair.at(stakePool.logs[0].args.pair);
       await und.changeStaking(stakePair.address);
+
       // Lock some pool
       await pair.approve(lockContract.address, 1000);
-      lockContract.lockLPT(1000, 1);
+      await lockContract.lockLPT(1000, 1);
     });
 
     it('default kill switch', async () => {
@@ -138,6 +124,7 @@ contract('LLC', function (_accounts) {
 
       const beforeBalance = parseInt(await und.balanceOf(owner));
 
+      // await pair.sync();
       await lockContract.setValuingAddress(newValuing.address);
       await pair.approve(lockContract.address, 10);
       await lockContract.lockLPT(10, 1);
