@@ -3,6 +3,7 @@ pragma solidity 0.7 .5;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
+import "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
 
 // Interfaces
 import "../Interfaces/IUniswapV2Pair.sol";
@@ -68,20 +69,13 @@ contract LLC_EthDai {
     // maximum percent difference in oracle vs. standard valuation
     uint8 public maxPercentDiff;
 
-    // Oracle Variables: Old PriceCumulativeLast and Old Timestamp
-    uint256 public _oldPriceCumulativeLast;
-    uint256 public _oldTimeStamp;
-
-    // Time to update oracle
-    uint256 public _timeToUpdate;
-
-    // records block that oracle is updated
-    uint256 public _lastBlockUpdate;
-
     // Interfaced Contracts
     IValuing_01 private valuingContract;
     IUniswapV2Pair_0 private LPTContract;
     IERC20_2 private baseAssetErc20;
+
+    // ChainLink Oracle Interface
+    AggregatorV3Interface internal priceFeed;
 
     // Modifiers
     modifier onlyOwner() {
@@ -91,11 +85,8 @@ contract LLC_EthDai {
 
     // Constructor - must provide valuing contract address, the associated Liquidity pool address (i.e. eth/dai uniswap pool token address),
     //               and the address of the baseAsset in the uniswap pair.
-    constructor(address valuingAddress, address LPTaddress, address baseAsset) {
+    constructor(address valuingAddress, address LPTaddress, address baseAsset, address priceFeedAddress) {
         _owner = msg.sender;
-
-        // set timeToUpdate to 1hr
-        _timeToUpdate = 3600;
 
         // initiates interfacing contracts
         valuingContract = IValuing_01(valuingAddress);
@@ -131,15 +122,11 @@ contract LLC_EthDai {
             _oldPriceCumulativeLast = LPTContract.price0CumulativeLast();
 
         }
-
-        // record timestamp old
-        _oldTimeStamp = block.timestamp;
-
-        // last block updated
-        _lastBlockUpdate = block.number;
-
         // set maxPercentDiff
         maxPercentDiff = 5;
+
+        // set ChainLink fee address
+        priceFeed = AggregatorV3Interface(priceFeedAddress);
     }
 
     // Lock/Unlock functions
@@ -164,9 +151,6 @@ contract LLC_EthDai {
 
         // Call Valuing Contract
         valuingContract.unboundCreate(LPTValueInDai, msg.sender, minTokenAmount); // Hardcode "0" for AAA rating
-
-        // check if time to update oracle
-        updateOracle();
 
         // emit lockLPT event
         emit LockLPT(LPTamt, msg.sender);
@@ -193,10 +177,6 @@ contract LLC_EthDai {
 
         // Call Valuing Contract
         valuingContract.unboundCreate(LPTValueInDai, msg.sender, minTokenAmount);
-
-        // check if time to update oracle
-        updateOracle();
-        
 
         // emit lockLPT event
         emit LockLPT(LPTamt, msg.sender);
@@ -250,18 +230,13 @@ contract LLC_EthDai {
             }
         }
 
-        // oracle price value calculation:
-        uint256 newPriceCumulative;
         uint256 _totalUSDOracle;
 
-        // Need to test if these values are correct (_token0 or _token1)
-        if (_position == 1) {
-            newPriceCumulative = LPTContract.price0CumulativeLast();
-            _totalUSDOracle = (_token0 * (newPriceCumulative.sub(_oldPriceCumulativeLast)).div(block.timestamp.sub(_oldTimeStamp))) + _token1;
-        } else {
-            newPriceCumulative = LPTContract.price1CumulativeLast();
-            _totalUSDOracle = (_token1 * (newPriceCumulative.sub(_oldPriceCumulativeLast)).div(block.timestamp.sub(_oldTimeStamp))) + _token0;
-        }
+        // get latest price from oracle
+        _totalUSDOracle = getLatestPrice();
+
+        // normalize the oracle price coming from Chainlink to 10^^18
+        _totalUSDOracle = _totalUSDOracle * (10 ** 10);
 
         // Calculate percent difference (x2 - x1 / x1)
         uint256 percentDiff;
@@ -274,21 +249,16 @@ contract LLC_EthDai {
 
     }
 
-    // update ORACLE value.
-    function updateOracle() public {
-        if (block.timestamp.sub(_oldTimeStamp) > _timeToUpdate) {
-
-            if (_position == 1) {
-                _oldPriceCumulativeLast = LPTContract.price0CumulativeLast();
-            } else {
-                _oldPriceCumulativeLast = LPTContract.price1CumulativeLast();
-            }
-            // update old timestamp
-            _oldTimeStamp = block.timestamp;
-
-            // update the block at which oracle is updated
-            _lastBlockUpdate = block.number;
-        }
+    // Returns latest price from ChainLink Oracle
+    function getLatestPrice() public view returns (int) {
+        (
+            uint80 roundID, 
+            int price,
+            uint startedAt,
+            uint timeStamp,
+            uint80 answeredInRound
+        ) = priceFeed.latestRoundData();
+        return price;
     }
 
     // calls transfer only, for use with non-permit lock function
@@ -319,9 +289,6 @@ contract LLC_EthDai {
 
         // send LP tokens back to user
         require(LPTContract.transfer(msg.sender, LPToken), "LLC: Transfer Failed");
-
-        // check if time to update oracle
-        updateOracle();
 
         // emit unlockLPT event
         emit UnlockLPT(LPToken, msg.sender);
