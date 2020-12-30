@@ -69,6 +69,12 @@ contract LLC_EthDai {
     // maximum percent difference in oracle vs. standard valuation
     uint8 public maxPercentDiff;
 
+    // Collateralization Ratio End
+    uint256 public CREnd;
+
+    // Collateralization Multiplier 
+    uint256 public CRNorm;
+
     // Interfaced Contracts
     IValuing_01 private valuingContract;
     IUniswapV2Pair_0 private LPTContract;
@@ -110,20 +116,17 @@ contract LLC_EthDai {
         require(baseAsset == toke0 || baseAsset == toke1, "invalid");
         if (baseAsset == toke0) {
             _position = 0;
-
-            // oracle numbers
-            _oldPriceCumulativeLast = LPTContract.price1CumulativeLast();
-
-
         } else if (baseAsset == toke1) {
             _position = 1;
-
-            // oracle numbers
-            _oldPriceCumulativeLast = LPTContract.price0CumulativeLast();
-
         }
         // set maxPercentDiff
         maxPercentDiff = 5;
+
+        // set Collateralization Ratio - default: 1
+        CREnd = 10000;
+
+        // set Collaterization Normalization
+        CRNorm = 10000;
 
         // set ChainLink fee address
         priceFeed = AggregatorV3Interface(priceFeedAddress);
@@ -235,8 +238,11 @@ contract LLC_EthDai {
         // get latest price from oracle
         _totalUSDOracle = getLatestPrice();
 
-        // normalize the oracle price coming from Chainlink to 10^^18
-        _totalUSDOracle = _totalUSDOracle * (10 ** 10);
+        // get total value
+        _totalUSDOracle = _token1 * _totalUSDOracle + _token0;
+
+        // reduce by 10 decimal places
+        _totalUSDOracle = _totalUSDOracle.div((10 ** 10));
 
         // Calculate percent difference (x2 - x1 / x1)
         uint256 percentDiff;
@@ -277,22 +283,67 @@ contract LLC_EthDai {
     // Burn Path
     // 
     // allows for partial loan payment by using the ratio of LPtokens to unlock and total LPtokens locked
-    function unlockLPT(uint256 LPToken) public {
+    function unlockLPT(uint256 UNDtoPay) public {
         require(_tokensLocked[msg.sender] >= LPToken, "Insufficient liquidity locked");
         require(LPToken > 0, "Cannot unlock nothing");
 
-        // Burning of UND will happen first
-        valuingContract.unboundRemove(LPToken, _tokensLocked[msg.sender], msg.sender);
+        // get current amount of UND Loan
+        uint256 currentUNDLoan = valuingContract.getUNDLoan(msg.sender);
 
-        // update mapping
-        _tokensLocked[msg.sender] = _tokensLocked[msg.sender].sub(LPToken);
+        if (currentUNDLoan == UNDtoPay) {
+            // Burning of UND will happen first
+            valuingContract.unboundRemove(UNDtoPay, msg.sender);
 
-        // send LP tokens back to user
-        require(LPTContract.transfer(msg.sender, LPToken), "LLC: Transfer Failed");
+            // update mapping
+            _tokensLocked[msg.sender] = _tokensLocked[msg.sender].sub(_tokensLocked[msg.sender]);
 
-        // emit unlockLPT event
-        emit UnlockLPT(LPToken, msg.sender);
+            // send LP tokens back to user
+            require(LPTContract.transfer(msg.sender, _tokensLocked[msg.sender]), "LLC: Transfer Failed");
 
+            // emit unlockLPT event
+            emit UnlockLPT(_tokensLocked[msg.sender], msg.sender);
+
+        } else {
+            // Acquire Pool Values
+            uint256 totalLP = LPTContract.totalSupply();
+            (uint112 _token0, uint112 _token1, ) = LPTContract.getReserves();
+
+            uint256 oraclePrice = getLatestPrice();
+
+            // calc value of whole pool
+            uint256 poolValue = _token1 * oraclePrice + _token0;
+
+            // normalize back to value with 18 decimals
+            poolValue = poolValue.div((10 ** 10));
+
+            // Calculate value of a single LP token
+            // We will add some decimals to this
+            uint256 valueOfSingleLPT = poolValue.mul(100).div(totalLP);
+
+            // value of users locked LP before paying loan
+            uint256 valueStart = valueOfSingleLPT.mul(_tokensLocked[msg.sender]);
+
+            uint256 loanAfter = currentUNDLoan.sub(UNDtoPay);
+
+            // Value After - Collateralization Ratio times LoanAfter (divided by CRNorm, then normalized with valueOfSingleLPT)
+            uint256 valueAfter = CREnd.mul(loanAfter).div(CRNorm).mul(100);
+
+            // LPT to send back. This number should have 18 decimals
+            uint256 LPTokenToReturn = valueStart.sub(valueAfter).div(valueOfSingleLPT);
+            LPTokenToReturn = LPTokenToReturn.mul((10 ** 18));
+
+            // Burning of UND will happen first
+            valuingContract.unboundRemove(UNDtoPay, msg.sender);
+
+            // update mapping
+            _tokensLocked[msg.sender] = _tokensLocked[msg.sender].sub(LPTokenToReturn);
+
+            // send LP tokens back to user
+            require(LPTContract.transfer(msg.sender, LPTokenToReturn), "LLC: Transfer Failed");
+
+            // emit unlockLPT event
+            emit UnlockLPT(LPTokenToReturn, msg.sender);
+        }
     }
 
     function tokensLocked(address account) public view returns(uint256) {
@@ -300,6 +351,12 @@ contract LLC_EthDai {
     }
 
     // onlyOwner Functions
+
+    // set collateralization Ratio. 1 = CRNorm
+    function setCREnd(uint256 ratio) public onlyOwner {
+        require (ratio > 0, "Ratio cannot be 0");
+        CREnd = ratio;
+    }
 
     // set Max Percent Difference
     function setMaxPercentDifference(uint8 amount) public onlyOwner {

@@ -84,18 +84,14 @@ contract Valuing_01 {
     }
 
     // Loan repayment Intermediary - only called from LLC
-    function unboundRemove(uint256 toUnlock, uint256 totalLocked, address user) external {
+    function unboundRemove(uint256 toUnlock, address user) external {
         require (listOfLLC[msg.sender].active, "LLC not authorized");
 
         // obtains amount of loan user owes (in uToken)
         IUnboundToken unboundContract = IUnboundToken(listOfLLC[msg.sender].uToken);
-        uint256 userLoaned = unboundContract.checkLoan(user, msg.sender);
-
-        // compute amount of uToken necessary to unlock LPT
-        uint256 toPayInUToken = userLoaned.mul(toUnlock).div(totalLocked);
         
         // calls burn
-        unboundContract._burn(user, toPayInUToken, msg.sender);
+        unboundContract._burn(user, toUnlock, msg.sender);
         
     }
 
@@ -103,6 +99,11 @@ contract Valuing_01 {
     function getLLCStruct(address LLC) public view returns (uint32 fee, uint32 loanrate) {
         fee = listOfLLC[LLC].feeRate;
         loanrate = listOfLLC[LLC].loanRate;
+    }
+
+    function getUNDLoan(address user) public view returns (uint256 UNDLoan) {
+        require(listOfLLC[msg.sender].active, "LLC not authorized");
+        UNDLoan = unboundContract.checkLoan(user, msg.sender);
     }
 
     // onlyOwner Functions

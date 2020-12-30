@@ -10,7 +10,8 @@ interface IValuing_01 {
 
     function unboundRemove(
         uint256 toUnlock,
-        uint256 totalLocked,
         address user
     ) external;
+
+    function getUNDLoan(address user) external view returns (uint256 UNDLoan)
 }
