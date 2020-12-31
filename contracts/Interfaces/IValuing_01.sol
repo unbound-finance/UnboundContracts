@@ -13,5 +13,5 @@ interface IValuing_01 {
         address user
     ) external;
 
-    function getUNDLoan(address user) external view returns (uint256 UNDLoan)
+    function getUNDLoan(address user) external view returns (uint256 UNDLoan);
 }

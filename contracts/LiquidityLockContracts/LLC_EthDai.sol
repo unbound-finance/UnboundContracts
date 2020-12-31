@@ -3,9 +3,10 @@ pragma solidity 0.7 .5;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
-import "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
+
 
 // Interfaces
+import "../Interfaces/chainlinkOracleInterface.sol";
 import "../Interfaces/IUniswapV2Pair.sol";
 import "../Interfaces/IValuing_01.sol";
 import "../Interfaces/IERC20.sol";
@@ -137,7 +138,6 @@ contract LLC_EthDai {
     function lockLPTWithPermit(uint256 LPTamt, uint deadline, uint8 v, bytes32 r, bytes32 s, uint256 minTokenAmount) public {
         require(!killSwitch, "LLC: This LLC is Deprecated");
         require(LPTContract.balanceOf(msg.sender) >= LPTamt, "LLC: Insufficient LPTs");
-        require(_lastBlockUpdate < block.number, "LLC: Must Wait Longer");
         uint256 totalLPTokens = LPTContract.totalSupply();
 
         // Acquire total baseAsset value of pair
@@ -163,7 +163,6 @@ contract LLC_EthDai {
     function lockLPT(uint256 LPTamt, uint256 minTokenAmount) public {
         require(!killSwitch, "LLC: This LLC is Deprecated");
         require(LPTContract.balanceOf(msg.sender) >= LPTamt, "LLC: Insufficient LPTs");
-        require(_lastBlockUpdate < block.number, "LLC: Must Wait Longer");
         uint256 totalLPTokens = LPTContract.totalSupply();
 
         // Acquire total baseAsset value of pair
@@ -236,7 +235,7 @@ contract LLC_EthDai {
         uint256 _totalUSDOracle;
 
         // get latest price from oracle
-        _totalUSDOracle = getLatestPrice();
+        _totalUSDOracle = uint256(getLatestPrice());
 
         // get total value
         _totalUSDOracle = _token1 * _totalUSDOracle + _token0;
@@ -284,12 +283,15 @@ contract LLC_EthDai {
     // 
     // allows for partial loan payment by using the ratio of LPtokens to unlock and total LPtokens locked
     function unlockLPT(uint256 UNDtoPay) public {
-        require(_tokensLocked[msg.sender] >= LPToken, "Insufficient liquidity locked");
-        require(LPToken > 0, "Cannot unlock nothing");
+        require(UNDtoPay > 0, "Cannot unlock nothing");
 
         // get current amount of UND Loan
         uint256 currentUNDLoan = valuingContract.getUNDLoan(msg.sender);
 
+        // Make sure UND to pay back is less than or equal to total owed.
+        require(currentUNDLoan >= UNDtoPay, "Insufficient liquidity locked");
+
+        // check if repayment is partial or full
         if (currentUNDLoan == UNDtoPay) {
             // Burning of UND will happen first
             valuingContract.unboundRemove(UNDtoPay, msg.sender);
@@ -308,7 +310,7 @@ contract LLC_EthDai {
             uint256 totalLP = LPTContract.totalSupply();
             (uint112 _token0, uint112 _token1, ) = LPTContract.getReserves();
 
-            uint256 oraclePrice = getLatestPrice();
+            uint256 oraclePrice = uint256(getLatestPrice());
 
             // calc value of whole pool
             uint256 poolValue = _token1 * oraclePrice + _token0;
