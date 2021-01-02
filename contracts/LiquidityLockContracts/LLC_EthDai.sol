@@ -238,10 +238,15 @@ contract LLC_EthDai {
         _totalUSDOracle = uint256(getLatestPrice());
 
         // get total value
-        _totalUSDOracle = _token1 * _totalUSDOracle + _token0;
+        if(_position == 0) {
+            _totalUSDOracle = _token1 * _totalUSDOracle + _token0;
+        } else {
+            _totalUSDOracle = _token0 * _totalUSDOracle + _token1;
+        }
+        
 
         // reduce by 10 decimal places
-        _totalUSDOracle = _totalUSDOracle.div((10 ** 10));
+        _totalUSDOracle = _totalUSDOracle.div((10 ** 8));
 
         // Calculate percent difference (x2 - x1 / x1)
         uint256 percentDiff;
@@ -257,11 +262,11 @@ contract LLC_EthDai {
     // Returns latest price from ChainLink Oracle
     function getLatestPrice() public view returns (int) {
         (
-            uint80 roundID, 
+            , 
             int price,
-            uint startedAt,
-            uint timeStamp,
-            uint80 answeredInRound
+            ,
+            ,
+            
         ) = priceFeed.latestRoundData();
         return price;
     }
@@ -310,13 +315,29 @@ contract LLC_EthDai {
             uint256 totalLP = LPTContract.totalSupply();
             (uint112 _token0, uint112 _token1, ) = LPTContract.getReserves();
 
+            // obtain total USD values
             uint256 oraclePrice = uint256(getLatestPrice());
-
-            // calc value of whole pool
-            uint256 poolValue = _token1 * oraclePrice + _token0;
+            uint256 poolValue;
+            uint256 oracleValue;
+            if (_position == 0) {
+                poolValue = _token0 * 2; // pricing();
+                oracleValue = _token1 * oraclePrice + _token0;
+            } else {
+                poolValue = _token1 * 2;
+                oracleValue = _token0 * oraclePrice + _token1;
+            }
 
             // normalize back to value with 18 decimals
-            poolValue = poolValue.div((10 ** 10));
+            oracleValue = poolValue.div((10 ** 8));
+
+            // Calculate percent difference (x2 - x1 / x1)
+            uint256 percentDiff;
+            if (oracleValue > poolValue) {
+                percentDiff = 100 * (oracleValue.sub(poolValue)).div(poolValue);
+            } else {
+                percentDiff = 100 * (poolValue.sub(oracleValue)).div(oracleValue);
+            }
+            require(percentDiff < maxPercentDiff, "LLC: Manipulation Evident");
 
             // Calculate value of a single LP token
             // We will add some decimals to this
