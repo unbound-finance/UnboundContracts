@@ -83,6 +83,7 @@ contract LLC_EthDai {
 
     // ChainLink Oracle Interface
     AggregatorV3Interface internal priceFeed;
+    AggregatorV3Interface internal priceFeedBase;
 
     // Modifiers
     modifier onlyOwner() {
@@ -92,7 +93,7 @@ contract LLC_EthDai {
 
     // Constructor - must provide valuing contract address, the associated Liquidity pool address (i.e. eth/dai uniswap pool token address),
     //               and the address of the baseAsset in the uniswap pair.
-    constructor(address valuingAddress, address LPTaddress, address baseAsset, address priceFeedAddress) {
+    constructor(address valuingAddress, address LPTaddress, address baseAsset, address priceFeedAddress, address priceFeedBaseAsset) {
         _owner = msg.sender;
 
         // initiates interfacing contracts
@@ -131,6 +132,7 @@ contract LLC_EthDai {
 
         // set ChainLink fee address
         priceFeed = AggregatorV3Interface(priceFeedAddress);
+        priceFeedBase = AggregatorV3Interface(priceFeedBaseAsset);
     }
 
     // Lock/Unlock functions
@@ -186,6 +188,10 @@ contract LLC_EthDai {
 
     // Acquires total value of liquidity pool (in baseAsset) and normalizes decimals to 18.
     function getValue() internal view returns(uint256 _totalUSD) {
+
+        // check if baseAsset value is stable
+        checkBaseAssetValue();
+
         // obtain amounts of tokens in both reserves.
         (uint112 _token0, uint112 _token1, ) = LPTContract.getReserves();
 
@@ -271,6 +277,17 @@ contract LLC_EthDai {
         return price;
     }
 
+    function getLatestPriceBaseAsset() public view returns (int) {
+        (
+            , 
+            int price,
+            ,
+            ,
+            
+        ) = priceFeedBase.latestRoundData();
+        return price;
+    }
+
     // calls transfer only, for use with non-permit lock function
     function transferLPT(uint256 amount) internal {
         require(LPTContract.transferFrom(msg.sender, address(this), amount), "LLC: Trasfer From failed");
@@ -282,6 +299,13 @@ contract LLC_EthDai {
         LPTContract.permit(user, address(this), amount, deadline, v, r, s);
         require(LPTContract.transferFrom(msg.sender, address(this), amount), "LLC: Transfer From failed");
 
+    }
+
+    // This currently works for stablecoins... would be more challenging if baseasset is not a stablecoin.
+    function checkBaseAssetValue() internal view {
+        uint256 _baseAssetValue = uint256(getLatestPriceBaseAsset());
+        _baseAssetValue = _baseAssetValue / (10 ** 6);
+        require(_baseAssetValue <= 100 + maxPercentDiff && _baseAssetValue >= 100 - maxPercentDiff, "stableCoin not stable");
     }
 
     // Burn Path
@@ -311,6 +335,10 @@ contract LLC_EthDai {
             emit UnlockLPT(_tokensLocked[msg.sender], msg.sender);
 
         } else {
+
+            // check if baseAsset value is stable
+            checkBaseAssetValue();
+
             // Acquire Pool Values
             uint256 totalLP = LPTContract.totalSupply();
             (uint112 _token0, uint112 _token1, ) = LPTContract.getReserves();

@@ -16,11 +16,11 @@ const weth8 = artifacts.require("WETH9");
 // const feeSplitter = artifacts.require("feeSplitter");
 // const LPTstake = artifacts.require("unboundStaking");
 
-const uTokenAddr = "!!!! ENTER UTOKEN ADDRESS HERE !!!!"
+const priceFeedAddress = "!!!! ENTER Price Feed ADDRESS HERE !!!!"
 
 const LPTAddress = "!!!!ENTER ADDRESS HERE!!!!";
 
-const stableCoin = "!!!!ENTER STABLECOIN ADDRESS HERE!!!!";
+const baseAssetFeed = "!!!!ENTER Base Asset Feed ADDRESS HERE!!!!";
 
 const valueAddress = "!!!!ENTER VALUING ADDRESS HERE!!!!";
 
@@ -31,7 +31,7 @@ const feeRate = "ENTER DESIRED FEE RATE"
 // Deploys UND and 
 module.exports = async (deployer, network, accounts) => {
 
-  const lockContract = await deployer.deploy(LLC, valueAddress, LPTAddress, stableCoin, uTokenAddr);
+  const lockContract = await deployer.deploy(LLC, valueAddress, LPTAddress, priceFeedAddress, baseAssetFeed);
   
   const valueContract = valuing.at(valueAddress);
 
