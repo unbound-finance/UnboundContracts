@@ -69,6 +69,7 @@ contract LLC_EthDai {
 
     // maximum percent difference in oracle vs. standard valuation
     uint8 public maxPercentDiff;
+    uint8 public maxPercentDiffBaseAsset;
 
     // Collateralization Ratio End
     uint256 public CREnd;
@@ -123,6 +124,7 @@ contract LLC_EthDai {
         }
         // set maxPercentDiff
         maxPercentDiff = 5;
+        maxPercentDiffBaseAsset = 1;
 
         // set Collateralization Ratio - default: 1
         CREnd = 10000;
@@ -305,7 +307,7 @@ contract LLC_EthDai {
     function checkBaseAssetValue() internal view {
         uint256 _baseAssetValue = uint256(getLatestPriceBaseAsset());
         _baseAssetValue = _baseAssetValue / (10 ** 6);
-        require(_baseAssetValue <= 100 + maxPercentDiff && _baseAssetValue >= 100 - maxPercentDiff, "stableCoin not stable");
+        require(_baseAssetValue <= 100 + maxPercentDiffBaseAsset && _baseAssetValue >= 100 - maxPercentDiffBaseAsset, "stableCoin not stable");
     }
 
     // Burn Path
