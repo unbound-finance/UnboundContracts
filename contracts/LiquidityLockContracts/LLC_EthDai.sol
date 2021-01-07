@@ -168,10 +168,10 @@ contract LLC_EthDai {
         require(!killSwitch, "LLC: This LLC is Deprecated");
         require(LPTContract.balanceOf(msg.sender) >= LPTamt, "LLC: Insufficient LPTs");
         uint256 totalLPTokens = LPTContract.totalSupply();
-
+        
         // Acquire total baseAsset value of pair
         uint256 totalUSD = getValue();
-
+        
         // This should compute % value of Liq pool in Dai. Cannot have decimals in Solidity
         uint256 LPTValueInDai = totalUSD.mul(LPTamt).div(totalLPTokens);
 
@@ -193,7 +193,7 @@ contract LLC_EthDai {
 
         // check if baseAsset value is stable
         checkBaseAssetValue();
-
+        
         // obtain amounts of tokens in both reserves.
         (uint112 _token0, uint112 _token1, ) = LPTContract.getReserves();
 

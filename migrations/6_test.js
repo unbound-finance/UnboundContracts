@@ -30,14 +30,14 @@ const weth = artifacts.require("WETH9");
 const testAddr = "0x549bD26e0C174458F7E6600820401B8944888836";
 const loanReceiver = "0xbAC374b151AD65875cA7fDD900AdA25373A3D5Ce";
 const chainLinkFeed = "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419"
-const baseAssetFeed = "0x777A68032a88E5A84678A77Af2CD65A7b3c0775a"
+const baseAssetFeed = "0xAed0c38402a5d19df6E4c03F4E2DceD6e29c1ee9"
 
 /// und:eth = 0x38c29e725ba3f1168b43dc689d2f5f30d249fa8c
 
 // Deploys UND and 
 module.exports = async (deployer, network, accounts) => {
 
-  const owner = "0x549bD26e0C174458F7E6600820401B8944888836";
+  const owner = "0xF44A8B0b090999e19722BBD8802135d3b74b217F";
 
 
   // deploy UND and valuing
