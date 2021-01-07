@@ -37,7 +37,7 @@ const baseAssetFeed = "0xAed0c38402a5d19df6E4c03F4E2DceD6e29c1ee9"
 // Deploys UND and 
 module.exports = async (deployer, network, accounts) => {
 
-  const owner = "0xF44A8B0b090999e19722BBD8802135d3b74b217F";
+  const owner = "0xa6a577F3Dfc84867d7778059f966436766b3fcBd";
 
 
   // deploy UND and valuing
@@ -104,5 +104,6 @@ module.exports = async (deployer, network, accounts) => {
   console.log('pooltokens', poolTokens.toString());
   await LPPool.approve.sendTransaction(newLLC.address, poolTokens);
   await newLLC.lockLPT.sendTransaction(poolTokens, 1000);
+  await newLLC.unlockLPT.sendTransaction(100);
 
 };
