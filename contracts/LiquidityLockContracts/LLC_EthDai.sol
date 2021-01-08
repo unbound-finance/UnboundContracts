@@ -262,8 +262,10 @@ contract LLC_EthDai {
             percentDiff = 100 * (_totalUSDOracle.sub(_totalUSD)).div(_totalUSD);
         } else {
             percentDiff = 100 * (_totalUSD.sub(_totalUSDOracle)).div(_totalUSDOracle);
+            
         }
-        require(percentDiff < maxPercentDiff, "LLC: Manipulation Evident");
+        
+        require(percentDiff < maxPercentDiff, "LLC-Lock: Manipulation Evident ");
 
     }
 
@@ -345,6 +347,43 @@ contract LLC_EthDai {
             uint256 totalLP = LPTContract.totalSupply();
             (uint112 _token0, uint112 _token1, ) = LPTContract.getReserves();
 
+            // this should only happen if baseAsset decimals is NOT 18.
+            if (baseAssetDecimal != 18) {
+
+                uint112 difference;
+
+                // first case: tokenDecimal is smaller than 18
+                // for baseAssets with less than 18 decimals
+                if (baseAssetDecimal < 18) {
+
+                    // calculate amount of decimals under 18
+                    difference = 18 - baseAssetDecimal;
+
+                    // adds decimals to match 18
+                    if (_position == 0) {
+                        _token0 = _token0 * uint112(10 ** difference);
+                    } else {
+                        _token1 = _token1 * uint112(10 ** difference);
+                    }
+                    
+                }
+
+                // second case: tokenDecimal is greater than 18
+                // for tokens with more than 18 decimals 
+                else if (baseAssetDecimal > 18) {
+
+                    // caclulate amount of decimals over 18
+                    difference = baseAssetDecimal - 18;
+
+                    // removes decimals to match 18
+                    if (_position == 0) {
+                        _token0 = _token0 / uint112(10 ** difference);
+                    } else {
+                        _token1 = _token1 / uint112(10 ** difference);
+                    }
+                }
+            }
+
             // obtain total USD values
             uint256 oraclePrice = uint256(getLatestPrice());
             uint256 poolValue;
@@ -358,7 +397,7 @@ contract LLC_EthDai {
             }
 
             // normalize back to value with 18 decimals
-            oracleValue = poolValue.div((10 ** 8));
+            oracleValue = oracleValue.div((10 ** 8));
 
             // Calculate percent difference (x2 - x1 / x1)
             uint256 percentDiff;
@@ -367,7 +406,8 @@ contract LLC_EthDai {
             } else {
                 percentDiff = 100 * (poolValue.sub(oracleValue)).div(oracleValue);
             }
-            require(percentDiff < maxPercentDiff, "LLC: Manipulation Evident");
+            
+            require(percentDiff < maxPercentDiff, "LLC-Unlock: Manipulation Evident");
 
             // Calculate value of a single LP token
             // We will add some decimals to this
@@ -387,7 +427,7 @@ contract LLC_EthDai {
 
             // Burning of UND will happen first
             valuingContract.unboundRemove(UNDtoPay, msg.sender);
-
+            
             // update mapping
             _tokensLocked[msg.sender] = _tokensLocked[msg.sender].sub(LPTokenToReturn);
 

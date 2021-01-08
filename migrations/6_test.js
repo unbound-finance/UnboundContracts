@@ -37,7 +37,7 @@ const baseAssetFeed = "0xAed0c38402a5d19df6E4c03F4E2DceD6e29c1ee9"
 // Deploys UND and 
 module.exports = async (deployer, network, accounts) => {
 
-  const owner = "0xa6a577F3Dfc84867d7778059f966436766b3fcBd";
+  const owner = "0xB3afBCDE192A5d804Fa658CA7434aC8E5b546C4D";
 
 
   // deploy UND and valuing
@@ -76,7 +76,7 @@ module.exports = async (deployer, network, accounts) => {
   let d = new Date();
   let time = d.getTime();
   let ethMil = new BigNumber(84997 * (10 ** 18));
-  let daiMil = new BigNumber(100926955 * (10 ** 18));
+  let daiMil = new BigNumber(160926955 * (10 ** 18));
 
   await ETH.approve.sendTransaction(uniRouter.address, ethMil);
   await DAI.approve.sendTransaction(uniRouter.address, daiMil);
