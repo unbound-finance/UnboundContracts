@@ -248,16 +248,16 @@ contract UnboundDollar is Context, IERC20 {
         
         // checks if user has enough UND to cover loan and 0.25% fee
         require(_balances[account] >= toBurn, "Insufficient UND to pay back loan");
-
-        // removes the amount of UND to burn from _loaned mapping/
-        _loaned[account][LLCAddr] = _loaned[account][LLCAddr].sub(toBurn);
         
+        // removes the amount of UND to burn from _loaned mapping/
+        _loaned[account][LLCAddr] = _loaned[account][LLCAddr].sub(toBurn, "ERC20: Overflow Trigger");
+        require(true == false, "FUCK");
         // Removes loan AND fee from user balance
         _balances[account] = _balances[account].sub(toBurn, "ERC20: burn amount exceeds balance");
-
+        
         // Removes the loan amount of UND from circulation
         _totalSupply = _totalSupply.sub(toBurn);
-
+        
         // This event could be renamed for easier identification.
         emit Burn(account, toBurn);
     }

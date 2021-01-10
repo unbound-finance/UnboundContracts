@@ -101,14 +101,6 @@ contract Valuing_01 {
         loanrate = listOfLLC[LLC].loanRate;
     }
 
-    function getUNDLoan(address user) public view returns (uint256 UNDLoan) {
-        require(listOfLLC[msg.sender].active, "LLC not authorized");
-        
-        // obtains amount of loan user owes (in uToken)
-        IUnboundToken unboundContract = IUnboundToken(listOfLLC[msg.sender].uToken);
-        UNDLoan = unboundContract.checkLoan(user, msg.sender);
-    }
-
     // onlyOwner Functions
 
     // grants an LLC permission //

@@ -9,6 +9,7 @@ import "@openzeppelin/contracts/utils/Address.sol";
 import "../Interfaces/chainlinkOracleInterface.sol";
 import "../Interfaces/IUniswapV2Pair.sol";
 import "../Interfaces/IValuing_01.sol";
+import "../Interfaces/IUnboundToken.sol";
 import "../Interfaces/IERC20.sol";
 
 
@@ -81,6 +82,7 @@ contract LLC_EthDai {
     IValuing_01 private valuingContract;
     IUniswapV2Pair_0 private LPTContract;
     IERC20_2 private baseAssetErc20;
+    IUnboundToken private unboundContract;
 
     // ChainLink Oracle Interface
     AggregatorV3Interface internal priceFeed;
@@ -94,13 +96,14 @@ contract LLC_EthDai {
 
     // Constructor - must provide valuing contract address, the associated Liquidity pool address (i.e. eth/dai uniswap pool token address),
     //               and the address of the baseAsset in the uniswap pair.
-    constructor(address valuingAddress, address LPTaddress, address baseAsset, address priceFeedAddress, address priceFeedBaseAsset) {
+    constructor(address valuingAddress, address LPTaddress, address baseAsset, address priceFeedAddress, address priceFeedBaseAsset, address UNDAddr) {
         _owner = msg.sender;
 
         // initiates interfacing contracts
         valuingContract = IValuing_01(valuingAddress);
         LPTContract = IUniswapV2Pair_0(LPTaddress);
         baseAssetErc20 = IERC20_2(baseAsset);
+        unboundContract = IUnboundToken(UNDAddr);
 
         // killSwitch MUST be false for lockLPT to work
         killSwitch = false;
@@ -124,10 +127,10 @@ contract LLC_EthDai {
         }
         // set maxPercentDiff
         maxPercentDiff = 5;
-        maxPercentDiffBaseAsset = 1;
+        maxPercentDiffBaseAsset = 5;
 
         // set Collateralization Ratio - default: 1
-        CREnd = 10000;
+        CREnd = 20000;
 
         // set Collaterization Normalization
         CRNorm = 10000;
@@ -168,10 +171,10 @@ contract LLC_EthDai {
         require(!killSwitch, "LLC: This LLC is Deprecated");
         require(LPTContract.balanceOf(msg.sender) >= LPTamt, "LLC: Insufficient LPTs");
         uint256 totalLPTokens = LPTContract.totalSupply();
-
+        
         // Acquire total baseAsset value of pair
         uint256 totalUSD = getValue();
-
+        
         // This should compute % value of Liq pool in Dai. Cannot have decimals in Solidity
         uint256 LPTValueInDai = totalUSD.mul(LPTamt).div(totalLPTokens);
 
@@ -193,7 +196,7 @@ contract LLC_EthDai {
 
         // check if baseAsset value is stable
         checkBaseAssetValue();
-
+        
         // obtain amounts of tokens in both reserves.
         (uint112 _token0, uint112 _token1, ) = LPTContract.getReserves();
 
@@ -262,8 +265,10 @@ contract LLC_EthDai {
             percentDiff = 100 * (_totalUSDOracle.sub(_totalUSD)).div(_totalUSD);
         } else {
             percentDiff = 100 * (_totalUSD.sub(_totalUSDOracle)).div(_totalUSDOracle);
+            
         }
-        require(percentDiff < maxPercentDiff, "LLC: Manipulation Evident");
+        
+        require(percentDiff < maxPercentDiff, "LLC-Lock: Manipulation Evident ");
 
     }
 
@@ -317,7 +322,7 @@ contract LLC_EthDai {
         require(UNDtoPay > 0, "Cannot unlock nothing");
 
         // get current amount of UND Loan
-        uint256 currentUNDLoan = valuingContract.getUNDLoan(msg.sender);
+        uint256 currentUNDLoan = unboundContract.checkLoan(msg.sender, address(this));
 
         // Make sure UND to pay back is less than or equal to total owed.
         require(currentUNDLoan >= UNDtoPay, "Insufficient liquidity locked");
@@ -345,6 +350,43 @@ contract LLC_EthDai {
             uint256 totalLP = LPTContract.totalSupply();
             (uint112 _token0, uint112 _token1, ) = LPTContract.getReserves();
 
+            // this should only happen if baseAsset decimals is NOT 18.
+            if (baseAssetDecimal != 18) {
+
+                uint112 difference;
+
+                // first case: tokenDecimal is smaller than 18
+                // for baseAssets with less than 18 decimals
+                if (baseAssetDecimal < 18) {
+
+                    // calculate amount of decimals under 18
+                    difference = 18 - baseAssetDecimal;
+
+                    // adds decimals to match 18
+                    if (_position == 0) {
+                        _token0 = _token0 * uint112(10 ** difference);
+                    } else {
+                        _token1 = _token1 * uint112(10 ** difference);
+                    }
+                    
+                }
+
+                // second case: tokenDecimal is greater than 18
+                // for tokens with more than 18 decimals 
+                else if (baseAssetDecimal > 18) {
+
+                    // caclulate amount of decimals over 18
+                    difference = baseAssetDecimal - 18;
+
+                    // removes decimals to match 18
+                    if (_position == 0) {
+                        _token0 = _token0 / uint112(10 ** difference);
+                    } else {
+                        _token1 = _token1 / uint112(10 ** difference);
+                    }
+                }
+            }
+
             // obtain total USD values
             uint256 oraclePrice = uint256(getLatestPrice());
             uint256 poolValue;
@@ -358,7 +400,7 @@ contract LLC_EthDai {
             }
 
             // normalize back to value with 18 decimals
-            oracleValue = poolValue.div((10 ** 8));
+            oracleValue = oracleValue.div((10 ** 8));
 
             // Calculate percent difference (x2 - x1 / x1)
             uint256 percentDiff;
@@ -367,7 +409,8 @@ contract LLC_EthDai {
             } else {
                 percentDiff = 100 * (poolValue.sub(oracleValue)).div(oracleValue);
             }
-            require(percentDiff < maxPercentDiff, "LLC: Manipulation Evident");
+            
+            require(percentDiff < maxPercentDiff, "LLC-Unlock: Manipulation Evident");
 
             // Calculate value of a single LP token
             // We will add some decimals to this
@@ -380,14 +423,13 @@ contract LLC_EthDai {
 
             // Value After - Collateralization Ratio times LoanAfter (divided by CRNorm, then normalized with valueOfSingleLPT)
             uint256 valueAfter = CREnd.mul(loanAfter).div(CRNorm).mul(100);
-
+            
             // LPT to send back. This number should have 18 decimals
             uint256 LPTokenToReturn = valueStart.sub(valueAfter).div(valueOfSingleLPT);
-            LPTokenToReturn = LPTokenToReturn.mul((10 ** 18));
-
+            
             // Burning of UND will happen first
             valuingContract.unboundRemove(UNDtoPay, msg.sender);
-
+            
             // update mapping
             _tokensLocked[msg.sender] = _tokensLocked[msg.sender].sub(LPTokenToReturn);
 
