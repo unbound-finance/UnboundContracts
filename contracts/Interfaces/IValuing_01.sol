@@ -12,6 +12,4 @@ interface IValuing_01 {
         uint256 toUnlock,
         address user
     ) external;
-
-    function getUNDLoan(address user) external view returns (uint256 UNDLoan);
 }

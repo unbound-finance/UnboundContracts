@@ -9,6 +9,7 @@ import "@openzeppelin/contracts/utils/Address.sol";
 import "../Interfaces/chainlinkOracleInterface.sol";
 import "../Interfaces/IUniswapV2Pair.sol";
 import "../Interfaces/IValuing_01.sol";
+import "../Interfaces/IUnboundToken.sol";
 import "../Interfaces/IERC20.sol";
 
 
@@ -81,6 +82,7 @@ contract LLC_EthDai {
     IValuing_01 private valuingContract;
     IUniswapV2Pair_0 private LPTContract;
     IERC20_2 private baseAssetErc20;
+    IUnboundToken private unboundContract;
 
     // ChainLink Oracle Interface
     AggregatorV3Interface internal priceFeed;
@@ -94,13 +96,14 @@ contract LLC_EthDai {
 
     // Constructor - must provide valuing contract address, the associated Liquidity pool address (i.e. eth/dai uniswap pool token address),
     //               and the address of the baseAsset in the uniswap pair.
-    constructor(address valuingAddress, address LPTaddress, address baseAsset, address priceFeedAddress, address priceFeedBaseAsset) {
+    constructor(address valuingAddress, address LPTaddress, address baseAsset, address priceFeedAddress, address priceFeedBaseAsset, address UNDAddr) {
         _owner = msg.sender;
 
         // initiates interfacing contracts
         valuingContract = IValuing_01(valuingAddress);
         LPTContract = IUniswapV2Pair_0(LPTaddress);
         baseAssetErc20 = IERC20_2(baseAsset);
+        unboundContract = IUnboundToken(UNDAddr);
 
         // killSwitch MUST be false for lockLPT to work
         killSwitch = false;
@@ -319,7 +322,7 @@ contract LLC_EthDai {
         require(UNDtoPay > 0, "Cannot unlock nothing");
 
         // get current amount of UND Loan
-        uint256 currentUNDLoan = valuingContract.getUNDLoan(msg.sender);
+        uint256 currentUNDLoan = unboundContract.checkLoan(msg.sender, address(this));
 
         // Make sure UND to pay back is less than or equal to total owed.
         require(currentUNDLoan >= UNDtoPay, "Insufficient liquidity locked");
@@ -420,11 +423,10 @@ contract LLC_EthDai {
 
             // Value After - Collateralization Ratio times LoanAfter (divided by CRNorm, then normalized with valueOfSingleLPT)
             uint256 valueAfter = CREnd.mul(loanAfter).div(CRNorm).mul(100);
-
+            
             // LPT to send back. This number should have 18 decimals
             uint256 LPTokenToReturn = valueStart.sub(valueAfter).div(valueOfSingleLPT);
-            LPTokenToReturn = LPTokenToReturn.mul((10 ** 18));
-
+            
             // Burning of UND will happen first
             valuingContract.unboundRemove(UNDtoPay, msg.sender);
             
