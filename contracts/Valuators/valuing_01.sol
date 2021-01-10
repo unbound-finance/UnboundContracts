@@ -144,7 +144,7 @@ contract Valuing_01 {
     // currently sends all tokens to "to" address (in param)
     function claimTokens(address _tokenAddr, address to) public onlyOwner {
         uint256 tokenBal = IERC20(_tokenAddr).balanceOf(address(this));
-        require(IERC20(_tokenAddr).transfer(to, tokenBal), "UND: misc. Token Transfer Failed");
+        require(IERC20(_tokenAddr).transfer(to, tokenBal), "Valuing: misc. Token Transfer Failed");
     }
 
 }

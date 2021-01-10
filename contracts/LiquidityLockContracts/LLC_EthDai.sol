@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.7 .5;
+pragma solidity 0.7.5;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
@@ -20,7 +20,7 @@ import "../Interfaces/IERC20.sol";
 // ---------------------------------------------------------------------------------------
 // This contract enables the user to take out a loan using their existing liquidity 
 // pool tokens (from the associated liquidity pool) as collateral. The loan is issued 
-// in the form of the UND token which carries a peg to the Dai.
+// in the form of the uToken token which carries a peg to the baseAsset.
 // 
 // This contract can be used as a factory to enable multiple liquidity pools access 
 // to mint uTokens. At this time, the Unbound protocol requires one of the reserve tokens 
@@ -31,7 +31,7 @@ import "../Interfaces/IERC20.sol";
 // the uniswap liquidity pool contract. 
 //
 // This is the main contract that the user will interact with. It is connected to Valuing, 
-// and then the UND mint functions. Upon deployment of the LLC, its address must first be 
+// and then the uToken mint functions. Upon deployment of the LLC, its address must first be 
 // registered with the valuing contract. This can only be completed by the owner (or 
 // eventually a DAO).
 // ----------------------------------------------------------------------------------------
@@ -53,7 +53,7 @@ contract LLC_EthDai {
     //Owner Address
     address private _owner;
 
-    // If killSwitch = true, cannot lock LPT and mint new UND
+    // If killSwitch = true, cannot lock LPT and mint new uTokens
     bool public killSwitch;
 
     // LPT address
@@ -125,17 +125,17 @@ contract LLC_EthDai {
         } else if (baseAsset == toke1) {
             _position = 1;
         }
-        // set maxPercentDiff
+        // set maxPercentDiff, used for Oracle fallback
         maxPercentDiff = 5;
         maxPercentDiffBaseAsset = 5;
 
-        // set Collateralization Ratio - default: 1
+        // set Collateralization Ratio
         CREnd = 20000;
 
         // set Collaterization Normalization
         CRNorm = 10000;
 
-        // set ChainLink fee address
+        // set ChainLink feed address
         priceFeed = AggregatorV3Interface(priceFeedAddress);
         priceFeedBase = AggregatorV3Interface(priceFeedBaseAsset);
     }
@@ -175,7 +175,7 @@ contract LLC_EthDai {
         // Acquire total baseAsset value of pair
         uint256 totalUSD = getValue();
         
-        // This should compute % value of Liq pool in Dai. Cannot have decimals in Solidity
+        // This should compute % value of Liq pool in Dai. 
         uint256 LPTValueInDai = totalUSD.mul(LPTamt).div(totalLPTokens);
 
         // map locked tokens to user
@@ -210,10 +210,10 @@ contract LLC_EthDai {
         // Token Decimal Normalization
         //
         // The following block ensures that all baseAsset valuations follow consistency with decimals
-        // and match the 18 decimals used by UND. This block also solves a potential vulnerability,
+        // and match the 18 decimals used by uToken. This block also solves a potential vulnerability,
         // where a baseAsset pair which contains beyond 18 decimals could be used to calculate significantly
-        // more UND (by orders of 10). Likewise, baseAssets such as USDC or USDT with 6 decimals would also 
-        // result in far less UND minted than desired.
+        // more uToken (by orders of 10). Likewise, baseAssets such as USDC or USDT with 6 decimals would also 
+        // result in far less uToken minted than desired.
         //
         // this should only happen if baseAsset decimals is NOT 18.
         if (baseAssetDecimal != 18) {
@@ -268,7 +268,7 @@ contract LLC_EthDai {
             
         }
         
-        require(percentDiff < maxPercentDiff, "LLC-Lock: Manipulation Evident ");
+        require(percentDiff < maxPercentDiff, "LLC-Lock: Manipulation Evident");
 
     }
 
@@ -318,19 +318,19 @@ contract LLC_EthDai {
     // Burn Path
     // 
     // allows for partial loan payment by using the ratio of LPtokens to unlock and total LPtokens locked
-    function unlockLPT(uint256 UNDtoPay) public {
-        require(UNDtoPay > 0, "Cannot unlock nothing");
+    function unlockLPT(uint256 uTokenAmt) public {
+        require(uTokenAmt > 0, "Cannot unlock nothing");
 
-        // get current amount of UND Loan
-        uint256 currentUNDLoan = unboundContract.checkLoan(msg.sender, address(this));
+        // get current amount of uToken Loan
+        uint256 currentLoan = unboundContract.checkLoan(msg.sender, address(this));
 
-        // Make sure UND to pay back is less than or equal to total owed.
-        require(currentUNDLoan >= UNDtoPay, "Insufficient liquidity locked");
+        // Make sure uToken to pay back is less than or equal to total owed.
+        require(currentLoan >= uTokenAmt, "Insufficient liquidity locked");
 
         // check if repayment is partial or full
-        if (currentUNDLoan == UNDtoPay) {
-            // Burning of UND will happen first
-            valuingContract.unboundRemove(UNDtoPay, msg.sender);
+        if (currentLoan == uTokenAmt) {
+            // Burning of uToken will happen first
+            valuingContract.unboundRemove(uTokenAmt, msg.sender);
 
             // update mapping
             _tokensLocked[msg.sender] = _tokensLocked[msg.sender].sub(_tokensLocked[msg.sender]);
@@ -419,7 +419,7 @@ contract LLC_EthDai {
             // value of users locked LP before paying loan
             uint256 valueStart = valueOfSingleLPT.mul(_tokensLocked[msg.sender]);
 
-            uint256 loanAfter = currentUNDLoan.sub(UNDtoPay);
+            uint256 loanAfter = currentLoan.sub(uTokenAmt);
 
             // Value After - Collateralization Ratio times LoanAfter (divided by CRNorm, then normalized with valueOfSingleLPT)
             uint256 valueAfter = CREnd.mul(loanAfter).div(CRNorm).mul(100);
@@ -427,8 +427,8 @@ contract LLC_EthDai {
             // LPT to send back. This number should have 18 decimals
             uint256 LPTokenToReturn = valueStart.sub(valueAfter).div(valueOfSingleLPT);
             
-            // Burning of UND will happen first
-            valuingContract.unboundRemove(UNDtoPay, msg.sender);
+            // Burning of uTokens will happen first
+            valuingContract.unboundRemove(uTokenAmt, msg.sender);
             
             // update mapping
             _tokensLocked[msg.sender] = _tokensLocked[msg.sender].sub(LPTokenToReturn);
