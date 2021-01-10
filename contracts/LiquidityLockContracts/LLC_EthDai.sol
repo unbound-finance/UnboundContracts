@@ -96,14 +96,14 @@ contract LLC_EthDai {
 
     // Constructor - must provide valuing contract address, the associated Liquidity pool address (i.e. eth/dai uniswap pool token address),
     //               and the address of the baseAsset in the uniswap pair.
-    constructor(address valuingAddress, address LPTaddress, address baseAsset, address priceFeedAddress, address priceFeedBaseAsset, address UNDAddr) {
+    constructor(address valuingAddress, address LPTaddress, address baseAsset, address priceFeedAddress, address priceFeedBaseAsset, address uTokenAddr) {
         _owner = msg.sender;
 
         // initiates interfacing contracts
         valuingContract = IValuing_01(valuingAddress);
         LPTContract = IUniswapV2Pair_0(LPTaddress);
         baseAssetErc20 = IERC20_2(baseAsset);
-        unboundContract = IUnboundToken(UNDAddr);
+        unboundContract = IUnboundToken(uTokenAddr);
 
         // killSwitch MUST be false for lockLPT to work
         killSwitch = false;
