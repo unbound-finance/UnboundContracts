@@ -130,7 +130,7 @@ contract LLC_EthDai {
         maxPercentDiffBaseAsset = 5;
 
         // set Collateralization Ratio - default: 1
-        CREnd = 10000;
+        CREnd = 20000;
 
         // set Collaterization Normalization
         CRNorm = 10000;
