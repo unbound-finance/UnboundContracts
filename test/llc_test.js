@@ -19,6 +19,8 @@ const uniFactory = artifacts.require('UniswapV2Factory');
 const uniPair = artifacts.require('UniswapV2Pair');
 const weth9 = artifacts.require('WETH9');
 const router = artifacts.require('UniswapV2Router02');
+const testAggregatorEth = artifacts.require('TestAggregatorProxyEth');
+const testAggregatorDai = artifacts.require('TestAggregatorProxyDai');
 
 contract('LLC', function (_accounts) {
   // Initial settings
@@ -45,6 +47,8 @@ contract('LLC', function (_accounts) {
   let pair;
   let route;
   let stakePair;
+  let priceFeedEth;
+  let priceFeedDai;
 
   //=================
   // Default Functionality
@@ -59,6 +63,12 @@ contract('LLC', function (_accounts) {
       lockContract = await LLC.deployed();
       factory = await uniFactory.deployed();
       pair = await uniPair.at(await lockContract.pair());
+      priceFeedEth = await testAggregatorEth.deployed();
+      priceFeedDai = await testAggregatorDai.deployed();
+
+      // Set price to aggregator
+      await priceFeedEth.setPrice(40000000000);
+      await priceFeedDai.setPrice(100000000);
 
       await tDai.approve(route.address, daiAmount);
       await tEth.approve(route.address, 1000);
@@ -81,7 +91,7 @@ contract('LLC', function (_accounts) {
       await und.changeStaking(stakePair.address);
       // Lock some pool
       await pair.approve(lockContract.address, 1000);
-      lockContract.lockLPT(1000, 1);
+      await lockContract.lockLPT(1000, 1);
     });
 
     it('default kill switch', async () => {

@@ -20,6 +20,9 @@ const testLink = artifacts.require('TestLink');
 const uniFactory = artifacts.require('UniswapV2Factory');
 const uniPair = artifacts.require('UniswapV2Pair');
 const router = artifacts.require('UniswapV2Router02');
+const testAggregatorEth = artifacts.require('TestAggregatorProxyEth');
+const testAggregatorLink = artifacts.require('TestAggregatorProxyLink');
+const testAggregatorDai = artifacts.require('TestAggregatorProxyDai');
 
 contract('unboundSystem multiple LLC', function (_accounts) {
   // Initial settings
@@ -37,6 +40,8 @@ contract('unboundSystem multiple LLC', function (_accounts) {
   };
   const stakeSharesPercent = 50;
   const safuSharesPercent = 50;
+  const CREnd = 20000;
+  const CRNorm = 10000;
 
   let und;
   let valueContract;
@@ -64,6 +69,14 @@ contract('unboundSystem multiple LLC', function (_accounts) {
     factory = await uniFactory.deployed();
     pairEthDai = await uniPair.at(await lockContractEth.pair());
     pairLinkDai = await uniPair.at(await lockContractLink.pair());
+    priceFeedEth = await testAggregatorEth.deployed();
+    priceFeedLink = await testAggregatorLink.deployed();
+    priceFeedDai = await testAggregatorDai.deployed();
+
+    // Set price to aggregator
+    await priceFeedEth.setPrice(40000000000);
+    await priceFeedLink.setPrice(40000000000);
+    await priceFeedDai.setPrice(100000000);
 
     let stakePool = await factory.createPair(tDai.address, und.address);
     stakePair = await uniPair.at(stakePool.logs[0].args.pair);
@@ -176,13 +189,13 @@ contract('unboundSystem multiple LLC', function (_accounts) {
       const lptBalanceBefore = parseInt(await pairEthDai.balanceOf(owner));
       const lockedTokenAmount = parseInt(await lockContractEth.tokensLocked(owner));
       const undBalanceBefore = parseInt(await und.balanceOf(owner));
-      const loanedAmount = parseInt(await und.checkLoan(owner, lockContractEth.address));
+      const mintedUND = parseInt(await und.checkLoan(owner, lockContractEth.address));
 
       // burn
-      const receipt = await lockContractEth.unlockLPT(lockedTokenAmount);
+      const receipt = await lockContractEth.unlockLPT(mintedUND);
       expectEvent.inTransaction(receipt.tx, und, 'Burn', {
         user: owner,
-        burned: loanedAmount.toString(),
+        burned: mintedUND.toString(),
       });
 
       const lptBalanceAfter = parseInt(await pairEthDai.balanceOf(owner));
@@ -191,7 +204,7 @@ contract('unboundSystem multiple LLC', function (_accounts) {
 
       assert.equal(lptBalanceAfter, lptBalanceBefore + lockedTokenAmount, 'pool balance incorrect');
       assert.equal(lockedTokenAfter, 0, 'locked token incorrect');
-      assert.equal(undBalanceAfter, undBalanceBefore - loanedAmount, 'owner balance incorrect');
+      assert.equal(undBalanceAfter, undBalanceBefore - mintedUND, 'owner balance incorrect');
 
       console.log(`LLC-Eth.locked: ${await pairEthDai.balanceOf(lockContractEth.address)}`);
       console.log(`LLC-Link.locked: ${await pairLinkDai.balanceOf(lockContractLink.address)}`);
@@ -199,34 +212,36 @@ contract('unboundSystem multiple LLC', function (_accounts) {
     });
 
     it('cannot unlock with less than necessary amount of UND', async () => {
-      const lockedTokenAmount = parseInt(await lockContractLink.tokensLocked(owner));
+      // const lockedTokenAmount = parseInt(await lockContractLink.tokensLocked(owner));
+      const mintedUND = parseInt(await und.checkLoan(owner, lockContractLink.address));
 
       // burn
-      await expectRevert(lockContractLink.unlockLPT(lockedTokenAmount), 'Insufficient UND to pay back loan');
+      await expectRevert(lockContractLink.unlockLPT(mintedUND), 'Insufficient UND to pay back loan');
     });
 
     it('UND burn - LinkDai', async () => {
+      const priceLPT = 40;
       const lptBalanceBefore = parseInt(await pairLinkDai.balanceOf(owner));
-      const lockedTokenAmountBefore = parseInt(await lockContractLink.tokensLocked(owner));
-      const tokenAmount = lockedTokenAmountBefore / 2;
+      const lockedTokenAmount = parseInt(await lockContractLink.tokensLocked(owner));
       const undBalanceBefore = parseInt(await und.balanceOf(owner));
-      const loanedAmountBefore = parseInt(await und.checkLoan(owner, lockContractLink.address));
-      const loanedAmount = loanedAmountBefore / 2;
+      const mintedUND = parseInt(await und.checkLoan(owner, lockContractLink.address));
+      const burnAmountUND = mintedUND / 2;
+      const unlockAmountLPT = lockedTokenAmount - ((mintedUND - burnAmountUND) * CREnd) / CRNorm / priceLPT;
 
       // burn
-      const receipt = await lockContractLink.unlockLPT(tokenAmount);
+      const receipt = await lockContractLink.unlockLPT(burnAmountUND);
       expectEvent.inTransaction(receipt.tx, und, 'Burn', {
         user: owner,
-        burned: loanedAmount.toString(),
+        burned: burnAmountUND.toString(),
       });
 
       const lptBalanceAfter = parseInt(await pairLinkDai.balanceOf(owner));
       const lockedTokenAmountAfter = parseInt(await lockContractLink.tokensLocked(owner));
       const undBalanceAfter = parseInt(await und.balanceOf(owner));
 
-      assert.equal(lptBalanceAfter, lptBalanceBefore + tokenAmount, 'pool balance incorrect');
-      assert.equal(lockedTokenAmountAfter, lockedTokenAmountBefore - tokenAmount, 'locked token incorrect');
-      assert.equal(undBalanceAfter, undBalanceBefore - loanedAmount, 'owner balance incorrect');
+      assert.equal(lptBalanceAfter, lptBalanceBefore + unlockAmountLPT, 'pool balance incorrect');
+      assert.equal(lockedTokenAmountAfter, lockedTokenAmount - unlockAmountLPT, 'locked token incorrect');
+      assert.equal(undBalanceAfter, undBalanceBefore - burnAmountUND, 'owner balance incorrect');
 
       console.log(`LLC-Eth.locked: ${await pairEthDai.balanceOf(lockContractEth.address)}`);
       console.log(`LLC-Link.locked: ${await pairLinkDai.balanceOf(lockContractLink.address)}`);

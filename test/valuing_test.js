@@ -105,8 +105,7 @@ contract('Valuing', function (_accounts) {
     });
 
     it('cannot call unboundRemove() on valuator', async () => {
-      const anyNumber = 123;
-      await expectRevert(valueContract.unboundRemove(20, anyNumber, owner), 'LLC not authorized');
+      await expectRevert(valueContract.unboundRemove(20, owner), 'LLC not authorized');
     });
 
     it('can claim tokens', async () => {

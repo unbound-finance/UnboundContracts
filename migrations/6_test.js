@@ -1,3 +1,4 @@
+/*
 const BigNumber = require('bignumber.js');
 
 const attack1 = artifacts.require("pseudoFlashloanAttack1");
@@ -34,10 +35,10 @@ const chainLinkFeed = "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419"
 const baseAssetFeed = "0xAed0c38402a5d19df6E4c03F4E2DceD6e29c1ee9"
 
 /// und:eth = 0x38c29e725ba3f1168b43dc689d2f5f30d249fa8c
-
-// Deploys UND and 
+*/
+// Deploys UND and
 module.exports = async (deployer, network, accounts) => {
-
+  /*
     const owner = "0xB00a482ec42675CED6F9D680831a18CAA7B3e6eD";
 
 
@@ -180,4 +181,5 @@ module.exports = async (deployer, network, accounts) => {
             LPBalAfter: LPBalAfter.toString()
         })
 
+        */
 };

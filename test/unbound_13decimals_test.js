@@ -17,10 +17,10 @@ const testDai = artifacts.require('TestDai13');
 const testEth = artifacts.require('TestEth');
 const uniFactory = artifacts.require('UniswapV2Factory');
 const uniPair = artifacts.require('UniswapV2Pair');
-
 const weth9 = artifacts.require('WETH9');
-
 const router = artifacts.require('UniswapV2Router02');
+const testAggregatorEth = artifacts.require('TestAggregatorProxyEth');
+const testAggregatorDai = artifacts.require('TestAggregatorProxyDai');
 
 contract('unboundSystem decimals13', function (_accounts) {
   // Initial settings
@@ -38,6 +38,8 @@ contract('unboundSystem decimals13', function (_accounts) {
   const feeRate = 5000;
   const stakeSharesPercent = 50;
   const safuSharesPercent = 50;
+  const CREnd = 20000;
+  const CRNorm = 10000;
 
   let unboundDai;
   let valueContract;
@@ -61,23 +63,33 @@ contract('unboundSystem decimals13', function (_accounts) {
     before(async function () {
       unboundDai = await uDai.deployed();
       valueContract = await valuing.deployed();
-
       factory = await uniFactory.deployed();
       tEth = await testEth.deployed();
       tDai = await testDai.deployed();
       // lockContract = await LLC.deployed();
       weth = await weth9.deployed();
       route = await router.deployed();
+      priceFeedEth = await testAggregatorEth.deployed();
+      priceFeedDai = await testAggregatorDai.deployed();
+
+      // Set price to aggregator
+      await priceFeedEth.setPrice(40000000000);
+      await priceFeedDai.setPrice(100000000);
 
       const pairAddr = await factory.createPair(tDai.address, tEth.address);
       pair = await uniPair.at(pairAddr.logs[0].args.pair);
 
-      lockContract = await LLC.new(valueContract.address, pairAddr.logs[0].args.pair, tDai.address);
+      lockContract = await LLC.new(
+        valueContract.address,
+        pairAddr.logs[0].args.pair,
+        tDai.address,
+        priceFeedEth.address,
+        priceFeedDai.address,
+        unboundDai.address
+      );
 
       let permissionLLC = await valueContract.addLLC(lockContract.address, unboundDai.address, loanRate, feeRate);
-
       let newValuator = await unboundDai.changeValuator(valueContract.address);
-
       let approveTdai = await tDai.approve(route.address, 400000);
       let approveTeth = await tEth.approve(route.address, 1000);
 
@@ -229,20 +241,20 @@ contract('unboundSystem decimals13', function (_accounts) {
     });
 
     it('UND burn', async () => {
-      let uDaiBal = await unboundDai.balanceOf.call(owner);
-      uDaiBal = uDaiBal.words[0];
-      let tokenBal4 = await unboundDai.checkLoan.call(owner, lockContract.address);
+      const priceLPT = 40;
+      const lockedLPT = parseInt(await lockContract.tokensLocked(owner));
+      const mintedUND = parseInt(await unboundDai.checkLoan(owner, lockContract.address));
+      const burnAmountUND = mintedUND / 2;
+      const unlockAmountLPT =
+        lockedLPT - ((((mintedUND - burnAmountUND) * stablecoinDecimal) / decimal) * CREnd) / CRNorm / priceLPT;
 
-      let LPTbal = await pair.balanceOf.call(owner);
-      let LPtokens = parseInt(LPTbal.words[0]);
-      let tokenBal0 = await unboundDai.balanceOf.call(owner);
+      const LPtokens = parseInt(await pair.balanceOf.call(owner));
 
       // burn
-      let burn = await lockContract.unlockLPT(lockedTokens);
-      let tokenBal1 = await unboundDai.balanceOf.call(owner);
+      await lockContract.unlockLPT(burnAmountUND);
       let newBal = parseInt(await pair.balanceOf.call(owner));
 
-      assert.equal(newBal, LPtokens + lockedTokens, 'valuing incorrect');
+      assert.equal(newBal, LPtokens + unlockAmountLPT, 'valuing incorrect');
     });
 
     it('UND can transfer', async () => {

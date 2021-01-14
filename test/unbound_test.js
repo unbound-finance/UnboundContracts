@@ -19,6 +19,8 @@ const uniFactory = artifacts.require('UniswapV2Factory');
 const uniPair = artifacts.require('UniswapV2Pair');
 const weth9 = artifacts.require('WETH9');
 const router = artifacts.require('UniswapV2Router02');
+const testAggregatorEth = artifacts.require('TestAggregatorProxyEth');
+const testAggregatorDai = artifacts.require('TestAggregatorProxyDai');
 
 contract('UND', function (_accounts) {
   // Initial settings
@@ -60,6 +62,12 @@ contract('UND', function (_accounts) {
       lockContract = await LLC.deployed();
       factory = await uniFactory.deployed();
       pair = await uniPair.at(await lockContract.pair());
+      priceFeedEth = await testAggregatorEth.deployed();
+      priceFeedDai = await testAggregatorDai.deployed();
+
+      // Set price to aggregator
+      await priceFeedEth.setPrice(40000000000); // This is real number
+      await priceFeedDai.setPrice(100000000); // This is real number
 
       await tDai.approve(route.address, 400000);
       await tEth.approve(route.address, 1000);

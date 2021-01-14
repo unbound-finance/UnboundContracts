@@ -19,6 +19,8 @@ const uniFactory = artifacts.require('UniswapV2Factory');
 const uniPair = artifacts.require('UniswapV2Pair');
 const weth9 = artifacts.require('WETH9');
 const router = artifacts.require('UniswapV2Router02');
+const testAggregatorEth = artifacts.require('TestAggregatorProxyEth');
+const testAggregatorDai = artifacts.require('TestAggregatorProxyDai');
 
 contract('Scenario', function (_accounts) {
   // Initial settings
@@ -34,6 +36,8 @@ contract('Scenario', function (_accounts) {
   const feeRate = 5000;
   const stakeSharesPercent = 50;
   const safuSharesPercent = 50;
+  const CREnd = 20000;
+  const CRNorm = 10000;
 
   let und;
   let valueContract;
@@ -43,7 +47,6 @@ contract('Scenario', function (_accounts) {
   let factory;
   let pair;
   let route;
-  let burnTokens;
   let storedFeeTotal = 0;
   let stakePair;
 
@@ -59,8 +62,15 @@ contract('Scenario', function (_accounts) {
       valueContract = await valuing.deployed();
       lockContract = await LLC.deployed();
       factory = await uniFactory.deployed();
+      priceFeedEth = await testAggregatorEth.deployed();
+      priceFeedDai = await testAggregatorDai.deployed();
+
+      // Set price to aggregator
+      await priceFeedEth.setPrice(129153602903); // This is real number
+      await priceFeedDai.setPrice(100475246); // This is real number
+
       pair = await uniPair.at(await lockContract.pair());
-      await tDai.approve(route.address, 400000);
+      await tDai.approve(route.address, daiAmount);
       await tEth.approve(route.address, 1000);
       let d = new Date();
       let time = d.getTime();
@@ -79,10 +89,23 @@ contract('Scenario', function (_accounts) {
       await und.changeStaking(stakePair.address);
     });
 
+    it('cannot lock when the price diff is big', async () => {
+      await priceFeedEth.setPrice(44800000000);
+      const dummyNumber = 100;
+      await expectRevert(lockContract.lockLPT(dummyNumber, 0), 'LLC-Lock: Manipulation Evident');
+      await priceFeedEth.setPrice(40000000000);
+    });
+
+    it('cannot lock when the stable coin is not stable', async () => {
+      await priceFeedDai.setPrice(106000000);
+      const dummyNumber = 100;
+      await expectRevert(lockContract.lockLPT(dummyNumber, 0), 'stableCoin not stable');
+      await priceFeedDai.setPrice(100000000);
+    });
+
     it('Lock LPT - first(not auto fee distribution)', async () => {
       const LPTbal = parseInt(await pair.balanceOf(owner));
       const LPtokens = parseInt(LPTbal / 4); // Amount of token to be lock
-      burnTokens = LPtokens;
 
       const totalUSD = daiAmount * 2; // Total value in Liquidity pool
       const totalLPTokens = parseInt(await pair.totalSupply()); // Total token amount of Liq pool
@@ -187,30 +210,46 @@ contract('Scenario', function (_accounts) {
       await expectRevert(und.distributeFee({ from: user }), 'There is nothing to distribute');
     });
 
+    it('cannot unlock when the price diff is big', async () => {
+      await priceFeedEth.setPrice(36100000000);
+      const dummyNumber = 100;
+      await expectRevert(lockContract.unlockLPT(dummyNumber), 'LLC-Unlock: Manipulation Evident');
+      await priceFeedEth.setPrice(40000000000);
+    });
+
+    it('cannot lock when the stable coin is not stable', async () => {
+      await priceFeedDai.setPrice(94000000);
+      const dummyNumber = 100;
+      await expectRevert(lockContract.unlockLPT(dummyNumber), 'stableCoin not stable');
+      await priceFeedDai.setPrice(100000000);
+    });
+
     it('Unlock LPT', async () => {
-      const uDaiBal = parseInt(await und.balanceOf(owner));
-      const loanedAmount = await und.checkLoan(owner, lockContract.address);
+      const priceLPT = 40;
+      const lockedLPT = parseInt(await lockContract.tokensLocked(owner));
+      const mintedUND = parseInt(await und.checkLoan(owner, lockContract.address));
       const LPtokens = parseInt(await pair.balanceOf(owner));
       const tokenBalBefore = await und.balanceOf(owner);
-      const burnTokenAmount = parseInt((loanedAmount * burnTokens) / LPtokens);
+      const burnAmountUND = mintedUND / 2;
+      const unlockAmountLPT = lockedLPT - ((mintedUND - burnAmountUND) * CREnd) / CRNorm / priceLPT;
 
       // burn
-      const receipt = await lockContract.unlockLPT(burnTokens);
+      const receipt = await lockContract.unlockLPT(burnAmountUND);
       expectEvent(receipt, 'UnlockLPT', {
-        LPTamt: burnTokens.toString(),
+        LPTamt: unlockAmountLPT.toString(),
         user: owner,
       });
       expectEvent.inTransaction(receipt.tx, und, 'Burn', {
         user: owner,
-        burned: burnTokenAmount.toString(),
+        burned: burnAmountUND.toString(),
       });
 
       const tokenBal = parseInt(await und.balanceOf(owner));
       const newBal = parseInt(await pair.balanceOf(owner));
       const uDaiBalFinal = parseInt(await und.balanceOf(owner));
 
-      assert.equal(tokenBal, tokenBalBefore - burnTokenAmount, 'token amount incorrect');
-      assert.equal(newBal, LPtokens + burnTokens, 'valuing incorrect');
+      assert.equal(tokenBal, tokenBalBefore - burnAmountUND, 'token amount incorrect');
+      assert.equal(newBal, LPtokens + unlockAmountLPT, 'valuing incorrect');
     });
   });
 });
