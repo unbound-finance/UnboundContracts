@@ -371,82 +371,7 @@ contract LLC_EthDai {
             // emit unlockLPT event
             emit UnlockLPT(_tokensLocked[msg.sender], msg.sender);
         } else {
-            // check if baseAsset value is stable
-            checkBaseAssetValue();
-
-            // Acquire Pool Values
-            uint256 totalLP = LPTContract.totalSupply();
-            (uint112 _token0, uint112 _token1, ) = LPTContract.getReserves();
-
-            // obtain total USD values
-            uint256 oraclePrice = uint256(getLatestPrice());
-            uint256 poolValue;
-            uint256 oracleValue;
-            if (_position == 0) {
-                poolValue = _token0 * 2;
-                oracleValue = uint256(_token1)
-                    .mul(oraclePrice)
-                    .div(10**getDecimals())
-                    .add(_token0);
-            } else {
-                poolValue = _token1 * 2;
-                oracleValue = uint256(_token0)
-                    .mul(oraclePrice)
-                    .div(10**getDecimals())
-                    .add(_token1);
-            }
-
-            // normalize back to value with 18 decimals
-            // Calculate percent difference (x2 - x1 / x1)
-            uint256 percentDiff;
-            if (oracleValue > poolValue) {
-                percentDiff = (100 * oracleValue.sub(poolValue)).div(poolValue);
-            } else {
-                percentDiff = (100 * poolValue.sub(oracleValue)).div(
-                    oracleValue
-                );
-            }
-
-            require(
-                percentDiff < maxPercentDiff,
-                "LLC-Unlock: Manipulation Evident"
-            );
-
-            // this should only happen if baseAsset decimals is NOT 18.
-            if (baseAssetDecimal != 18) {
-                // first case: tokenDecimal is smaller than 18
-                // for baseAssets with less than 18 decimals
-                if (baseAssetDecimal < 18) {
-                    // calculate amount of decimals under 18
-                    poolValue = poolValue.mul(
-                        10**uint256(18 - baseAssetDecimal)
-                    );
-                }
-                // second case: tokenDecimal is greater than 18
-                // for tokens with more than 18 decimals
-                else if (baseAssetDecimal > 18) {
-                    // caclulate amount of decimals over 18
-                    poolValue = poolValue.div(
-                        10**uint256(baseAssetDecimal - 18)
-                    );
-                }
-            }
-
-            // Calculate value of a single LP token
-            // We will add some decimals to this
-            uint256 valueOfSingleLPT = poolValue.mul(100).div(totalLP);
-            // value of users locked LP before paying loan
-            uint256 valueStart =
-                valueOfSingleLPT.mul(_tokensLocked[msg.sender]);
-
-            uint256 loanAfter = currentLoan.sub(uTokenAmt);
-
-            // Value After - Collateralization Ratio times LoanAfter (divided by CRNorm, then normalized with valueOfSingleLPT)
-            uint256 valueAfter = CREnd.mul(loanAfter).div(CRNorm).mul(100);
-
-            // LPT to send back. This number should have 18 decimals
-            uint256 LPTokenToReturn =
-                valueStart.sub(valueAfter).div(valueOfSingleLPT);
+            uint256 LPTokenToReturn = getLPTokensToReturn(currentLoan, uTokenAmt);
 
             // Burning of uTokens will happen first
             valuingContract.unboundRemove(uTokenAmt, msg.sender);
@@ -465,6 +390,85 @@ contract LLC_EthDai {
             // emit unlockLPT event
             emit UnlockLPT(LPTokenToReturn, msg.sender);
         }
+    }
+
+    function getLPTokensToReturn(uint256 _currentLoan, uint256 _uTokenAmt) internal returns (uint256 _LPTokenToReturn) {
+        // check if baseAsset value is stable
+        checkBaseAssetValue();
+
+        // Acquire Pool Values
+        uint256 totalLP = LPTContract.totalSupply();
+        (uint112 _token0, uint112 _token1, ) = LPTContract.getReserves();
+
+        // obtain total USD values
+        uint256 oraclePrice = uint256(getLatestPrice());
+        uint256 poolValue;
+        uint256 oracleValue;
+        if (_position == 0) {
+            poolValue = _token0 * 2;
+            oracleValue = uint256(_token1)
+                .mul(oraclePrice)
+                .div(10**getDecimals())
+                .add(_token0);
+        } else {
+            poolValue = _token1 * 2;
+            oracleValue = uint256(_token0)
+                .mul(oraclePrice)
+                .div(10**getDecimals())
+                .add(_token1);
+        }
+
+        // normalize back to value with 18 decimals
+        // Calculate percent difference (x2 - x1 / x1)
+        uint256 percentDiff;
+        if (oracleValue > poolValue) {
+            percentDiff = (100 * oracleValue.sub(poolValue)).div(poolValue);
+        } else {
+            percentDiff = (100 * poolValue.sub(oracleValue)).div(
+                oracleValue
+            );
+        }
+
+        require(
+            percentDiff < maxPercentDiff,
+            "LLC-Unlock: Manipulation Evident"
+        );
+
+        // this should only happen if baseAsset decimals is NOT 18.
+        if (baseAssetDecimal != 18) {
+            // first case: tokenDecimal is smaller than 18
+            // for baseAssets with less than 18 decimals
+            if (baseAssetDecimal < 18) {
+                // calculate amount of decimals under 18
+                poolValue = poolValue.mul(
+                    10**uint256(18 - baseAssetDecimal)
+                );
+            }
+            // second case: tokenDecimal is greater than 18
+            // for tokens with more than 18 decimals
+            else if (baseAssetDecimal > 18) {
+                // caclulate amount of decimals over 18
+                poolValue = poolValue.div(
+                    10**uint256(baseAssetDecimal - 18)
+                );
+            }
+        }
+
+        // Calculate value of a single LP token
+        // We will add some decimals to this
+        uint256 valueOfSingleLPT = poolValue.mul(100).div(totalLP);
+        // value of users locked LP before paying loan
+        uint256 valueStart =
+            valueOfSingleLPT.mul(_tokensLocked[msg.sender]);
+
+        uint256 loanAfter = _currentLoan.sub(_uTokenAmt);
+
+        // Value After - Collateralization Ratio times LoanAfter (divided by CRNorm, then normalized with valueOfSingleLPT)
+        uint256 valueAfter = CREnd.mul(loanAfter).div(CRNorm).mul(100);
+
+        // LPT to send back. This number should have 18 decimals
+        _LPTokenToReturn =
+            valueStart.sub(valueAfter).div(valueOfSingleLPT);
     }
 
     function tokensLocked(address account) public view returns (uint256) {
