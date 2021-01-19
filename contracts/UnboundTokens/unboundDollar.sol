@@ -65,6 +65,10 @@ contract UnboundDollar is Context, IERC20 {
     //Owner Address
     address _owner;
 
+    // 2-step owner change variables
+    address private _ownerPending;
+    bool private _isPending = true;
+
     //Valuator Contract Address
     address _valuator;
 
@@ -331,9 +335,18 @@ contract UnboundDollar is Context, IERC20 {
         return msg.sender == _owner;
     }
 
-    // Changes owner
+    // Changes owner (part 1)
     function setOwner(address _newOwner) public onlyOwner {
-        _owner = _newOwner;
+        _ownerPending = _newOwner;
+        _isPending = true;
+    }
+
+    // changes owner (part 2)
+    function claimOwner() public {
+        require(_isPending, "Change was not initialized");
+        require(_ownerPending == msg.sender, "You are not pending owner");
+        _owner = _ownerPending;
+        _isPending = false;
     }
 
     // Claim - remove any airdropped tokens

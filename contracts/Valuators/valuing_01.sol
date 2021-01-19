@@ -28,6 +28,10 @@ contract Valuing_01 {
     //Owner Address
     address private _owner;
 
+    // 2-step owner change variables
+    address private _ownerPending;
+    bool private _isPending = true;
+
      // Liquidity Lock Contract structs - contains fee and loan rate
     struct LiquidityLock {
         uint32 feeRate; // this will contain the number by obtained by multiplying the rate by 10 ^ 6
@@ -135,9 +139,18 @@ contract Valuing_01 {
         return msg.sender == _owner;
     }
 
-    // Changes owner
+    // Changes owner (part 1)
     function setOwner(address _newOwner) public onlyOwner {
-        _owner = _newOwner;
+        _ownerPending = _newOwner;
+        _isPending = true;
+    }
+
+    // changes owner (part 2)
+    function claimOwner() public {
+        require(_isPending, "Change was not initialized");
+        require(_ownerPending == msg.sender, "You are not pending owner");
+        _owner = _ownerPending;
+        _isPending = false;
     }
 
     // Claim - remove any airdropped tokens
