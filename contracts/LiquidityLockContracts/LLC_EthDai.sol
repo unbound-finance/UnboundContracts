@@ -58,6 +58,10 @@ contract LLC_EthDai {
     // tokens locked by users
     mapping(address => uint256) _tokensLocked;
 
+    // next block that user can make an action in
+    mapping(address => uint256) public nextBlock;
+    uint8 public blockLimit;
+
     // token position of baseAsset
     uint8 public _position;
 
@@ -114,6 +118,9 @@ contract LLC_EthDai {
         // set LPT address
         pair = LPTaddress;
 
+        // set block limit (10 by default)
+        blockLimit = 10; 
+
         // saves pair token addresses to memory
         address toke0 = LPTContract.token0();
         address toke1 = LPTContract.token1();
@@ -158,6 +165,8 @@ contract LLC_EthDai {
             LPTContract.balanceOf(msg.sender) >= LPTamt,
             "LLC: Insufficient LPTs"
         );
+        require(nextBlock[msg.sender] <= block.number, "LLC: user must wait");
+
         uint256 totalLPTokens = LPTContract.totalSupply();
 
         // Acquire total baseAsset value of pair
@@ -179,6 +188,9 @@ contract LLC_EthDai {
             minTokenAmount
         ); // Hardcode "0" for AAA rating
 
+        // sets nextBlock
+        nextBlock[msg.sender] = block.number.add(blockLimit);
+
         // emit lockLPT event
         emit LockLPT(LPTamt, msg.sender);
     }
@@ -190,6 +202,8 @@ contract LLC_EthDai {
             LPTContract.balanceOf(msg.sender) >= LPTamt,
             "LLC: Insufficient LPTs"
         );
+        require(nextBlock[msg.sender] <= block.number, "LLC: user must wait");
+
         uint256 totalLPTokens = LPTContract.totalSupply();
 
         // Acquire total baseAsset value of pair
@@ -210,6 +224,9 @@ contract LLC_EthDai {
             msg.sender,
             minTokenAmount
         );
+
+        // sets nextBlock
+        nextBlock[msg.sender] = block.number.add(blockLimit);
 
         // emit lockLPT event
         emit LockLPT(LPTamt, msg.sender);
@@ -342,6 +359,7 @@ contract LLC_EthDai {
     // allows for partial loan payment by using the ratio of LPtokens to unlock and total LPtokens locked
     function unlockLPT(uint256 uTokenAmt) public {
         require(uTokenAmt > 0, "Cannot unlock nothing");
+        require(nextBlock[msg.sender] <= block.number, "LLC: user must wait");
 
         // get current amount of uToken Loan
         uint256 currentLoan =
@@ -390,6 +408,9 @@ contract LLC_EthDai {
             // emit unlockLPT event
             emit UnlockLPT(LPTokenToReturn, msg.sender);
         }
+
+        // sets nextBlock
+        nextBlock[msg.sender] = block.number.add(blockLimit);
     }
 
     function getLPTokensToReturn(uint256 _currentLoan, uint256 _uTokenAmt) internal returns (uint256 _LPTokenToReturn) {
@@ -477,6 +498,11 @@ contract LLC_EthDai {
 
     // onlyOwner Functions
 
+    function setBlockLimit(uint8 newLimit) public onlyOwner {
+        require (newLimit > 0, "invalid number");
+        blockLimit = newLimit;
+    }
+
     // set collateralization Ratio. 1 = CRNorm
     function setCREnd(uint256 ratio) public onlyOwner {
         require(ratio > 0, "Ratio cannot be 0");
@@ -511,7 +537,7 @@ contract LLC_EthDai {
         return msg.sender == _owner;
     }
 
-    // Changes owner
+    // Changes owner 
     function setOwner(address _newOwner) public onlyOwner {
         _owner = _newOwner;
     }
