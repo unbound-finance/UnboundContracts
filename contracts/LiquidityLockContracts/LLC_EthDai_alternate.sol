@@ -445,7 +445,7 @@ contract LLC_EthDai {
         (uint112 _token0, uint112 _token1, ) = LPTContract.getReserves();
 
         // obtain total USD values
-        uint256 oraclePrice = uint256(getLatestPrice());
+        uint256 oraclePrice = getLatestPrice();
         uint256 poolValue;
         uint256 oracleValue;
         if (_position == 0) {
