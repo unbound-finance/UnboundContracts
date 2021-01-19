@@ -500,7 +500,7 @@ contract LLC_EthDai {
 
         // Calculate value of a single LP token
         // We will add some decimals to this
-        uint256 valueOfSingleLPT = poolValue.mul(100).div(totalLP);
+        uint256 valueOfSingleLPT = poolValue.mul(10 ** 18).div(totalLP);
         // value of users locked LP before paying loan
         uint256 valueStart =
             valueOfSingleLPT.mul(_tokensLocked[msg.sender]);
@@ -508,7 +508,7 @@ contract LLC_EthDai {
         uint256 loanAfter = _currentLoan.sub(_uTokenAmt);
 
         // Value After - Collateralization Ratio times LoanAfter (divided by CRNorm, then normalized with valueOfSingleLPT)
-        uint256 valueAfter = CREnd.mul(loanAfter).div(CRNorm).mul(100);
+        uint256 valueAfter = CREnd.mul(loanAfter).div(CRNorm).mul(10 ** 18);
 
         // LPT to send back. This number should have 18 decimals
         _LPTokenToReturn =
