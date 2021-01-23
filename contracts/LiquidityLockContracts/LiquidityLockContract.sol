@@ -54,7 +54,7 @@ contract LiquidityLockContract {
 
     // 2-step owner change variables
     address private _ownerPending;
-    bool private _isPending = true;
+    bool private _isPending = false;
 
     // If killSwitch = true, cannot lock LPT and mint new uTokens
     bool public killSwitch;
