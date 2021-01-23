@@ -174,16 +174,7 @@ contract LLC_EthDai is LLC_Oracle_Library {
         }
     }
 
-    // Lock/Unlock functions
-    // Mint path
-    function lockLPTWithPermit(
-        uint256 LPTamt,
-        uint256 deadline,
-        uint8 v,
-        bytes32 r,
-        bytes32 s,
-        uint256 minTokenAmount
-    ) public {
+    function lockLPTBody(uint256 LPTamt) internal returns(uint256 LPTValueInDai) {
         require(!killSwitch, "LLC: This LLC is Deprecated");
         require(
             LPTContract.balanceOf(msg.sender) >= LPTamt,
@@ -196,11 +187,24 @@ contract LLC_EthDai is LLC_Oracle_Library {
         // Acquire total baseAsset value of pair
         uint256 totalUSD = getValue();
 
-        // This should compute % value of Liq pool in Dai. Cannot have decimals in Solidity
-        uint256 LPTValueInDai = totalUSD.mul(LPTamt).div(totalLPTokens);
-
         // map locked tokens to user address
         _tokensLocked[msg.sender] = _tokensLocked[msg.sender].add(LPTamt);
+
+        // This should compute % value of Liq pool in Dai. Cannot have decimals in Solidity
+        LPTValueInDai = totalUSD.mul(LPTamt).div(totalLPTokens);
+    }
+
+    // Lock/Unlock functions
+    // Mint path
+    function lockLPTWithPermit(
+        uint256 LPTamt,
+        uint256 deadline,
+        uint8 v,
+        bytes32 r,
+        bytes32 s,
+        uint256 minTokenAmount
+    ) public {
+        uint256 LPTValueInDai = lockLPTBody(LPTamt);
 
         // call Permit and Transfer
         transferLPTPermit(msg.sender, LPTamt, deadline, v, r, s);
@@ -221,23 +225,7 @@ contract LLC_EthDai is LLC_Oracle_Library {
 
     // Requires approval first (permit excluded for simplicity)
     function lockLPT(uint256 LPTamt, uint256 minTokenAmount) public {
-        require(!killSwitch, "LLC: This LLC is Deprecated");
-        require(
-            LPTContract.balanceOf(msg.sender) >= LPTamt,
-            "LLC: Insufficient LPTs"
-        );
-        require(nextBlock[msg.sender] <= block.number, "LLC: user must wait");
-
-        uint256 totalLPTokens = LPTContract.totalSupply();
-
-        // Acquire total baseAsset value of pair
-        uint256 totalUSD = getValue();
-
-        // This should compute % value of Liq pool in Dai.
-        uint256 LPTValueInDai = totalUSD.mul(LPTamt).div(totalLPTokens);
-
-        // map locked tokens to user
-        _tokensLocked[msg.sender] = _tokensLocked[msg.sender].add(LPTamt);
+        uint256 LPTValueInDai = lockLPTBody(LPTamt);
 
         // transfer LPT to the address
         transferLPT(LPTamt);
