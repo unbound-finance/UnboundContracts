@@ -11,6 +11,8 @@ import "../Interfaces/IValuing_01.sol";
 import "../Interfaces/IUnboundToken.sol";
 import "../Interfaces/IERC20.sol";
 
+import "./LLC_oracle_library.sol";
+
 // ---------------------------------------------------------------------------------------
 //                                Liquidity Lock Contract V1
 //
@@ -33,7 +35,7 @@ import "../Interfaces/IERC20.sol";
 // registered with the valuing contract. This can only be completed by the owner (or
 // eventually a DAO).
 // ----------------------------------------------------------------------------------------
-contract LLC_EthDai {
+contract LLC_EthDai is LLC_Oracle_Library {
     using SafeMath for uint256;
     using Address for address;
 
@@ -88,9 +90,12 @@ contract LLC_EthDai {
     IERC20_2 private baseAssetErc20;
     IUnboundToken private unboundContract;
 
-    // ChainLink Oracle Interface
-    AggregatorV3Interface internal priceFeed;
-    AggregatorV3Interface internal priceFeedBase;
+    // Oracle Address Arrays
+    address[] public baseAssets;
+    address[] public tokenFeeds;
+
+    bool private triangulateBaseAsset;
+    bool private triangulatePriceFeed;
 
     // Modifiers
     modifier onlyOwner() {
@@ -104,8 +109,8 @@ contract LLC_EthDai {
         address valuingAddress,
         address LPTaddress,
         address baseAsset,
-        address priceFeedAddress,
-        address priceFeedBaseAsset,
+        address[] memory priceFeedAddress,
+        address[] memory priceFeedBaseAsset,
         address uTokenAddr
     ) {
         _owner = msg.sender;
@@ -149,9 +154,24 @@ contract LLC_EthDai {
         // set Collaterization Normalization
         CRNorm = 10000;
 
-        // set ChainLink feed address
-        priceFeed = AggregatorV3Interface(priceFeedAddress);
-        priceFeedBase = AggregatorV3Interface(priceFeedBaseAsset);
+        require(priceFeedBaseAsset.length <= 2, "invalid address args");
+        require(priceFeedAddress.length <= 2, "invalid address args");
+        // set ChainLink addresses
+        baseAssets = priceFeedBaseAsset;
+        tokenFeeds = priceFeedAddress; 
+
+        // sets if triangulation is enabled
+        if (priceFeedBaseAsset.length == 2) {
+            triangulateBaseAsset = true;
+        } else {
+            triangulateBaseAsset = false;
+        }
+
+        if (priceFeedAddress.length == 2) {
+            triangulatePriceFeed = true;
+        } else {
+            triangulatePriceFeed = true;
+        }
     }
 
     // Lock/Unlock functions
@@ -238,8 +258,7 @@ contract LLC_EthDai {
 
     // Acquires total value of liquidity pool (in baseAsset) and normalizes decimals to 18.
     function getValue() internal view returns (uint256 _totalUSD) {
-        // check if baseAsset value is stable
-        checkBaseAssetValue();
+        checkBaseAssetPrices();
 
         // obtain amounts of tokens in both reserves.
         (uint112 _token0, uint112 _token1, ) = LPTContract.getReserves();
@@ -254,7 +273,7 @@ contract LLC_EthDai {
         uint256 _totalUSDOracle;
 
         // get latest price from oracle
-        _totalUSDOracle = uint256(getLatestPrice());
+        _totalUSDOracle = getPriceFeeds();
 
         // get total value
         if (_position == 0) {
@@ -308,19 +327,8 @@ contract LLC_EthDai {
         }
     }
 
-    // Returns latest price from ChainLink Oracle
-    function getLatestPrice() public view returns (int256) {
-        (, int256 price, , , ) = priceFeed.latestRoundData();
-        return price;
-    }
-
     function getDecimals() internal view returns (uint256) {
-        return uint256(priceFeed.decimals());
-    }
-
-    function getLatestPriceBaseAsset() public view returns (int256) {
-        (, int256 price, , , ) = priceFeedBase.latestRoundData();
-        return price;
+        return uint256(AggregatorV3Interface(tokenFeeds[0]).decimals());
     }
 
     // calls transfer only, for use with non-permit lock function
@@ -347,15 +355,22 @@ contract LLC_EthDai {
         );
     }
 
-    // This currently works for stablecoins... would be more challenging if baseasset is not a stablecoin.
-    function checkBaseAssetValue() internal view {
-        uint256 _baseAssetValue = uint256(getLatestPriceBaseAsset());
-        _baseAssetValue = _baseAssetValue / (10**6);
-        require(
-            _baseAssetValue <= (100 + maxPercentDiffBaseAsset) &&
-                _baseAssetValue >= (100 - maxPercentDiffBaseAsset),
-            "stableCoin not stable"
-        );
+    function getPriceFeeds() private view returns(uint256) {
+        // get latest price from oracle
+        if (triangulatePriceFeed) {
+            return getLatestPriceTriangulate(tokenFeeds[0], tokenFeeds[1]);
+        } else {
+            return getLatestPrice(tokenFeeds[0]);
+        }
+    }
+
+    function checkBaseAssetPrices() private view {
+        // check if baseAsset value is stable
+        if (triangulateBaseAsset) {
+            checkBaseAssetValueTriangulate(baseAssets[0], baseAssets[1], maxPercentDiffBaseAsset);
+        } else {
+            checkBaseAssetValue(baseAssets[0], maxPercentDiffBaseAsset);
+        }
     }
 
     // Burn Path
@@ -419,14 +434,14 @@ contract LLC_EthDai {
 
     function getLPTokensToReturn(uint256 _currentLoan, uint256 _uTokenAmt) internal returns (uint256 _LPTokenToReturn) {
         // check if baseAsset value is stable
-        checkBaseAssetValue();
+        checkBaseAssetPrices();
 
         // Acquire Pool Values
         uint256 totalLP = LPTContract.totalSupply();
         (uint112 _token0, uint112 _token1, ) = LPTContract.getReserves();
 
         // obtain total USD values
-        uint256 oraclePrice = uint256(getLatestPrice());
+        uint256 oraclePrice = getPriceFeeds();
         uint256 poolValue;
         uint256 oracleValue;
         if (_position == 0) {

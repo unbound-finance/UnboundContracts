@@ -11,8 +11,8 @@ contract LLC_LinkDai is LLC_EthDai {
         address valuingAddress,
         address LPTaddress,
         address stableCoin,
-        address priceFeedAddress,
-        address baseAssetFeed,
+        address[] memory priceFeedAddress,
+        address[] memory baseAssetFeed,
         address UNDAddr
     ) LLC_EthDai(valuingAddress, LPTaddress, stableCoin, priceFeedAddress, baseAssetFeed, UNDAddr) {}
 }
