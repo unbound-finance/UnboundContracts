@@ -12,7 +12,7 @@ import "../Interfaces/chainlinkOracleInterface.sol";
 // import "../Interfaces/IERC20.sol";
 
 
-contract LLC_Oracle_Library {
+library OracleLibrary {
     using SafeMath for uint256;
     using Address for address;
 
