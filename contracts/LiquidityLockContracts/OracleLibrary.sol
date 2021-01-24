@@ -101,5 +101,23 @@ library OracleLibrary {
         }
     }
 
+    function getPriceFeeds(bool _triangulatePriceFeed, address[] memory _addresses) internal view returns(uint256) {
+        // get latest price from oracle
+        if (_triangulatePriceFeed) {
+            return getLatestPriceTriangulate(_addresses[0], _addresses[1]);
+        } else {
+            return getLatestPrice(_addresses[0]);
+        }
+    }
+
+    function checkBaseAssetPrices(bool _triangulateBaseAsset, uint8 _maxPercentDiffBaseAsset, address[] memory _addresses) internal view {
+        // check if baseAsset value is stable
+        if (_triangulateBaseAsset) {
+            checkBaseAssetValueTriangulate(_addresses[0], _addresses[1], _maxPercentDiffBaseAsset);
+        } else {
+            checkBaseAssetValue(_addresses[0], _maxPercentDiffBaseAsset);
+        }
+    }
+
     
 }

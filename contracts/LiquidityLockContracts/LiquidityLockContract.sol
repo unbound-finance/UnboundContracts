@@ -247,7 +247,7 @@ contract LiquidityLockContract {
 
     // Acquires total value of liquidity pool (in baseAsset) and normalizes decimals to 18.
     function getValue() internal view returns (uint256 _totalUSD) {
-        checkBaseAssetPrices();
+        OracleLibrary.checkBaseAssetPrices(triangulateBaseAsset, maxPercentDiffBaseAsset, baseAssets);
 
         // obtain amounts of tokens in both reserves.
         (uint112 _token0, uint112 _token1, ) = LPTContract.getReserves();
@@ -262,7 +262,7 @@ contract LiquidityLockContract {
         uint256 _totalUSDOracle;
 
         // get latest price from oracle
-        _totalUSDOracle = getPriceFeeds();
+        _totalUSDOracle = OracleLibrary.getPriceFeeds(triangulatePriceFeed, tokenFeeds);
 
         // get total value
         if (_position == 0) {
@@ -340,23 +340,7 @@ contract LiquidityLockContract {
         );
     }
 
-    function getPriceFeeds() private view returns(uint256) {
-        // get latest price from oracle
-        if (triangulatePriceFeed) {
-            return OracleLibrary.getLatestPriceTriangulate(tokenFeeds[0], tokenFeeds[1]);
-        } else {
-            return OracleLibrary.getLatestPrice(tokenFeeds[0]);
-        }
-    }
-
-    function checkBaseAssetPrices() private view {
-        // check if baseAsset value is stable
-        if (triangulateBaseAsset) {
-            OracleLibrary.checkBaseAssetValueTriangulate(baseAssets[0], baseAssets[1], maxPercentDiffBaseAsset);
-        } else {
-            OracleLibrary.checkBaseAssetValue(baseAssets[0], maxPercentDiffBaseAsset);
-        }
-    }
+    
 
     // Burn Path
     //
@@ -419,14 +403,14 @@ contract LiquidityLockContract {
 
     function getLPTokensToReturn(uint256 _currentLoan, uint256 _uTokenAmt) internal returns (uint256 _LPTokenToReturn) {
         // check if baseAsset value is stable
-        checkBaseAssetPrices();
+        OracleLibrary.checkBaseAssetPrices(triangulateBaseAsset, maxPercentDiffBaseAsset, baseAssets);
 
         // Acquire Pool Values
         uint256 totalLP = LPTContract.totalSupply();
         (uint112 _token0, uint112 _token1, ) = LPTContract.getReserves();
 
         // obtain total USD values
-        uint256 oraclePrice = getPriceFeeds();
+        uint256 oraclePrice = OracleLibrary.getPriceFeeds(triangulatePriceFeed, tokenFeeds);
         uint256 poolValue;
         uint256 oracleValue;
         if (_position == 0) {
