@@ -269,13 +269,13 @@ contract LiquidityLockContract {
             // _totalUSDOracle = _token1 * _totalUSDOracle + _token0;
             _totalUSDOracle = uint256(_token1)
                 .mul(_totalUSDOracle)
-                .div(10**getDecimals())
+                .div(10**OracleLibrary.getDecimals(tokenFeeds[0]))
                 .add(_token0);
         } else {
             // _totalUSDOracle = _token0 * _totalUSDOracle + _token1;
             _totalUSDOracle = uint256(_token0)
                 .mul(_totalUSDOracle)
-                .div(10**getDecimals())
+                .div(10**OracleLibrary.getDecimals(tokenFeeds[0]))
                 .add(_token1);
         }
 
@@ -314,10 +314,6 @@ contract LiquidityLockContract {
                 _totalUSD = _totalUSD.div(10**uint256(baseAssetDecimal - 18));
             }
         }
-    }
-
-    function getDecimals() internal view returns (uint256) {
-        return uint256(AggregatorV3Interface(tokenFeeds[0]).decimals());
     }
 
     // calls transfer only, for use with non-permit lock function
@@ -437,13 +433,13 @@ contract LiquidityLockContract {
             poolValue = _token0 * 2;
             oracleValue = uint256(_token1)
                 .mul(oraclePrice)
-                .div(10**getDecimals())
+                .div(10**OracleLibrary.getDecimals(tokenFeeds[0]))
                 .add(_token0);
         } else {
             poolValue = _token1 * 2;
             oracleValue = uint256(_token0)
                 .mul(oraclePrice)
-                .div(10**getDecimals())
+                .div(10**OracleLibrary.getDecimals(tokenFeeds[0]))
                 .add(_token1);
         }
 

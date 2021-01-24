@@ -16,11 +16,16 @@ library OracleLibrary {
     using SafeMath for uint256;
     using Address for address;
 
+    function getDecimals(address query) internal view returns (uint256) {
+        return uint256(AggregatorV3Interface(query).decimals());
+    }
+
     // check baseAsset price for existing pair on chainlink (direct)
     function checkBaseAssetValue(address baseAssetAddr, uint8 percentDiff) internal view {
         (, int256 price, , , ) = AggregatorV3Interface(baseAssetAddr).latestRoundData();
         uint256 _baseAssetValue = uint256(price);
-        _baseAssetValue = _baseAssetValue / (10**6);
+        uint256 _decimals = getDecimals(baseAssetAddr);
+        _baseAssetValue = _baseAssetValue / (10**(_decimals - 2));
         require(
             _baseAssetValue <= (100 + percentDiff) &&
                 _baseAssetValue >= (100 - percentDiff),
@@ -36,9 +41,12 @@ library OracleLibrary {
         uint256 _baseAssetValue = uint256(price);
         uint256 _secondBaseAsset = uint256(price2);
         
-        // assumes both pair oracle feeds have 8 decimals
+        // get amount of decimals to normalize by.
+        uint256 firstBaseDecimal = getDecimals(baseAssetAddr);
+        uint256 secondBaseDecimal = getDecimals(secondBaseAsset);
+        uint256 toNormalize = firstBaseDecimal.add(secondBaseDecimal).sub(2);
 
-        uint256 finalPrice = _baseAssetValue.mul(_secondBaseAsset).div(10**12);
+        uint256 finalPrice = _baseAssetValue.mul(_secondBaseAsset).div(10**(toNormalize));
         
         require(
             finalPrice <= (100 + percentDiff) &&
@@ -66,13 +74,31 @@ library OracleLibrary {
         uint256 batPrice = uint256(price);
         uint256 ethPrice = uint256(price2);
 
-        // normalize BAT price
-        batPrice = batPrice.div(10 ** 10);
+        // get decimals
+        uint256 batPriceDecimal = getDecimals(erc20PriceAddr);
+        uint256 ethPriceDecimal = getDecimals(ethPriceAddr);
+
+        // check if decimals is 8, then normalize
+        batPrice = normalizeTo8(batPrice, batPriceDecimal);
+        ethPrice = normalizeTo8(ethPrice, ethPriceDecimal);
 
         // multiply prices
         uint256 finalPrice = batPrice.mul(ethPrice);
 
         return finalPrice;
+    }
+
+    function normalizeTo8(uint256 price, uint256 _theDecimal) private view returns(uint256 newPrice) {
+        uint256 difference;
+        if (_theDecimal > 8) {
+            difference = _theDecimal.sub(8);
+            newPrice = price.div(10**difference);
+        } else if (_theDecimal < 8) {
+            difference = uint256(8).sub(_theDecimal);
+            newPrice = price.mul(10**difference);
+        } else if (_theDecimal == 8) {
+            newPrice = price;
+        }
     }
 
     
