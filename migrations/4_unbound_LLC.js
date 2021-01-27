@@ -5,9 +5,8 @@ const LLC = artifacts.require('LLC_EthDai');
 const uniFactory = artifacts.require('UniswapV2Factory');
 const testDai = artifacts.require('TestDai');
 const testEth = artifacts.require('TestEth');
-const testAggregatorEth = artifacts.require('TestAggregatorProxyEth');
-const testAggregatorDai = artifacts.require('TestAggregatorProxyDai');
-// 1182.732;
+const testAggregatorEthUsd = artifacts.require('TestAggregatorProxyEthUsd');
+const testAggregatorDaiUsd = artifacts.require('TestAggregatorProxyDaiUsd');
 
 const loanRate = 500000;
 const feeRate = 5000;
@@ -29,12 +28,12 @@ module.exports = async (deployer, network, accounts) => {
   const undContract = UndAddress === '' ? await uDai.deployed() : await uDai.at(UndAddress);
   const valueContract = valuerAddress === '' ? await valuer.deployed() : await valuer.at(valuerAddress);
   if (priceFeedAddress === '') {
-    await deployer.deploy(testAggregatorEth);
-    priceFeedAddress = testAggregatorEth.address;
+    await deployer.deploy(testAggregatorEthUsd);
+    priceFeedAddress = testAggregatorEthUsd.address;
   }
   if (baseAssetFeed === '') {
-    await deployer.deploy(testAggregatorDai);
-    baseAssetFeed = testAggregatorDai.address;
+    await deployer.deploy(testAggregatorDaiUsd);
+    baseAssetFeed = testAggregatorDaiUsd.address;
   }
 
   await deployer.deploy(
@@ -42,11 +41,12 @@ module.exports = async (deployer, network, accounts) => {
     valueContract.address,
     LPTAddress,
     stablecoinAddress,
-    priceFeedAddress,
-    baseAssetFeed,
+    [priceFeedAddress],
+    [baseAssetFeed],
     undContract.address
   );
 
   await valueContract.addLLC(LLC.address, undContract.address, loanRate, feeRate);
+
   await undContract.changeValuator(valueContract.address);
 };

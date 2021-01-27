@@ -19,8 +19,8 @@ const uniFactory = artifacts.require('UniswapV2Factory');
 const uniPair = artifacts.require('UniswapV2Pair');
 const weth9 = artifacts.require('WETH9');
 const router = artifacts.require('UniswapV2Router02');
-const testAggregatorEth = artifacts.require('TestAggregatorProxyEth');
-const testAggregatorDai = artifacts.require('TestAggregatorProxyDai');
+const testAggregatorEth = artifacts.require('TestAggregatorProxyEthUsd');
+const testAggregatorDai = artifacts.require('TestAggregatorProxyDaiUsd');
 
 contract('LLC', function (_accounts) {
   // Initial settings
@@ -37,6 +37,7 @@ contract('LLC', function (_accounts) {
   const stakeSharesPercent = 50;
   const safuSharesPercent = 50;
   const zeroAddress = '0x0000000000000000000000000000000000000000';
+  const blockLimit = 10;
 
   let und;
   let valueContract;
@@ -49,6 +50,7 @@ contract('LLC', function (_accounts) {
   let stakePair;
   let priceFeedEth;
   let priceFeedDai;
+  let lastBlock;
 
   //=================
   // Default Functionality
@@ -67,11 +69,13 @@ contract('LLC', function (_accounts) {
       priceFeedDai = await testAggregatorDai.deployed();
 
       // Set price to aggregator
-      await priceFeedEth.setPrice(40000000000);
-      await priceFeedDai.setPrice(100000000);
+      const ethPrice = 128093000000;
+      const daiPrice = 100275167;
+      await priceFeedEth.setPrice(ethPrice);
+      await priceFeedDai.setPrice(daiPrice);
 
       await tDai.approve(route.address, daiAmount);
-      await tEth.approve(route.address, 1000);
+      await tEth.approve(route.address, parseInt((daiAmount * daiPrice) / ethPrice));
 
       let d = new Date();
       let time = d.getTime();
@@ -79,7 +83,7 @@ contract('LLC', function (_accounts) {
         tDai.address,
         tEth.address,
         daiAmount,
-        1000,
+        parseInt((daiAmount * daiPrice) / ethPrice),
         3000,
         10,
         owner,
@@ -92,6 +96,16 @@ contract('LLC', function (_accounts) {
       // Lock some pool
       await pair.approve(lockContract.address, 1000);
       await lockContract.lockLPT(1000, 1);
+      const block = await web3.eth.getBlock('latest');
+      lastBlock = block.number;
+    });
+
+    it('cannot lock by block limit', async () => {
+      await expectRevert(lockContract.lockLPT(10, 1), 'LLC: user must wait');
+    });
+
+    it('cannot unlock by block limit', async () => {
+      await expectRevert(lockContract.unlockLPT(1), 'LLC: user must wait');
     });
 
     it('default kill switch', async () => {
@@ -124,21 +138,31 @@ contract('LLC', function (_accounts) {
       // Check public functions
       const anyNumber = 123;
       const b32 = web3.utils.asciiToHex('1');
+      await waitBlock();
 
       await expectRevert(lockContract.lockLPTWithPermit(1, 1, b32, b32, b32, anyNumber), 'LLC: This LLC is Deprecated');
       await expectRevert(lockContract.lockLPT(1, anyNumber), 'LLC: This LLC is Deprecated');
       await lockContract.unlockLPT(1); // Be able to unlock under killed status
+      const block = await web3.eth.getBlock('latest');
+      lastBlock = block.number;
 
       // Rechange kill switch
       expectEvent(await lockContract.disableLock(), 'KillSwitch', { position: false });
       assert.isFalse(await lockContract.killSwitch(), 'Changed killSwitch incorrect');
     });
 
-    it('can set owner', async () => {
+    it('cannot claim owner', async () => {
+      await expectRevert(lockContract.claimOwner(), 'Change was not initialized');
       await lockContract.setOwner(user);
+      await expectRevert(lockContract.claimOwner(), 'You are not pending owner');
+    });
+
+    it('can set owner', async () => {
+      await lockContract.claimOwner({ from: user });
       assert.isTrue(await lockContract.isOwner({ from: user }), 'Set owner is not working');
-      await expectRevert(lockContract.setOwner(user), 'Ownable: caller is not the owner');
+      await expectRevert(lockContract.setOwner(owner), 'Ownable: caller is not the owner');
       await lockContract.setOwner(owner, { from: user });
+      await lockContract.claimOwner({ from: owner });
     });
 
     it('can set valuing address', async () => {
@@ -147,6 +171,7 @@ contract('LLC', function (_accounts) {
       await und.changeValuator(newValuing.address);
 
       const beforeBalance = parseInt(await und.balanceOf(owner));
+      await waitBlock();
 
       await lockContract.setValuingAddress(newValuing.address);
       await pair.approve(lockContract.address, 10);
@@ -156,4 +181,13 @@ contract('LLC', function (_accounts) {
       assert.isTrue(balance > beforeBalance, 'valuing address is incorrect');
     });
   });
+
+  async function waitBlock() {
+    let latestBlock;
+    do {
+      await tDai._mint(owner, 1);
+      const block = await web3.eth.getBlock('latest');
+      latestBlock = block.number;
+    } while (lastBlock + blockLimit > latestBlock);
+  }
 });

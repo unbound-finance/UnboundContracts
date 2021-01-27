@@ -129,7 +129,7 @@ contract LiquidityLockContract {
         pair = LPTaddress;
 
         // set block limit (10 by default)
-        blockLimit = 10; 
+        blockLimit = 10;
 
         // saves pair token addresses to memory
         address toke0 = LPTContract.token0();
@@ -159,7 +159,7 @@ contract LiquidityLockContract {
         require(priceFeedAddress.length <= 2, "invalid address args");
         // set ChainLink addresses
         baseAssets = priceFeedBaseAsset;
-        tokenFeeds = priceFeedAddress; 
+        tokenFeeds = priceFeedAddress;
 
         // sets if triangulation is enabled
         if (priceFeedBaseAsset.length == 2) {
@@ -175,7 +175,10 @@ contract LiquidityLockContract {
         }
     }
 
-    function lockLPTBody(uint256 LPTamt) internal returns(uint256 LPTValueInDai) {
+    function lockLPTBody(uint256 LPTamt)
+        internal
+        returns (uint256 LPTValueInDai)
+    {
         require(!killSwitch, "LLC: This LLC is Deprecated");
         require(
             LPTContract.balanceOf(msg.sender) >= LPTamt,
@@ -247,7 +250,11 @@ contract LiquidityLockContract {
 
     // Acquires total value of liquidity pool (in baseAsset) and normalizes decimals to 18.
     function getValue() internal view returns (uint256 _totalUSD) {
-        OracleLibrary.checkBaseAssetPrices(triangulateBaseAsset, maxPercentDiffBaseAsset, baseAssets);
+        OracleLibrary.checkBaseAssetPrices(
+            triangulateBaseAsset,
+            maxPercentDiffBaseAsset,
+            baseAssets
+        );
 
         // obtain amounts of tokens in both reserves.
         (uint112 _token0, uint112 _token1, ) = LPTContract.getReserves();
@@ -262,8 +269,14 @@ contract LiquidityLockContract {
         uint256 _totalUSDOracle;
 
         // get latest price from oracle
-        _totalUSDOracle = OracleLibrary.getPriceFeeds(triangulatePriceFeed, tokenFeeds);
-
+        _totalUSDOracle = OracleLibrary.getPriceFeeds(
+            triangulatePriceFeed,
+            tokenFeeds
+        );
+        uint256 a =
+            uint256(_token1).mul(_totalUSDOracle).div(
+                10**OracleLibrary.getDecimals(tokenFeeds[0])
+            );
         // get total value
         if (_position == 0) {
             // _totalUSDOracle = _token1 * _totalUSDOracle + _token0;
@@ -278,7 +291,6 @@ contract LiquidityLockContract {
                 .div(10**OracleLibrary.getDecimals(tokenFeeds[0]))
                 .add(_token1);
         }
-
         // Calculate percent difference (x2 - x1 / x1)
         uint256 percentDiff;
         if (_totalUSDOracle > _totalUSD) {
@@ -340,8 +352,6 @@ contract LiquidityLockContract {
         );
     }
 
-    
-
     // Burn Path
     //
     // allows for partial loan payment by using the ratio of LPtokens to unlock and total LPtokens locked
@@ -377,7 +387,8 @@ contract LiquidityLockContract {
             // emit unlockLPT event
             emit UnlockLPT(_tokensLocked[msg.sender], msg.sender);
         } else {
-            uint256 LPTokenToReturn = getLPTokensToReturn(currentLoan, uTokenAmt);
+            uint256 LPTokenToReturn =
+                getLPTokensToReturn(currentLoan, uTokenAmt);
 
             // Burning of uTokens will happen first
             valuingContract.unboundRemove(uTokenAmt, msg.sender);
@@ -401,16 +412,24 @@ contract LiquidityLockContract {
         nextBlock[msg.sender] = block.number.add(blockLimit);
     }
 
-    function getLPTokensToReturn(uint256 _currentLoan, uint256 _uTokenAmt) internal returns (uint256 _LPTokenToReturn) {
+    function getLPTokensToReturn(uint256 _currentLoan, uint256 _uTokenAmt)
+        internal
+        returns (uint256 _LPTokenToReturn)
+    {
         // check if baseAsset value is stable
-        OracleLibrary.checkBaseAssetPrices(triangulateBaseAsset, maxPercentDiffBaseAsset, baseAssets);
+        OracleLibrary.checkBaseAssetPrices(
+            triangulateBaseAsset,
+            maxPercentDiffBaseAsset,
+            baseAssets
+        );
 
         // Acquire Pool Values
         uint256 totalLP = LPTContract.totalSupply();
         (uint112 _token0, uint112 _token1, ) = LPTContract.getReserves();
 
         // obtain total USD values
-        uint256 oraclePrice = OracleLibrary.getPriceFeeds(triangulatePriceFeed, tokenFeeds);
+        uint256 oraclePrice =
+            OracleLibrary.getPriceFeeds(triangulatePriceFeed, tokenFeeds);
         uint256 poolValue;
         uint256 oracleValue;
         if (_position == 0) {
@@ -433,9 +452,7 @@ contract LiquidityLockContract {
         if (oracleValue > poolValue) {
             percentDiff = (100 * oracleValue.sub(poolValue)).div(poolValue);
         } else {
-            percentDiff = (100 * poolValue.sub(oracleValue)).div(
-                oracleValue
-            );
+            percentDiff = (100 * poolValue.sub(oracleValue)).div(oracleValue);
         }
 
         require(
@@ -449,35 +466,29 @@ contract LiquidityLockContract {
             // for baseAssets with less than 18 decimals
             if (baseAssetDecimal < 18) {
                 // calculate amount of decimals under 18
-                poolValue = poolValue.mul(
-                    10**uint256(18 - baseAssetDecimal)
-                );
+                poolValue = poolValue.mul(10**uint256(18 - baseAssetDecimal));
             }
             // second case: tokenDecimal is greater than 18
             // for tokens with more than 18 decimals
             else if (baseAssetDecimal > 18) {
                 // caclulate amount of decimals over 18
-                poolValue = poolValue.div(
-                    10**uint256(baseAssetDecimal - 18)
-                );
+                poolValue = poolValue.div(10**uint256(baseAssetDecimal - 18));
             }
         }
 
         // Calculate value of a single LP token
         // We will add some decimals to this
-        uint256 valueOfSingleLPT = poolValue.mul(10 ** 18).div(totalLP);
+        uint256 valueOfSingleLPT = poolValue.mul(10**18).div(totalLP);
         // value of users locked LP before paying loan
-        uint256 valueStart =
-            valueOfSingleLPT.mul(_tokensLocked[msg.sender]);
+        uint256 valueStart = valueOfSingleLPT.mul(_tokensLocked[msg.sender]);
 
         uint256 loanAfter = _currentLoan.sub(_uTokenAmt);
 
         // Value After - Collateralization Ratio times LoanAfter (divided by CRNorm, then normalized with valueOfSingleLPT)
-        uint256 valueAfter = CREnd.mul(loanAfter).div(CRNorm).mul(10 ** 18);
+        uint256 valueAfter = CREnd.mul(loanAfter).div(CRNorm).mul(10**18);
 
         // LPT to send back. This number should have 18 decimals
-        _LPTokenToReturn =
-            valueStart.sub(valueAfter).div(valueOfSingleLPT);
+        _LPTokenToReturn = valueStart.sub(valueAfter).div(valueOfSingleLPT);
     }
 
     function tokensLocked(address account) public view returns (uint256) {
@@ -487,7 +498,7 @@ contract LiquidityLockContract {
     // onlyOwner Functions
 
     function setBlockLimit(uint8 newLimit) public onlyOwner {
-        require (newLimit > 0, "invalid number");
+        require(newLimit > 0, "invalid number");
         blockLimit = newLimit;
     }
 
