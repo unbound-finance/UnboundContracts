@@ -466,18 +466,29 @@ contract LiquidityLockContract {
         // Calculate value of a single LP token
         // We will add some decimals to this
         uint256 valueOfSingleLPT = poolValue.mul(10 ** 18).div(totalLP);
-        // value of users locked LP before paying loan
-        uint256 valueStart =
-            valueOfSingleLPT.mul(_tokensLocked[msg.sender]);
 
-        uint256 loanAfter = _currentLoan.sub(_uTokenAmt);
+        // get current CR Ratio
+        uint256 CRNow = (valueOfSingleLPT.mul(_tokensLocked[msg.sender])).div(_currentLoan);
 
-        // Value After - Collateralization Ratio times LoanAfter (divided by CRNorm, then normalized with valueOfSingleLPT)
-        uint256 valueAfter = CREnd.mul(loanAfter).div(CRNorm).mul(10 ** 18);
 
-        // LPT to send back. This number should have 18 decimals
-        _LPTokenToReturn =
-            valueStart.sub(valueAfter).div(valueOfSingleLPT);
+        if (CREnd.div(CRNorm) > CRNow) {
+            // LPT to send back. This number should have 18 decimals
+            _LPTokenToReturn = (_tokensLocked[msg.sender].mul(_uTokenAmt)).div(_currentLoan);
+        }
+        else {
+            // value of users locked LP before paying loan
+            uint256 valueStart =
+                valueOfSingleLPT.mul(_tokensLocked[msg.sender]);
+
+            uint256 loanAfter = _currentLoan.sub(_uTokenAmt);
+
+            // Value After - Collateralization Ratio times LoanAfter (divided by CRNorm, then normalized with valueOfSingleLPT)
+            uint256 valueAfter = CREnd.mul(loanAfter).div(CRNorm).mul(10 ** 18);
+
+            // LPT to send back. This number should have 18 decimals
+            _LPTokenToReturn =
+                valueStart.sub(valueAfter).div(valueOfSingleLPT);
+        }
     }
 
     function tokensLocked(address account) public view returns (uint256) {
