@@ -38,6 +38,8 @@ contract('LLC', function (_accounts) {
   const safuSharesPercent = 50;
   const zeroAddress = '0x0000000000000000000000000000000000000000';
   const blockLimit = 10;
+  const ethPrice = 128093000000;
+  const daiPrice = 100275167;
 
   let und;
   let valueContract;
@@ -69,8 +71,6 @@ contract('LLC', function (_accounts) {
       priceFeedDai = await testAggregatorDai.deployed();
 
       // Set price to aggregator
-      const ethPrice = 128093000000;
-      const daiPrice = 100275167;
       await priceFeedEth.setPrice(ethPrice);
       await priceFeedDai.setPrice(daiPrice);
 
