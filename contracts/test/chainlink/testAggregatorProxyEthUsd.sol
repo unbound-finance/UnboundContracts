@@ -8,5 +8,5 @@ contract TestAggregatorProxyEthUsd is TestAggregatorProxyBase {
         _decimals = 8;
     }
 
-    // 2021-02-27 12:26 128093000000
+    // 2021-02-27 12:26 128093000000 in Kovan
 }

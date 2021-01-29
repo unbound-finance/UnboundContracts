@@ -70,8 +70,8 @@ contract('Scenario', function (_accounts) {
       priceFeedDai = await testAggregatorDai.deployed();
 
       // Set price to aggregator
-      await priceFeedEth.setPrice(ethPrice); // This is real number
-      await priceFeedDai.setPrice(daiPrice); // This is real number
+      await priceFeedEth.setPrice(ethPrice);
+      await priceFeedDai.setPrice(daiPrice);
 
       pair = await uniPair.at(await lockContract.pair());
       await tDai.approve(route.address, daiAmount);
@@ -265,6 +265,7 @@ contract('Scenario', function (_accounts) {
       assert.equal(tokenBal, tokenBalBefore - burnAmountUND, 'token amount incorrect');
       assert.equal(newBal, LPtokens + unlockAmountLPT, 'valuing incorrect');
     });
+
     it('Unlock LPT(Change CRNow)', async () => {
       // Change loan rate
       await valueContract.changeLoanRate(LLC.address, 800000);
@@ -306,14 +307,13 @@ contract('Scenario', function (_accounts) {
       assert.equal(tokenBal, tokenBalBefore - burnAmountUND, 'token amount incorrect');
       assert.equal(newBal, LPtokens + unlockAmountLPT, 'valuing incorrect');
     });
-
-    async function waitBlock() {
-      let latestBlock;
-      do {
-        await tDai._mint(owner, 1);
-        const block = await web3.eth.getBlock('latest');
-        latestBlock = block.number;
-      } while (lastBlock + blockLimit > latestBlock);
-    }
   });
+  async function waitBlock() {
+    let latestBlock;
+    do {
+      await tDai._mint(owner, 1);
+      const block = await web3.eth.getBlock('latest');
+      latestBlock = block.number;
+    } while (lastBlock + blockLimit > latestBlock);
+  }
 });

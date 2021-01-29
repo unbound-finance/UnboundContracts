@@ -8,5 +8,5 @@ contract TestAggregatorProxyBatEth is TestAggregatorProxyBase {
         _decimals = 18;
     }
 
-    // 2021-02-27 12:23 229884831176629
+    // 2021-02-27 12:23 229884831176629 in Kovan
 }

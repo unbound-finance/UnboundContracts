@@ -19,8 +19,8 @@ const uniFactory = artifacts.require('UniswapV2Factory');
 const uniPair = artifacts.require('UniswapV2Pair');
 const weth9 = artifacts.require('WETH9');
 const router = artifacts.require('UniswapV2Router02');
-const testAggregatorEth = artifacts.require('TestAggregatorProxyEth');
-const testAggregatorDai = artifacts.require('TestAggregatorProxyDai');
+const testAggregatorEth = artifacts.require('TestAggregatorProxyEthUsd');
+const testAggregatorDai = artifacts.require('TestAggregatorProxyDaiUsd');
 
 contract('unboundSystem decimals19', function (_accounts) {
   // Initial settings
@@ -40,6 +40,9 @@ contract('unboundSystem decimals19', function (_accounts) {
   const safuSharesPercent = 50;
   const CREnd = 20000;
   const CRNorm = 10000;
+  const blockLimit = 10;
+  const ethPrice = 128093000000;
+  const daiPrice = 100275167;
 
   let unboundDai;
   let valueContract;
@@ -52,9 +55,8 @@ contract('unboundSystem decimals19', function (_accounts) {
   let route;
   let lockedTokens;
   let storedFee = 0;
-
-  /////////
   let stakePair;
+  let lastBlock;
 
   //=================
   // Default Functionality
@@ -74,8 +76,8 @@ contract('unboundSystem decimals19', function (_accounts) {
       priceFeedDai = await testAggregatorDai.deployed();
 
       // Set price to aggregator
-      await priceFeedEth.setPrice(40000000000);
-      await priceFeedDai.setPrice(100000000);
+      await priceFeedEth.setPrice(ethPrice);
+      await priceFeedDai.setPrice(daiPrice);
 
       const pairAddr = await factory.createPair(tDai.address, tEth.address);
       pair = await uniPair.at(pairAddr.logs[0].args.pair);
@@ -83,14 +85,14 @@ contract('unboundSystem decimals19', function (_accounts) {
         valueContract.address,
         pairAddr.logs[0].args.pair,
         tDai.address,
-        priceFeedEth.address,
-        priceFeedDai.address,
+        [priceFeedEth.address],
+        [priceFeedDai.address],
         unboundDai.address
       );
       const permissionLLC = await valueContract.addLLC(lockContract.address, unboundDai.address, loanRate, feeRate);
       const newValuator = await unboundDai.changeValuator(valueContract.address);
-      const approveTdai = await tDai.approve(route.address, 400000);
-      const approveTeth = await tEth.approve(route.address, 1000);
+      await tDai.approve(route.address, daiAmount);
+      await tEth.approve(route.address, parseInt((daiAmount * daiPrice) / ethPrice));
 
       const d = new Date();
       const time = d.getTime();
@@ -98,7 +100,7 @@ contract('unboundSystem decimals19', function (_accounts) {
         tDai.address,
         tEth.address,
         daiAmount,
-        1000,
+        parseInt((daiAmount * daiPrice) / ethPrice),
         3000,
         10,
         owner,
@@ -196,10 +198,13 @@ contract('unboundSystem decimals19', function (_accounts) {
       const feeAmount = parseInt((loanAmount * feeRate) / rateBalance); // Amount of fee
       const stakingAmount = 0;
 
+      await waitBlock();
       await pair.approve(lockContract.address, LPtokens);
       await lockContract.lockLPT(LPtokens, loanAmount - feeAmount);
       const ownerBal = parseInt(await unboundDai.balanceOf(owner));
       const stakingBal = parseInt(await unboundDai.balanceOf(stakePair.address));
+      const block = await web3.eth.getBlock('latest');
+      lastBlock = block.number;
 
       assert.equal(ownerBal, loanAmount - feeAmount, 'owner balance incorrect');
       assert.equal(stakingBal, stakingAmount, 'staking balance incorrect');
@@ -223,16 +228,21 @@ contract('unboundSystem decimals19', function (_accounts) {
       const stakingAmount = 0;
 
       // second mint
+      await waitBlock();
       await pair.approve(lockContract.address, LPtokens);
       await lockContract.lockLPT(LPtokens, loanAmount - feeAmount);
       const newBal = await pair.balanceOf(owner);
+      const block = await web3.eth.getBlock('latest');
+      lastBlock = block.number;
+
       assert.equal(newBal, LPTbal - LPtokens, 'valuing incorrect');
       console.log(`staking: ${stakingAmount}`);
       storedFee += feeAmount - stakingAmount;
     });
 
     it('UND burn', async () => {
-      const priceLPT = 40;
+      const totalSupply = await pair.totalSupply();
+      const priceLPT = (daiAmount * 2) / parseInt(totalSupply);
       const lockedLPT = parseInt(await lockContract.tokensLocked(owner));
       const mintedUND = parseInt(await unboundDai.checkLoan(owner, lockContract.address));
       const burnAmountUND = mintedUND / 2;
@@ -242,10 +252,13 @@ contract('unboundSystem decimals19', function (_accounts) {
       const LPtokens = parseInt(await pair.balanceOf.call(owner));
 
       // burn
+      await waitBlock();
       await lockContract.unlockLPT(burnAmountUND);
       const newBal = parseInt(await pair.balanceOf(owner));
+      const block = await web3.eth.getBlock('latest');
+      lastBlock = block.number;
 
-      assert.equal(newBal, LPtokens + unlockAmountLPT, 'valuing incorrect');
+      assert.equal(newBal, LPtokens + parseInt(unlockAmountLPT), 'valuing incorrect');
     });
 
     it('UND can transfer', async () => {
@@ -267,7 +280,6 @@ contract('unboundSystem decimals19', function (_accounts) {
 
       const beforeSafuBal = parseInt(await unboundDai.balanceOf(safu));
       const beforeDevFundBal = parseInt(await unboundDai.balanceOf(devFund));
-      // const safuShare = parseInt((storedFee * safuSharesPercent) / 100);
       const stakingShare = parseInt((beforeStoredFee * stakeSharesPercent) / 100);
       const safuShare = parseInt(((storedFee - stakingShare) * safuSharesPercent) / 100);
       const devShare = storedFee - stakingShare - safuShare;
@@ -309,8 +321,11 @@ contract('unboundSystem decimals19', function (_accounts) {
       const feeAmount = parseInt((loanAmount * feeRate) / rateBalance); // Amount of fee
 
       // first mint
+      await waitBlock();
       await pair.approve(lockContract.address, LPtokens);
       await lockContract.lockLPT(LPtokens, loanAmount - feeAmount);
+      const block = await web3.eth.getBlock('latest');
+      lastBlock = block.number;
 
       // user A balance before
       let tokenBal = await unboundDai.balanceOf(owner);
@@ -324,6 +339,7 @@ contract('unboundSystem decimals19', function (_accounts) {
       let moveUND = await unboundDai.transfer(user, tokenBal);
 
       // Trys to unlockLPT with User B
+      await waitBlock();
       await expectRevert(
         lockContract.unlockLPT(LPtokens, {
           from: user,
@@ -332,4 +348,13 @@ contract('unboundSystem decimals19', function (_accounts) {
       );
     });
   });
+
+  async function waitBlock() {
+    let latestBlock;
+    do {
+      await tDai._mint(owner, 1);
+      const block = await web3.eth.getBlock('latest');
+      latestBlock = block.number;
+    } while (lastBlock + blockLimit > latestBlock);
+  }
 });

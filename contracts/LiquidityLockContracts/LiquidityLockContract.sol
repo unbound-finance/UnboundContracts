@@ -273,10 +273,7 @@ contract LiquidityLockContract {
             triangulatePriceFeed,
             tokenFeeds
         );
-        uint256 a =
-            uint256(_token1).mul(_totalUSDOracle).div(
-                10**OracleLibrary.getDecimals(tokenFeeds[0])
-            );
+
         // get total value
         if (_position == 0) {
             // _totalUSDOracle = _token1 * _totalUSDOracle + _token0;

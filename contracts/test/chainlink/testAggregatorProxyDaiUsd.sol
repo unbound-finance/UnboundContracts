@@ -8,5 +8,5 @@ contract TestAggregatorProxyDaiUsd is TestAggregatorProxyBase {
         _decimals = 8;
     }
 
-    // 2021-02-27 12:25 100275167
+    // 2021-02-27 12:25 100275167 in Kovan
 }
