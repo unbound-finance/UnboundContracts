@@ -7,16 +7,15 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "../Interfaces/IUnboundToken.sol";
 
-
 // ---------------------------------------------------------------------------------------
 //                                   Unbound Valuing Contract
-//        
+//
 //                                     By: Unbound Finance
 // ---------------------------------------------------------------------------------------
-// This contract contains the logic of applying the LTV rate to the baseAsset value of 
-// the provided liquidity. The fee to be deducted from the user is also stored here, and 
+// This contract contains the logic of applying the LTV rate to the baseAsset value of
+// the provided liquidity. The fee to be deducted from the user is also stored here, and
 // passed to the uToken mint function.
-// 
+//
 // Each LLC must be registered with this contract, and assigned fee and LTV rates. The user
 // can only call this function via the LLC.
 // ----------------------------------------------------------------------------------------
@@ -30,9 +29,9 @@ contract Valuing_01 {
 
     // 2-step owner change variables
     address private _ownerPending;
-    bool private _isPending = true;
+    bool private _isPending = false;
 
-     // Liquidity Lock Contract structs - contains fee and loan rate
+    // Liquidity Lock Contract structs - contains fee and loan rate
     struct LiquidityLock {
         uint32 feeRate; // this will contain the number by obtained by multiplying the rate by 10 ^ 6
         uint32 loanRate; // i.e. for 50%, this value would be 500000, because 100.mul(500000).div(10**6) will return 50% of the original number
@@ -41,10 +40,10 @@ contract Valuing_01 {
     }
 
     // mapping of Approved LLC Contract structs
-    mapping (address => LiquidityLock) listOfLLC;
+    mapping(address => LiquidityLock) listOfLLC;
 
     // number of decimals by which to divide fee multiple by.
-    uint256 public constant rateBalance = (10 ** 6);
+    uint256 public constant rateBalance = (10**6);
 
     // Modifiers
     modifier onlyOwner() {
@@ -53,7 +52,7 @@ contract Valuing_01 {
     }
 
     // Constructor
-    constructor () {
+    constructor() {
         _owner = msg.sender;
     }
 
@@ -61,18 +60,22 @@ contract Valuing_01 {
     //
     // receives the total value (in uToken) of the locked liquidity from LLC,
     // calculates loan amount in uToken using loanRate variable from struct
-    function unboundCreate(uint256 amount, address user, uint256 minTokenAmount) external {
-        require (amount > 0, "Cannot valuate nothing");
-        require (listOfLLC[msg.sender].active, "LLC not authorized");
-        
+    function unboundCreate(
+        uint256 amount,
+        address user,
+        uint256 minTokenAmount
+    ) external {
+        require(amount > 0, "Cannot valuate nothing");
+        require(listOfLLC[msg.sender].active, "LLC not authorized");
+
         IUnboundToken unboundContract = IUnboundToken(listOfLLC[msg.sender].uToken);
 
         // computes loan amount
         uint256 loanAmt = amount;
         if (listOfLLC[msg.sender].loanRate != 0) {
             loanAmt = amount.mul(listOfLLC[msg.sender].loanRate).div(rateBalance);
-            require (loanAmt > 0, "value too small"); 
-        } 
+            require(loanAmt > 0, "value too small");
+        }
 
         // computes fee amount
         uint256 feeAmt = 0;
@@ -81,22 +84,19 @@ contract Valuing_01 {
             feeAmt = loanAmt.mul(listOfLLC[msg.sender].feeRate).div(rateBalance);
         }
 
-    
-        // calls mint 
+        // calls mint
         unboundContract._mint(user, loanAmt, feeAmt, msg.sender, minTokenAmount);
-
     }
 
     // Loan repayment Intermediary - only called from LLC
     function unboundRemove(uint256 toUnlock, address user) external {
-        require (listOfLLC[msg.sender].active, "LLC not authorized");
+        require(listOfLLC[msg.sender].active, "LLC not authorized");
 
         // obtains amount of loan user owes (in uToken)
         IUnboundToken unboundContract = IUnboundToken(listOfLLC[msg.sender].uToken);
-        
+
         // calls burn
         unboundContract._burn(user, toUnlock, msg.sender);
-        
     }
 
     // returns the fee and loanrate variables attached to an LLC
@@ -108,7 +108,12 @@ contract Valuing_01 {
     // onlyOwner Functions
 
     // grants an LLC permission //
-    function addLLC (address LLC, address uToken, uint32 loan, uint32 fee) public onlyOwner {
+    function addLLC(
+        address LLC,
+        address uToken,
+        uint32 loan,
+        uint32 fee
+    ) public onlyOwner {
         // add uToken to mint
         listOfLLC[LLC].uToken = uToken;
         // Enter 2500 for 0.25%, 250 for 2.5%, and 25 for 25%.
@@ -118,17 +123,17 @@ contract Valuing_01 {
     }
 
     // changes loanRate only
-    function changeLoanRate (address LLC, uint32 loan) public onlyOwner {
+    function changeLoanRate(address LLC, uint32 loan) public onlyOwner {
         listOfLLC[LLC].loanRate = loan;
     }
 
     // changes feeRate only
-    function changeFeeRate (address LLC, uint32 fee) public onlyOwner {
+    function changeFeeRate(address LLC, uint32 fee) public onlyOwner {
         listOfLLC[LLC].feeRate = fee;
     }
 
     // Disables an LLC:
-    function disableLLC (address LLC) public onlyOwner {
+    function disableLLC(address LLC) public onlyOwner {
         listOfLLC[LLC].feeRate = 0;
         listOfLLC[LLC].loanRate = 0;
         listOfLLC[LLC].active = false;
@@ -159,5 +164,4 @@ contract Valuing_01 {
         uint256 tokenBal = IERC20(_tokenAddr).balanceOf(address(this));
         require(IERC20(_tokenAddr).transfer(to, tokenBal), "Valuing: misc. Token Transfer Failed");
     }
-
 }

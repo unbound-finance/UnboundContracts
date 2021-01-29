@@ -36,7 +36,6 @@ contract("UND", function (_accounts) {
   const stakeSharesPercent = 50;
   const safuSharesPercent = 50;
   const zeroAddress = "0x0000000000000000000000000000000000000000";
-  const blockLimit = 10;
   const ethPrice = 128093000000;
   const daiPrice = 100275167;
 
