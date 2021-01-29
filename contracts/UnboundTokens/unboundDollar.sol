@@ -66,7 +66,7 @@ contract UnboundDollar is Context, IERC20 {
 
     // 2-step owner change variables
     address private _ownerPending;
-    bool private _isPending = true;
+    bool private _isPending = false;
 
     //Valuator Contract Address
     address _valuator;
