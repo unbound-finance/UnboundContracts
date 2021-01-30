@@ -175,15 +175,9 @@ contract LiquidityLockContract {
         }
     }
 
-    function lockLPTBody(uint256 LPTamt)
-        internal
-        returns (uint256 LPTValueInDai)
-    {
+    function lockLPTBody(uint256 LPTamt) internal returns (uint256 LPTValueInDai) {
         require(!killSwitch, "LLC: This LLC is Deprecated");
-        require(
-            LPTContract.balanceOf(msg.sender) >= LPTamt,
-            "LLC: Insufficient LPTs"
-        );
+        require(LPTContract.balanceOf(msg.sender) >= LPTamt, "LLC: Insufficient LPTs");
         require(nextBlock[msg.sender] <= block.number, "LLC: user must wait");
 
         uint256 totalLPTokens = LPTContract.totalSupply();
@@ -214,11 +208,7 @@ contract LiquidityLockContract {
         transferLPTPermit(msg.sender, LPTamt, deadline, v, r, s);
 
         // Call Valuing Contract
-        valuingContract.unboundCreate(
-            LPTValueInDai,
-            msg.sender,
-            minTokenAmount
-        ); // Hardcode "0" for AAA rating
+        valuingContract.unboundCreate(LPTValueInDai, msg.sender, minTokenAmount); // Hardcode "0" for AAA rating
 
         // sets nextBlock
         nextBlock[msg.sender] = block.number.add(blockLimit);
@@ -235,11 +225,7 @@ contract LiquidityLockContract {
         transferLPT(LPTamt);
 
         // Call Valuing Contract
-        valuingContract.unboundCreate(
-            LPTValueInDai,
-            msg.sender,
-            minTokenAmount
-        );
+        valuingContract.unboundCreate(LPTValueInDai, msg.sender, minTokenAmount);
 
         // sets nextBlock
         nextBlock[msg.sender] = block.number.add(blockLimit);
@@ -250,11 +236,7 @@ contract LiquidityLockContract {
 
     // Acquires total value of liquidity pool (in baseAsset) and normalizes decimals to 18.
     function getValue() internal view returns (uint256 _totalUSD) {
-        OracleLibrary.checkBaseAssetPrices(
-            triangulateBaseAsset,
-            maxPercentDiffBaseAsset,
-            baseAssets
-        );
+        OracleLibrary.checkBaseAssetPrices(triangulateBaseAsset, maxPercentDiffBaseAsset, baseAssets);
 
         // obtain amounts of tokens in both reserves.
         (uint112 _token0, uint112 _token1, ) = LPTContract.getReserves();
@@ -269,10 +251,7 @@ contract LiquidityLockContract {
         uint256 _totalUSDOracle;
 
         // get latest price from oracle
-        _totalUSDOracle = OracleLibrary.getPriceFeeds(
-            triangulatePriceFeed,
-            tokenFeeds
-        );
+        _totalUSDOracle = OracleLibrary.getPriceFeeds(triangulatePriceFeed, tokenFeeds);
 
         // get total value
         if (_position == 0) {
@@ -293,9 +272,7 @@ contract LiquidityLockContract {
         if (_totalUSDOracle > _totalUSD) {
             percentDiff = (100 * _totalUSDOracle.sub(_totalUSD)).div(_totalUSD);
         } else {
-            percentDiff = (100 * _totalUSD.sub(_totalUSDOracle)).div(
-                _totalUSDOracle
-            );
+            percentDiff = (100 * _totalUSD.sub(_totalUSDOracle)).div(_totalUSDOracle);
         }
 
         require(percentDiff < maxPercentDiff, "LLC-Lock: Manipulation Evident");
@@ -327,10 +304,7 @@ contract LiquidityLockContract {
 
     // calls transfer only, for use with non-permit lock function
     function transferLPT(uint256 amount) internal {
-        require(
-            LPTContract.transferFrom(msg.sender, address(this), amount),
-            "LLC: Trasfer From failed"
-        );
+        require(LPTContract.transferFrom(msg.sender, address(this), amount), "LLC: Trasfer From failed");
     }
 
     // calls permit, then transfer
@@ -343,10 +317,7 @@ contract LiquidityLockContract {
         bytes32 s
     ) internal {
         LPTContract.permit(user, address(this), amount, deadline, v, r, s);
-        require(
-            LPTContract.transferFrom(msg.sender, address(this), amount),
-            "LLC: Transfer From failed"
-        );
+        require(LPTContract.transferFrom(msg.sender, address(this), amount), "LLC: Transfer From failed");
     }
 
     // Burn Path
@@ -357,8 +328,7 @@ contract LiquidityLockContract {
         require(nextBlock[msg.sender] <= block.number, "LLC: user must wait");
 
         // get current amount of uToken Loan
-        uint256 currentLoan =
-            unboundContract.checkLoan(msg.sender, address(this));
+        uint256 currentLoan = unboundContract.checkLoan(msg.sender, address(this));
 
         // Make sure uToken to pay back is less than or equal to total owed.
         require(currentLoan >= uTokenAmt, "Insufficient liquidity locked");
@@ -371,35 +341,24 @@ contract LiquidityLockContract {
             valuingContract.unboundRemove(uTokenAmt, msg.sender);
 
             // update mapping
-            _tokensLocked[msg.sender] = _tokensLocked[msg.sender].sub(
-                LPTokenToReturn
-            );
+            _tokensLocked[msg.sender] = _tokensLocked[msg.sender].sub(LPTokenToReturn);
 
             // send LP tokens back to user
-            require(
-                LPTContract.transfer(msg.sender, LPTokenToReturn),
-                "LLC: Transfer Failed"
-            );
+            require(LPTContract.transfer(msg.sender, LPTokenToReturn), "LLC: Transfer Failed");
 
             // emit unlockLPT event
             emit UnlockLPT(_tokensLocked[msg.sender], msg.sender);
         } else {
-            uint256 LPTokenToReturn =
-                getLPTokensToReturn(currentLoan, uTokenAmt);
+            uint256 LPTokenToReturn = getLPTokensToReturn(currentLoan, uTokenAmt);
 
             // Burning of uTokens will happen first
             valuingContract.unboundRemove(uTokenAmt, msg.sender);
 
             // update mapping
-            _tokensLocked[msg.sender] = _tokensLocked[msg.sender].sub(
-                LPTokenToReturn
-            );
+            _tokensLocked[msg.sender] = _tokensLocked[msg.sender].sub(LPTokenToReturn);
 
             // send LP tokens back to user
-            require(
-                LPTContract.transfer(msg.sender, LPTokenToReturn),
-                "LLC: Transfer Failed"
-            );
+            require(LPTContract.transfer(msg.sender, LPTokenToReturn), "LLC: Transfer Failed");
 
             // emit unlockLPT event
             emit UnlockLPT(LPTokenToReturn, msg.sender);
@@ -409,38 +368,28 @@ contract LiquidityLockContract {
         nextBlock[msg.sender] = block.number.add(blockLimit);
     }
 
-    function getLPTokensToReturn(uint256 _currentLoan, uint256 _uTokenAmt)
-        internal
-        returns (uint256 _LPTokenToReturn)
-    {
+    function getLPTokensToReturn(uint256 _currentLoan, uint256 _uTokenAmt) internal returns (uint256 _LPTokenToReturn) {
         // check if baseAsset value is stable
-        OracleLibrary.checkBaseAssetPrices(
-            triangulateBaseAsset,
-            maxPercentDiffBaseAsset,
-            baseAssets
-        );
+        OracleLibrary.checkBaseAssetPrices(triangulateBaseAsset, maxPercentDiffBaseAsset, baseAssets);
 
         // Acquire Pool Values
         uint256 totalLP = LPTContract.totalSupply();
         (uint112 _token0, uint112 _token1, ) = LPTContract.getReserves();
 
         // obtain total USD values
-        uint256 oraclePrice =
-            OracleLibrary.getPriceFeeds(triangulatePriceFeed, tokenFeeds);
+        uint256 oraclePrice = OracleLibrary.getPriceFeeds(triangulatePriceFeed, tokenFeeds);
         uint256 poolValue;
         uint256 oracleValue;
         if (_position == 0) {
             poolValue = _token0 * 2;
-            oracleValue = uint256(_token1)
-                .mul(oraclePrice)
-                .div(10**OracleLibrary.getDecimals(tokenFeeds[0]))
-                .add(_token0);
+            oracleValue = uint256(_token1).mul(oraclePrice).div(10**OracleLibrary.getDecimals(tokenFeeds[0])).add(
+                _token0
+            );
         } else {
             poolValue = _token1 * 2;
-            oracleValue = uint256(_token0)
-                .mul(oraclePrice)
-                .div(10**OracleLibrary.getDecimals(tokenFeeds[0]))
-                .add(_token1);
+            oracleValue = uint256(_token0).mul(oraclePrice).div(10**OracleLibrary.getDecimals(tokenFeeds[0])).add(
+                _token1
+            );
         }
 
         // normalize back to value with 18 decimals
@@ -452,10 +401,7 @@ contract LiquidityLockContract {
             percentDiff = (100 * poolValue.sub(oracleValue)).div(oracleValue);
         }
 
-        require(
-            percentDiff < maxPercentDiff,
-            "LLC-Unlock: Manipulation Evident"
-        );
+        require(percentDiff < maxPercentDiff, "LLC-Unlock: Manipulation Evident");
 
         // this should only happen if baseAsset decimals is NOT 18.
         if (baseAssetDecimal != 18) {
@@ -478,18 +424,14 @@ contract LiquidityLockContract {
         uint256 valueOfSingleLPT = poolValue.mul(10**18).div(totalLP);
 
         // get current CR Ratio
-        uint256 CRNow =
-            (valueOfSingleLPT.mul(_tokensLocked[msg.sender])).div(_currentLoan);
+        uint256 CRNow = (valueOfSingleLPT.mul(_tokensLocked[msg.sender])).div(_currentLoan);
 
         if (CREnd.mul(10**18).div(CRNorm) > CRNow) {
             // LPT to send back. This number should have 18 decimals
-            _LPTokenToReturn = (_tokensLocked[msg.sender].mul(_uTokenAmt)).div(
-                _currentLoan
-            );
+            _LPTokenToReturn = (_tokensLocked[msg.sender].mul(_uTokenAmt)).div(_currentLoan);
         } else {
             // value of users locked LP before paying loan
-            uint256 valueStart =
-                valueOfSingleLPT.mul(_tokensLocked[msg.sender]);
+            uint256 valueStart = valueOfSingleLPT.mul(_tokensLocked[msg.sender]);
 
             uint256 loanAfter = _currentLoan.sub(_uTokenAmt);
 
@@ -529,10 +471,7 @@ contract LiquidityLockContract {
     function claimTokens(address _tokenAddr, address to) public onlyOwner {
         require(_tokenAddr != pair, "Cannot move LP tokens");
         uint256 tokenBal = IERC20_2(_tokenAddr).balanceOf(address(this));
-        require(
-            IERC20_2(_tokenAddr).transfer(to, tokenBal),
-            "LLC: Transfer Failed"
-        );
+        require(IERC20_2(_tokenAddr).transfer(to, tokenBal), "LLC: Transfer Failed");
     }
 
     // Kill Switch - deactivate locking of LPT
