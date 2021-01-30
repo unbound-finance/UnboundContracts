@@ -261,8 +261,6 @@ contract UnboundDollar is Context, IERC20 {
     ) external virtual {
         require(account != address(0), "ERC20: mint to the zero address");
         require(msg.sender == _valuator, "Call does not originate from Valuator");
-        // revert(uint2str(minTokenAmount));
-        // revert(uint2str(loanAmount.sub(feeAmount)));
         require(minTokenAmount <= loanAmount.sub(feeAmount), "UND: Tx took too long");
         require(feeAmount > 0, "UND: Not allowed 0 fee");
 
@@ -279,25 +277,6 @@ contract UnboundDollar is Context, IERC20 {
         _loaned[account][LLCAddr] = _loaned[account][LLCAddr].add(loanAmount);
 
         emit Mint(account, loanAmount);
-    }
-
-    function uint2str(uint256 _i) internal pure returns (string memory _uintAsString) {
-        if (_i == 0) {
-            return "0";
-        }
-        uint256 j = _i;
-        uint256 len;
-        while (j != 0) {
-            len++;
-            j /= 10;
-        }
-        bytes memory bstr = new bytes(len);
-        uint256 k = len - 1;
-        while (_i != 0) {
-            bstr[k--] = bytes1(uint8(48 + (_i % 10)));
-            _i /= 10;
-        }
-        return string(bstr);
     }
 
     // BURN function. Only callable from Valuing.
