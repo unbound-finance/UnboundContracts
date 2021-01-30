@@ -1,37 +1,37 @@
-const uDai = artifacts.require('UnboundDollar');
-const valuer = artifacts.require('Valuing_01');
-const LLC = artifacts.require('LLC_EthDai');
+const uDai = artifacts.require("UnboundDollar");
+const valuer = artifacts.require("Valuing_01");
+const LLC = artifacts.require("LLC_EthDai");
 
-const uniFactory = artifacts.require('UniswapV2Factory');
-const testDai = artifacts.require('TestDai');
-const testEth = artifacts.require('TestEth');
-const testAggregatorEthUsd = artifacts.require('TestAggregatorProxyEthUsd');
-const testAggregatorDaiUsd = artifacts.require('TestAggregatorProxyDaiUsd');
+const uniFactory = artifacts.require("UniswapV2Factory");
+const testDai = artifacts.require("TestDai");
+const testEth = artifacts.require("TestEth");
+const testAggregatorEthUsd = artifacts.require("TestAggregatorProxyEthUsd");
+const testAggregatorDaiUsd = artifacts.require("TestAggregatorProxyDaiUsd");
 
 const loanRate = 500000;
 const feeRate = 5000;
-let stablecoinAddress = ''; // Stablecoin-ADDRESS
-let UndAddress = ''; // UND-Token-ADDRESS
-let valuerAddress = ''; // Valuer-ADDRESS
-let LPTAddress = ''; // Liquidity-Pool-Token-ADDRESS
-let priceFeedAddress = '';
-let baseAssetFeed = '';
+let stablecoinAddress = ""; // Stablecoin-ADDRESS
+let UndAddress = ""; // UND-Token-ADDRESS
+let valuerAddress = ""; // Valuer-ADDRESS
+let LPTAddress = ""; // Liquidity-Pool-Token-ADDRESS
+let priceFeedAddress = "";
+let baseAssetFeed = "";
 
 module.exports = async (deployer, network, accounts) => {
-  if (LPTAddress === '') {
+  if (LPTAddress === "") {
     const factory = await uniFactory.deployed();
     const pair = await factory.createPair(testDai.address, testEth.address);
     LPTAddress = pair.logs[0].args.pair;
   }
 
   stablecoinAddress = stablecoinAddress || testDai.address;
-  const undContract = UndAddress === '' ? await uDai.deployed() : await uDai.at(UndAddress);
-  const valueContract = valuerAddress === '' ? await valuer.deployed() : await valuer.at(valuerAddress);
-  if (priceFeedAddress === '') {
+  const undContract = UndAddress === "" ? await uDai.deployed() : await uDai.at(UndAddress);
+  const valueContract = valuerAddress === "" ? await valuer.deployed() : await valuer.at(valuerAddress);
+  if (priceFeedAddress === "") {
     await deployer.deploy(testAggregatorEthUsd);
     priceFeedAddress = testAggregatorEthUsd.address;
   }
-  if (baseAssetFeed === '') {
+  if (baseAssetFeed === "") {
     await deployer.deploy(testAggregatorDaiUsd);
     baseAssetFeed = testAggregatorDaiUsd.address;
   }

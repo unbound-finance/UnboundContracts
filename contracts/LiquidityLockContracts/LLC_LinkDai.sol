@@ -14,14 +14,5 @@ contract LLC_LinkDai is LiquidityLockContract {
         address[] memory priceFeedAddress,
         address[] memory baseAssetFeed,
         address UNDAddr
-    )
-        LiquidityLockContract(
-            valuingAddress,
-            LPTaddress,
-            stableCoin,
-            priceFeedAddress,
-            baseAssetFeed,
-            UNDAddr
-        )
-    {}
+    ) LiquidityLockContract(valuingAddress, LPTaddress, stableCoin, priceFeedAddress, baseAssetFeed, UNDAddr) {}
 }

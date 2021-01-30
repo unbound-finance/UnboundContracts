@@ -18,9 +18,7 @@ contract TestBat is IERC20 {
     // event Transfer(address indexed from, address indexed to, uint value);
 
     constructor(address tester) {
-        balanceOf[msg.sender] = balanceOf[msg.sender].add(
-            1000000000000 * (10**18)
-        );
+        balanceOf[msg.sender] = balanceOf[msg.sender].add(1000000000000 * (10**18));
         balanceOf[tester] = balanceOf[tester].add(1000000000000 * (10**18));
         totalSupply = totalSupply.add(1000000 * (10**18));
     }
@@ -56,20 +54,12 @@ contract TestBat is IERC20 {
         emit Transfer(from, to, value);
     }
 
-    function approve(address spender, uint256 value)
-        external
-        override
-        returns (bool)
-    {
+    function approve(address spender, uint256 value) external override returns (bool) {
         _approve(msg.sender, spender, value);
         return true;
     }
 
-    function transfer(address to, uint256 value)
-        external
-        override
-        returns (bool)
-    {
+    function transfer(address to, uint256 value) external override returns (bool) {
         _transfer(msg.sender, to, value);
         return true;
     }
@@ -80,9 +70,7 @@ contract TestBat is IERC20 {
         uint256 value
     ) external override returns (bool) {
         if (allowance[from][msg.sender] != uint256(-1)) {
-            allowance[from][msg.sender] = allowance[from][msg.sender].sub(
-                value
-            );
+            allowance[from][msg.sender] = allowance[from][msg.sender].sub(value);
         }
         _transfer(from, to, value);
         return true;

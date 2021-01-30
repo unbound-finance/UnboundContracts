@@ -3,26 +3,26 @@
  * OpenZeppelin Test Helpers
  * https://github.com/OpenZeppelin/openzeppelin-test-helpers
  */
-const { BN, constants, balance, expectEvent, expectRevert } = require('@openzeppelin/test-helpers');
+const { BN, constants, balance, expectEvent, expectRevert } = require("@openzeppelin/test-helpers");
 
 /*
  *  ========================================================
  *  Tests of public & external functions in Tier1a contract
  *  ========================================================
  */
-const uDai = artifacts.require('UnboundDollar');
-const valuing = artifacts.require('Valuing_01');
-const LLC = artifacts.require('LLC_EthDai');
-const testDai = artifacts.require('TestDai');
-const testEth = artifacts.require('TestEth');
-const uniFactory = artifacts.require('UniswapV2Factory');
-const uniPair = artifacts.require('UniswapV2Pair');
-const weth9 = artifacts.require('WETH9');
-const router = artifacts.require('UniswapV2Router02');
-const testAggregatorEth = artifacts.require('TestAggregatorProxyEthUsd');
-const testAggregatorDai = artifacts.require('TestAggregatorProxyDaiUsd');
+const uDai = artifacts.require("UnboundDollar");
+const valuing = artifacts.require("Valuing_01");
+const LLC = artifacts.require("LLC_EthDai");
+const testDai = artifacts.require("TestDai");
+const testEth = artifacts.require("TestEth");
+const uniFactory = artifacts.require("UniswapV2Factory");
+const uniPair = artifacts.require("UniswapV2Pair");
+const weth9 = artifacts.require("WETH9");
+const router = artifacts.require("UniswapV2Router02");
+const testAggregatorEth = artifacts.require("TestAggregatorProxyEthUsd");
+const testAggregatorDai = artifacts.require("TestAggregatorProxyDaiUsd");
 
-contract('Scenario', function (_accounts) {
+contract("Scenario", function (_accounts) {
   // Initial settings
   const totalSupply = 0;
   const decimal = 10 ** 18;
@@ -57,7 +57,7 @@ contract('Scenario', function (_accounts) {
   //=================
   // Default Functionality
   //=================
-  describe('Lock and burn LPT scenario', () => {
+  describe("Lock and burn LPT scenario", () => {
     before(async () => {
       tEth = await testEth.deployed();
       tDai = await testDai.deployed();
@@ -93,21 +93,21 @@ contract('Scenario', function (_accounts) {
       await und.changeStaking(stakePair.address);
     });
 
-    it('cannot lock when the price diff is big', async () => {
+    it("cannot lock when the price diff is big", async () => {
       await priceFeedEth.setPrice(parseInt(ethPrice * 1.12));
       const dummyNumber = 100;
-      await expectRevert(lockContract.lockLPT(dummyNumber, 0), 'LLC-Lock: Manipulation Evident');
+      await expectRevert(lockContract.lockLPT(dummyNumber, 0), "LLC-Lock: Manipulation Evident");
       await priceFeedEth.setPrice(ethPrice);
     });
 
-    it('cannot lock when the stable coin is not stable', async () => {
+    it("cannot lock when the stable coin is not stable", async () => {
       await priceFeedDai.setPrice(parseInt(daiPrice * 1.06));
       const dummyNumber = 100;
-      await expectRevert(lockContract.lockLPT(dummyNumber, 0), 'stableCoin not stable');
+      await expectRevert(lockContract.lockLPT(dummyNumber, 0), "stableCoin not stable");
       await priceFeedDai.setPrice(daiPrice);
     });
 
-    it('Lock LPT - first(not auto fee distribution)', async () => {
+    it("Lock LPT - first(not auto fee distribution)", async () => {
       const LPTbal = parseInt(await pair.balanceOf(owner));
       const LPtokens = parseInt(LPTbal / 4); // Amount of token to be lock
 
@@ -121,28 +121,28 @@ contract('Scenario', function (_accounts) {
       await waitBlock();
       await pair.approve(lockContract.address, LPtokens);
       const receipt = await lockContract.lockLPT(LPtokens, loanAmount - feeAmount);
-      expectEvent(receipt, 'LockLPT', {
+      expectEvent(receipt, "LockLPT", {
         LPTamt: LPtokens.toString(),
         user: owner,
       });
-      expectEvent.inTransaction(receipt.tx, und, 'Mint', {
+      expectEvent.inTransaction(receipt.tx, und, "Mint", {
         user: owner,
         newMint: loanAmount.toString(),
       });
-      const block = await web3.eth.getBlock('latest');
+      const block = await web3.eth.getBlock("latest");
       lastBlock = block.number;
 
       const ownerBal = parseInt(await und.balanceOf(owner));
       const stakingBal = parseInt(await und.balanceOf(stakePair.address));
       const loanedAmount = await und.checkLoan(owner, lockContract.address);
 
-      assert.equal(ownerBal, loanAmount - feeAmount, 'owner balance incorrect');
-      assert.equal(stakingBal, stakingAmount, 'staking balance incorrect');
-      assert.equal(loanedAmount, loanAmount, 'loaned amount incorrect');
+      assert.equal(ownerBal, loanAmount - feeAmount, "owner balance incorrect");
+      assert.equal(stakingBal, stakingAmount, "staking balance incorrect");
+      assert.equal(loanedAmount, loanAmount, "loaned amount incorrect");
       storedFeeTotal += feeAmount - stakingAmount;
     });
 
-    it('Lock LPT - second', async () => {
+    it("Lock LPT - second", async () => {
       const LPTbal = parseInt(await pair.balanceOf(owner));
       const LPtokens = parseInt(LPTbal / 3); // Amount of token to be lock
       const beforeOwnerBal = parseInt(await und.balanceOf(owner));
@@ -160,20 +160,20 @@ contract('Scenario', function (_accounts) {
       await waitBlock();
       await pair.approve(lockContract.address, LPtokens);
       const receipt = await lockContract.lockLPT(LPtokens, loanAmount - feeAmount);
-      expectEvent.inTransaction(receipt.tx, und, 'Mint', {
+      expectEvent.inTransaction(receipt.tx, und, "Mint", {
         user: owner,
         newMint: loanAmount.toString(),
       });
-      const block = await web3.eth.getBlock('latest');
+      const block = await web3.eth.getBlock("latest");
       lastBlock = block.number;
 
       const ownerBal = parseInt(await und.balanceOf(owner));
       const stakingBal = parseInt(await und.balanceOf(stakePair.address));
       const loanedAmount = parseInt(await und.checkLoan(owner, lockContract.address));
 
-      assert.equal(ownerBal, beforeOwnerBal + (loanAmount - feeAmount), 'owner balance incorrect');
-      assert.equal(stakingBal, beforeStakingBal + stakingAmount, 'staking balance incorrect');
-      assert.equal(loanedAmount, beforeLoanedAmount + loanAmount, 'loaned amount incorrect');
+      assert.equal(ownerBal, beforeOwnerBal + (loanAmount - feeAmount), "owner balance incorrect");
+      assert.equal(stakingBal, beforeStakingBal + stakingAmount, "staking balance incorrect");
+      assert.equal(loanedAmount, beforeLoanedAmount + loanAmount, "loaned amount incorrect");
       storedFeeTotal += feeAmount - stakingAmount;
       console.log(`staking: ${stakingAmount}`);
     });
@@ -183,13 +183,13 @@ contract('Scenario', function (_accounts) {
         lockContract.unlockLPT(10, {
           from: user,
         }),
-        'Insufficient liquidity locked'
+        "Insufficient liquidity locked"
       );
     });
 
-    it('can distribute the fee to safu and devFund', async () => {
+    it("can distribute the fee to safu and devFund", async () => {
       const beforeStoredFee = parseInt(await und.storedFee());
-      assert.equal(beforeStoredFee, storedFeeTotal, 'incorrect before stored fee');
+      assert.equal(beforeStoredFee, storedFeeTotal, "incorrect before stored fee");
 
       const beforeStakingBal = parseInt(await und.balanceOf(stakePair.address));
       const beforeSafuBal = parseInt(await und.balanceOf(safu));
@@ -206,36 +206,36 @@ contract('Scenario', function (_accounts) {
       const devFundBal = parseInt(await und.balanceOf(devFund));
       const storedFee = parseInt(await und.storedFee());
 
-      assert.equal(stakingBal, beforeStakingBal + stakingShare, 'incorrect staking balance');
-      assert.equal(safuBal, beforeSafuBal + safuShare, 'incorrect safu balance');
-      assert.equal(devFundBal, beforeDevFundBal + devShare, 'incorrect dev fund balance');
+      assert.equal(stakingBal, beforeStakingBal + stakingShare, "incorrect staking balance");
+      assert.equal(safuBal, beforeSafuBal + safuShare, "incorrect safu balance");
+      assert.equal(devFundBal, beforeDevFundBal + devShare, "incorrect dev fund balance");
       console.log(`staking: ${stakingShare}`);
       console.log(`safa: ${safuShare}`);
       console.log(`devFund: ${devShare}`);
       storedFeeTotal = 0;
-      assert.equal(storedFee, storedFeeTotal, 'incorrect stored fee');
+      assert.equal(storedFee, storedFeeTotal, "incorrect stored fee");
     });
 
-    it('cannot distribute after distributed', async () => {
-      await expectRevert(und.distributeFee({ from: user }), 'There is nothing to distribute');
+    it("cannot distribute after distributed", async () => {
+      await expectRevert(und.distributeFee({ from: user }), "There is nothing to distribute");
     });
 
-    it('cannot unlock when the price diff is big', async () => {
+    it("cannot unlock when the price diff is big", async () => {
       await waitBlock();
       await priceFeedEth.setPrice(parseInt(ethPrice * 0.9025));
       const dummyNumber = 100;
-      await expectRevert(lockContract.unlockLPT(dummyNumber), 'LLC-Unlock: Manipulation Evident');
+      await expectRevert(lockContract.unlockLPT(dummyNumber), "LLC-Unlock: Manipulation Evident");
       await priceFeedEth.setPrice(ethPrice);
     });
 
-    it('cannot lock when the stable coin is not stable', async () => {
+    it("cannot lock when the stable coin is not stable", async () => {
       await priceFeedDai.setPrice(parseInt(daiPrice * 0.94));
       const dummyNumber = 100;
-      await expectRevert(lockContract.unlockLPT(dummyNumber), 'stableCoin not stable');
+      await expectRevert(lockContract.unlockLPT(dummyNumber), "stableCoin not stable");
       await priceFeedDai.setPrice(daiPrice);
     });
 
-    it('Unlock LPT', async () => {
+    it("Unlock LPT", async () => {
       const totalSupply = await pair.totalSupply();
       const priceLPT = (daiAmount * 2) / parseInt(totalSupply);
       const lockedLPT = parseInt(await lockContract.tokensLocked(owner));
@@ -247,26 +247,26 @@ contract('Scenario', function (_accounts) {
 
       // burn
       const receipt = await lockContract.unlockLPT(burnAmountUND);
-      expectEvent(receipt, 'UnlockLPT', {
+      expectEvent(receipt, "UnlockLPT", {
         LPTamt: unlockAmountLPT.toString(),
         user: owner,
       });
-      expectEvent.inTransaction(receipt.tx, und, 'Burn', {
+      expectEvent.inTransaction(receipt.tx, und, "Burn", {
         user: owner,
         burned: burnAmountUND.toString(),
       });
-      const block = await web3.eth.getBlock('latest');
+      const block = await web3.eth.getBlock("latest");
       lastBlock = block.number;
 
       const tokenBal = parseInt(await und.balanceOf(owner));
       const newBal = parseInt(await pair.balanceOf(owner));
       const uDaiBalFinal = parseInt(await und.balanceOf(owner));
 
-      assert.equal(tokenBal, tokenBalBefore - burnAmountUND, 'token amount incorrect');
-      assert.equal(newBal, LPtokens + unlockAmountLPT, 'valuing incorrect');
+      assert.equal(tokenBal, tokenBalBefore - burnAmountUND, "token amount incorrect");
+      assert.equal(newBal, LPtokens + unlockAmountLPT, "valuing incorrect");
     });
 
-    it('Unlock LPT(Change CRNow)', async () => {
+    it("Unlock LPT(Change CRNow)", async () => {
       // Change loan rate
       await valueContract.changeLoanRate(LLC.address, 800000);
       // Lock again
@@ -275,7 +275,7 @@ contract('Scenario', function (_accounts) {
       await waitBlock();
       await pair.approve(lockContract.address, LPtokens);
       await lockContract.lockLPT(LPtokens, 0);
-      const blockTemp = await web3.eth.getBlock('latest');
+      const blockTemp = await web3.eth.getBlock("latest");
       lastBlock = blockTemp.number;
       // Unlock
       const totalSupply = await pair.totalSupply();
@@ -289,30 +289,30 @@ contract('Scenario', function (_accounts) {
       // burn
       await waitBlock();
       const receipt = await lockContract.unlockLPT(burnAmountUND);
-      expectEvent(receipt, 'UnlockLPT', {
+      expectEvent(receipt, "UnlockLPT", {
         LPTamt: unlockAmountLPT.toString(),
         user: owner,
       });
-      expectEvent.inTransaction(receipt.tx, und, 'Burn', {
+      expectEvent.inTransaction(receipt.tx, und, "Burn", {
         user: owner,
         burned: burnAmountUND.toString(),
       });
-      const block = await web3.eth.getBlock('latest');
+      const block = await web3.eth.getBlock("latest");
       lastBlock = block.number;
 
       const tokenBal = parseInt(await und.balanceOf(owner));
       const newBal = parseInt(await pair.balanceOf(owner));
       const uDaiBalFinal = parseInt(await und.balanceOf(owner));
 
-      assert.equal(tokenBal, tokenBalBefore - burnAmountUND, 'token amount incorrect');
-      assert.equal(newBal, LPtokens + unlockAmountLPT, 'valuing incorrect');
+      assert.equal(tokenBal, tokenBalBefore - burnAmountUND, "token amount incorrect");
+      assert.equal(newBal, LPtokens + unlockAmountLPT, "valuing incorrect");
     });
   });
   async function waitBlock() {
     let latestBlock;
     do {
       await tDai._mint(owner, 1);
-      const block = await web3.eth.getBlock('latest');
+      const block = await web3.eth.getBlock("latest");
       latestBlock = block.number;
     } while (lastBlock + blockLimit > latestBlock);
   }
