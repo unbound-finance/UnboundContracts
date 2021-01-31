@@ -155,8 +155,8 @@ contract LiquidityLockContract {
         // set Collaterization Normalization
         CRNorm = 10000;
 
-        require(priceFeedBaseAsset.length <= 2, "invalid address args");
-        require(priceFeedAddress.length <= 2, "invalid address args");
+        require(priceFeedBaseAsset.length <= 2 && priceFeedBaseAsset.length != 0, "invalid address args");
+        require(priceFeedAddress.length <= 2 && priceFeedAddress.length != 0, "invalid address args");
         // set ChainLink addresses
         baseAssets = priceFeedBaseAsset;
         tokenFeeds = priceFeedAddress;
