@@ -12,15 +12,17 @@ const { BN, constants, balance, expectEvent, expectRevert } = require("@openzepp
  */
 const uDai = artifacts.require("UnboundDollar");
 const valuing = artifacts.require("Valuing_01");
-const LLC = artifacts.require("LLC_EthDai");
+const LLC = artifacts.require("LLC_BatDai");
 const testDai = artifacts.require("TestDai");
 const testEth = artifacts.require("TestEth");
+const testBat = artifacts.require("TestBat");
 const uniFactory = artifacts.require("UniswapV2Factory");
 const uniPair = artifacts.require("UniswapV2Pair");
 const weth9 = artifacts.require("WETH9");
 const router = artifacts.require("UniswapV2Router02");
 const testAggregatorEth = artifacts.require("TestAggregatorProxyEthUsd");
 const testAggregatorDai = artifacts.require("TestAggregatorProxyDaiUsd");
+const testAggregatorBat = artifacts.require("TestAggregatorProxyBatEth");
 
 contract("Scenario", function (_accounts) {
   // Initial settings
@@ -41,6 +43,7 @@ contract("Scenario", function (_accounts) {
   const blockLimit = 10;
   const ethPrice = 128093000000;
   const daiPrice = 100275167;
+  const batPrice = 229884831176629;
 
   let und;
   let valueContract;
@@ -60,6 +63,7 @@ contract("Scenario", function (_accounts) {
   describe("Lock and burn LPT scenario", () => {
     before(async () => {
       tEth = await testEth.deployed();
+      tBat = await testBat.deployed();
       tDai = await testDai.deployed();
       route = await router.deployed();
       und = await uDai.deployed();
@@ -68,21 +72,23 @@ contract("Scenario", function (_accounts) {
       factory = await uniFactory.deployed();
       priceFeedEth = await testAggregatorEth.deployed();
       priceFeedDai = await testAggregatorDai.deployed();
+      priceFeedBat = await testAggregatorBat.deployed();
 
       // Set price to aggregator
       await priceFeedEth.setPrice(ethPrice);
       await priceFeedDai.setPrice(daiPrice);
+      await priceFeedBat.setPrice(batPrice);
 
       pair = await uniPair.at(await lockContract.pair());
       await tDai.approve(route.address, daiAmount);
-      await tEth.approve(route.address, parseInt((daiAmount * daiPrice) / ethPrice));
+      await tBat.approve(route.address, parseInt((daiAmount * daiPrice) / (batPrice / 10 ** 18) / ethPrice));
       let d = new Date();
       let time = d.getTime();
       await route.addLiquidity(
         tDai.address,
-        tEth.address,
+        tBat.address,
         daiAmount,
-        parseInt((daiAmount * daiPrice) / ethPrice),
+        parseInt((daiAmount * daiPrice) / (batPrice / 10 ** 18) / ethPrice),
         3000,
         10,
         owner,
@@ -222,15 +228,15 @@ contract("Scenario", function (_accounts) {
 
     it("cannot unlock when the price diff is big", async () => {
       await waitBlock();
-      await priceFeedEth.setPrice(parseInt(ethPrice * 0.9025));
-      const dummyNumber = 100;
+      await priceFeedBat.setPrice(parseInt(batPrice * 0.9));
+      const dummyNumber = 10;
       await expectRevert(lockContract.unlockLPT(dummyNumber), "LLC-Unlock: Manipulation Evident");
-      await priceFeedEth.setPrice(ethPrice);
+      await priceFeedBat.setPrice(batPrice);
     });
 
     it("cannot lock when the stable coin is not stable", async () => {
       await priceFeedDai.setPrice(parseInt(daiPrice * 0.94));
-      const dummyNumber = 100;
+      const dummyNumber = 10;
       await expectRevert(lockContract.unlockLPT(dummyNumber), "stableCoin not stable");
       await priceFeedDai.setPrice(daiPrice);
     });

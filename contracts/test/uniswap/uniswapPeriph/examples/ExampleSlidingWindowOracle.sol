@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: 
+// SPDX-License-Identifier: MIT
 pragma solidity >=0.4.23 <0.8.0;
 
 import '@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol';
@@ -40,7 +40,7 @@ contract ExampleSlidingWindowOracle {
     // mapping from pair address to a list of price observations of that pair
     mapping(address => Observation[]) public pairObservations;
 
-    constructor(address factory_, uint windowSize_, uint8 granularity_) public {
+    constructor(address factory_, uint windowSize_, uint8 granularity_) {
         require(granularity_ > 1, 'SlidingWindowOracle: GRANULARITY');
         require(
             (periodSize = windowSize_ / granularity_) * granularity_ == windowSize_,

@@ -1,15 +1,15 @@
 const uDai = artifacts.require("UnboundDollar");
 const valuer = artifacts.require("Valuing_01");
-const LLC = artifacts.require("LLC_EthDai");
+const LLC = artifacts.require("LLC_LinkDai");
 
 const uniFactory = artifacts.require("UniswapV2Factory");
 const testDai = artifacts.require("TestDai");
-const testEth = artifacts.require("TestEth");
-const testAggregatorEthUsd = artifacts.require("TestAggregatorProxyEthUsd");
+const testLink = artifacts.require("TestLink");
+const testAggregatorLinkUsd = artifacts.require("TestAggregatorProxyLinkUsd");
 const testAggregatorDaiUsd = artifacts.require("TestAggregatorProxyDaiUsd");
 
-const loanRate = 500000;
-const feeRate = 5000;
+const loanRate = 600000;
+const feeRate = 4000;
 let stablecoinAddress = ""; // Stablecoin-ADDRESS
 let UndAddress = ""; // UND-Token-ADDRESS
 let valuerAddress = ""; // Valuer-ADDRESS
@@ -20,7 +20,7 @@ let baseAssetFeed = "";
 module.exports = async (deployer, network, accounts) => {
   if (LPTAddress === "") {
     const factory = await uniFactory.deployed();
-    const pair = await factory.createPair(testDai.address, testEth.address);
+    const pair = await factory.createPair(testDai.address, testLink.address);
     LPTAddress = pair.logs[0].args.pair;
   }
 
@@ -28,11 +28,10 @@ module.exports = async (deployer, network, accounts) => {
   const undContract = UndAddress === "" ? await uDai.deployed() : await uDai.at(UndAddress);
   const valueContract = valuerAddress === "" ? await valuer.deployed() : await valuer.at(valuerAddress);
   if (priceFeedAddress === "") {
-    await deployer.deploy(testAggregatorEthUsd);
-    priceFeedAddress = testAggregatorEthUsd.address;
+    await deployer.deploy(testAggregatorLinkUsd);
+    priceFeedAddress = testAggregatorLinkUsd.address;
   }
   if (baseAssetFeed === "") {
-    await deployer.deploy(testAggregatorDaiUsd);
     baseAssetFeed = testAggregatorDaiUsd.address;
   }
 

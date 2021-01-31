@@ -2,6 +2,7 @@ const testDai = artifacts.require("TestDai");
 const testDai13 = artifacts.require("TestDai13");
 const testDai19 = artifacts.require("TestDai19");
 const testEth = artifacts.require("TestEth");
+const testBat = artifacts.require("TestBat");
 const testLink = artifacts.require("TestLink");
 const uniFactory = artifacts.require("UniswapV2Factory");
 const router = artifacts.require("UniswapV2Router02");
@@ -15,6 +16,7 @@ module.exports = async (deployer, network, accounts) => {
     await deployer.deploy(testDai13, tester, "5777");
     await deployer.deploy(testDai19, tester, "5777");
     await deployer.deploy(testEth, tester);
+    await deployer.deploy(testBat, tester);
     await deployer.deploy(testLink, tester);
     await deployer.deploy(uniFactory, accounts[0]);
     await deployer.deploy(weth);

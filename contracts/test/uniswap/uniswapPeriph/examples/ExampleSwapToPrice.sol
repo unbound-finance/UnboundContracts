@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: 
+// SPDX-License-Identifier: MIT
 pragma solidity >=0.4.23 <0.8.0;
 
 import '@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol';
@@ -16,7 +16,7 @@ contract ExampleSwapToPrice {
     IUniswapV2Router01 public immutable router;
     address public immutable factory;
 
-    constructor(address factory_, IUniswapV2Router01 router_) public {
+    constructor(address factory_, IUniswapV2Router01 router_) {
         factory = factory_;
         router = router_;
     }

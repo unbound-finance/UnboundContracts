@@ -3,8 +3,10 @@ pragma solidity 0.7.5;
 
 import "./testAggregatorProxyBase.sol";
 
-contract TestAggregatorProxyDai is TestAggregatorProxyBase {
+contract TestAggregatorProxyDaiUsd is TestAggregatorProxyBase {
     constructor() {
         _decimals = 8;
     }
+
+    // 2021-02-27 12:25 100275167 in Kovan
 }

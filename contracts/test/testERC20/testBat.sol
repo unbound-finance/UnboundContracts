@@ -4,11 +4,11 @@ pragma solidity >=0.4.23 <0.8.0;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-contract TestLink is IERC20 {
+contract TestBat is IERC20 {
     using SafeMath for uint256;
 
-    string public constant name = "TestLink";
-    string public constant symbol = "TLINK";
+    string public constant name = "TestBat";
+    string public constant symbol = "TBAT";
     uint8 public constant decimals = 18;
     uint256 public override totalSupply;
     mapping(address => uint256) public override balanceOf;

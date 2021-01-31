@@ -3,26 +3,26 @@
  * OpenZeppelin Test Helpers
  * https://github.com/OpenZeppelin/openzeppelin-test-helpers
  */
-const { BN, constants, balance, expectEvent, expectRevert } = require('@openzeppelin/test-helpers');
+const { BN, constants, balance, expectEvent, expectRevert } = require("@openzeppelin/test-helpers");
 
 /*
  *  ========================================================
  *  Tests of public & external functions in Tier1a contract
  *  ========================================================
  */
-const uDai = artifacts.require('UnboundDollar');
-const valuing = artifacts.require('Valuing_01');
-const LLC = artifacts.require('LLC_EthDai');
-const testDai = artifacts.require('TestDai');
-const testEth = artifacts.require('TestEth');
-const uniFactory = artifacts.require('UniswapV2Factory');
-const uniPair = artifacts.require('UniswapV2Pair');
-const weth9 = artifacts.require('WETH9');
-const router = artifacts.require('UniswapV2Router02');
-const testAggregatorEth = artifacts.require('TestAggregatorProxyEth');
-const testAggregatorDai = artifacts.require('TestAggregatorProxyDai');
+const uDai = artifacts.require("UnboundDollar");
+const valuing = artifacts.require("Valuing_01");
+const LLC = artifacts.require("LLC_EthDai");
+const testDai = artifacts.require("TestDai");
+const testEth = artifacts.require("TestEth");
+const uniFactory = artifacts.require("UniswapV2Factory");
+const uniPair = artifacts.require("UniswapV2Pair");
+const weth9 = artifacts.require("WETH9");
+const router = artifacts.require("UniswapV2Router02");
+const testAggregatorEth = artifacts.require("TestAggregatorProxyEthUsd");
+const testAggregatorDai = artifacts.require("TestAggregatorProxyDaiUsd");
 
-contract('LLC', function (_accounts) {
+contract("LLC", function (_accounts) {
   // Initial settings
   const totalSupply = 0;
   const decimal = 10 ** 18;
@@ -36,7 +36,10 @@ contract('LLC', function (_accounts) {
   const feeRate = 5000;
   const stakeSharesPercent = 50;
   const safuSharesPercent = 50;
-  const zeroAddress = '0x0000000000000000000000000000000000000000';
+  const zeroAddress = "0x0000000000000000000000000000000000000000";
+  const blockLimit = 10;
+  const ethPrice = 128093000000;
+  const daiPrice = 100275167;
 
   let und;
   let valueContract;
@@ -49,11 +52,12 @@ contract('LLC', function (_accounts) {
   let stakePair;
   let priceFeedEth;
   let priceFeedDai;
+  let lastBlock;
 
   //=================
   // Default Functionality
   //=================
-  describe('Check functionality', () => {
+  describe("Check functionality", () => {
     before(async function () {
       tEth = await testEth.deployed();
       tDai = await testDai.deployed();
@@ -67,11 +71,11 @@ contract('LLC', function (_accounts) {
       priceFeedDai = await testAggregatorDai.deployed();
 
       // Set price to aggregator
-      await priceFeedEth.setPrice(40000000000);
-      await priceFeedDai.setPrice(100000000);
+      await priceFeedEth.setPrice(ethPrice);
+      await priceFeedDai.setPrice(daiPrice);
 
       await tDai.approve(route.address, daiAmount);
-      await tEth.approve(route.address, 1000);
+      await tEth.approve(route.address, parseInt((daiAmount * daiPrice) / ethPrice));
 
       let d = new Date();
       let time = d.getTime();
@@ -79,7 +83,7 @@ contract('LLC', function (_accounts) {
         tDai.address,
         tEth.address,
         daiAmount,
-        1000,
+        parseInt((daiAmount * daiPrice) / ethPrice),
         3000,
         10,
         owner,
@@ -92,68 +96,98 @@ contract('LLC', function (_accounts) {
       // Lock some pool
       await pair.approve(lockContract.address, 1000);
       await lockContract.lockLPT(1000, 1);
+      const block = await web3.eth.getBlock("latest");
+      lastBlock = block.number;
     });
 
-    it('default kill switch', async () => {
+    it("cannot lock by block limit", async () => {
+      await expectRevert(lockContract.lockLPT(10, 1), "LLC: user must wait");
+    });
+
+    it("cannot unlock by block limit", async () => {
+      await expectRevert(lockContract.unlockLPT(1), "LLC: user must wait");
+    });
+
+    it("default kill switch", async () => {
       const killSwitch = await lockContract.killSwitch();
-      assert.isFalse(killSwitch, 'Default killSwitch incorrect');
+      assert.isFalse(killSwitch, "Default killSwitch incorrect");
     });
 
-    it('can claim tokens', async () => {
+    it("can claim tokens", async () => {
       await tEth.transfer(lockContract.address, 10);
       let claim = await lockContract.claimTokens(tEth.address, user);
       let finalBalance = parseInt(await tEth.balanceOf(user));
 
-      assert.equal(10, finalBalance, 'Claim is not working');
+      assert.equal(10, finalBalance, "Claim is not working");
     });
 
-    it('cannot claim from its own Liquidity Pool', async () => {
+    it("cannot claim from its own Liquidity Pool", async () => {
       await pair.transfer(lockContract.address, 10);
-      await expectRevert(lockContract.claimTokens(pair.address, user), 'Cannot move LP tokens');
+      await expectRevert(lockContract.claimTokens(pair.address, user), "Cannot move LP tokens");
     });
 
-    it('only owner can use disableLock', async () => {
-      await expectRevert(lockContract.disableLock({ from: user }), 'Ownable: caller is not the owner');
+    it("only owner can use disableLock", async () => {
+      await expectRevert(lockContract.disableLock({ from: user }), "Ownable: caller is not the owner");
     });
 
-    it('change kill switch', async () => {
+    it("change kill switch", async () => {
       // Change kill switch
-      expectEvent(await lockContract.disableLock(), 'KillSwitch', { position: true });
-      assert.isTrue(await lockContract.killSwitch(), 'Changed killSwitch incorrect');
+      expectEvent(await lockContract.disableLock(), "KillSwitch", { position: true });
+      assert.isTrue(await lockContract.killSwitch(), "Changed killSwitch incorrect");
 
       // Check public functions
       const anyNumber = 123;
-      const b32 = web3.utils.asciiToHex('1');
+      const b32 = web3.utils.asciiToHex("1");
+      await waitBlock();
 
-      await expectRevert(lockContract.lockLPTWithPermit(1, 1, b32, b32, b32, anyNumber), 'LLC: This LLC is Deprecated');
-      await expectRevert(lockContract.lockLPT(1, anyNumber), 'LLC: This LLC is Deprecated');
+      await expectRevert(lockContract.lockLPTWithPermit(1, 1, b32, b32, b32, anyNumber), "LLC: This LLC is Deprecated");
+      await expectRevert(lockContract.lockLPT(1, anyNumber), "LLC: This LLC is Deprecated");
       await lockContract.unlockLPT(1); // Be able to unlock under killed status
+      const block = await web3.eth.getBlock("latest");
+      lastBlock = block.number;
 
       // Rechange kill switch
-      expectEvent(await lockContract.disableLock(), 'KillSwitch', { position: false });
-      assert.isFalse(await lockContract.killSwitch(), 'Changed killSwitch incorrect');
+      expectEvent(await lockContract.disableLock(), "KillSwitch", { position: false });
+      assert.isFalse(await lockContract.killSwitch(), "Changed killSwitch incorrect");
     });
 
-    it('can set owner', async () => {
+    it("cannot claim owner", async () => {
+      await expectRevert(lockContract.claimOwner(), "Change was not initialized");
       await lockContract.setOwner(user);
-      assert.isTrue(await lockContract.isOwner({ from: user }), 'Set owner is not working');
-      await expectRevert(lockContract.setOwner(user), 'Ownable: caller is not the owner');
-      await lockContract.setOwner(owner, { from: user });
+      await expectRevert(lockContract.claimOwner(), "You are not pending owner");
     });
 
-    it('can set valuing address', async () => {
+    it("can set owner", async () => {
+      await lockContract.claimOwner({ from: user });
+      assert.isTrue(await lockContract.isOwner({ from: user }), "Set owner is not working");
+      await expectRevert(lockContract.setOwner(owner), "Ownable: caller is not the owner");
+      await lockContract.setOwner(owner, { from: user });
+      await lockContract.claimOwner({ from: owner });
+    });
+
+    it("can set valuing address", async () => {
       const newValuing = await valuing.new();
       await newValuing.addLLC(lockContract.address, und.address, loanRate, feeRate);
       await und.changeValuator(newValuing.address);
 
       const beforeBalance = parseInt(await und.balanceOf(owner));
+      await waitBlock();
 
       await lockContract.setValuingAddress(newValuing.address);
       await pair.approve(lockContract.address, 10);
       await lockContract.lockLPT(10, 1);
 
       const balance = parseInt(await und.balanceOf(owner));
-      assert.isTrue(balance > beforeBalance, 'valuing address is incorrect');
+      assert.isTrue(balance > beforeBalance, "valuing address is incorrect");
     });
   });
+
+  async function waitBlock() {
+    let latestBlock;
+    do {
+      await tDai._mint(owner, 1);
+      const block = await web3.eth.getBlock("latest");
+      latestBlock = block.number;
+    } while (lastBlock + blockLimit > latestBlock);
+  }
 });
