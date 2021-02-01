@@ -98,6 +98,9 @@ contract LiquidityLockContract {
     bool private triangulateBaseAsset;
     bool private triangulatePriceFeed;
 
+    uint256[] public baseAssetOracleDecimals;
+    uint256[] public tokenFeedDecimals;
+
     // Modifiers
     modifier onlyOwner() {
         require(isOwner(), "Ownable: caller is not the owner");
@@ -172,6 +175,15 @@ contract LiquidityLockContract {
             triangulatePriceFeed = true;
         } else {
             triangulatePriceFeed = false;
+        }
+
+        // Assigns oracle decimals
+        for (uint8 i = 0; i <priceFeedAddress.length; i++) {
+            tokenFeedDecimals.push(OracleLibrary.getDecimals(priceFeedAddress[i]));
+        }
+
+        for (uint8 k = 0; k < priceFeedBaseAsset.length; k++) {
+            baseAssetOracleDecimals.push(OracleLibrary.getDecimals(priceFeedBaseAsset[k]));
         }
     }
 
@@ -258,13 +270,13 @@ contract LiquidityLockContract {
             // _totalUSDOracle = _token1 * _totalUSDOracle + _token0;
             _totalUSDOracle = uint256(_token1)
                 .mul(_totalUSDOracle)
-                .div(10**OracleLibrary.getDecimals(tokenFeeds[0]))
+                .div(10**tokenFeedDecimals[0])
                 .add(_token0);
         } else {
             // _totalUSDOracle = _token0 * _totalUSDOracle + _token1;
             _totalUSDOracle = uint256(_token0)
                 .mul(_totalUSDOracle)
-                .div(10**OracleLibrary.getDecimals(tokenFeeds[0]))
+                .div(10**tokenFeedDecimals[0])
                 .add(_token1);
         }
         // Calculate percent difference (x2 - x1 / x1)
@@ -382,12 +394,12 @@ contract LiquidityLockContract {
         uint256 oracleValue;
         if (_position == 0) {
             poolValue = _token0 * 2;
-            oracleValue = uint256(_token1).mul(oraclePrice).div(10**OracleLibrary.getDecimals(tokenFeeds[0])).add(
+            oracleValue = uint256(_token1).mul(oraclePrice).div(10**tokenFeedDecimals[0]).add(
                 _token0
             );
         } else {
             poolValue = _token1 * 2;
-            oracleValue = uint256(_token0).mul(oraclePrice).div(10**OracleLibrary.getDecimals(tokenFeeds[0])).add(
+            oracleValue = uint256(_token0).mul(oraclePrice).div(10**tokenFeedDecimals[0]).add(
                 _token1
             );
         }
