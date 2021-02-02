@@ -55,13 +55,13 @@ library OracleLibrary {
     }
 
     // Returns latest price from ChainLink Oracle (direct)
-    function getLatestPrice(address assetAddr) public view returns (uint256) {
+    function getLatestPrice(address assetAddr) internal view returns (uint256) {
         (, int256 price, , , ) = AggregatorV3Interface(assetAddr).latestRoundData();
         return uint256(price);
     }
 
     // Returns latest price from ChainLink Oracle (Triangulation)
-    function getLatestPriceTriangulate(address erc20PriceAddr, address ethPriceAddr) public view returns (uint256) {
+    function getLatestPriceTriangulate(address erc20PriceAddr, address ethPriceAddr) internal view returns (uint256) {
         // bat price in ETH
         (, int256 price, , , ) = AggregatorV3Interface(erc20PriceAddr).latestRoundData();
 
