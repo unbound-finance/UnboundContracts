@@ -69,14 +69,14 @@ library OracleLibrary {
         (, int256 price2, , , ) = AggregatorV3Interface(ethPriceAddr).latestRoundData();
 
         // convert to uint256
-        uint256 batPrice = uint256(price);
-        uint256 ethPrice = uint256(price2);
+        uint256 priceA = uint256(price);
+        uint256 priceB = uint256(price2);
 
         // get decimals
         uint256 ethPriceDecimal = getDecimals(ethPriceAddr);
 
         // multiply prices
-        uint256 finalPrice = batPrice.mul(ethPrice).div(10**ethPriceDecimal);
+        uint256 finalPrice = priceA.mul(priceB).div(10**ethPriceDecimal);
 
         return finalPrice;
     }
