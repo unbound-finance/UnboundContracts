@@ -49,6 +49,18 @@ contract LiquidityLockContract {
     // unlockLPTEvent
     event UnlockLPT(uint256 LPTamt, address indexed user);
 
+    // Admin Change in-prog
+    event ChangingAdmin(address indexed oldAdmin, address indexed newAdmin);
+
+    // Admin Changed
+    event AdminChanged(address indexed newAdmin);
+
+    // Admin Events
+    event BlockLimitChange(uint8 NewLimit);
+    event CREndChange(uint256 newRatio);
+    event NewPercentDiff(uint8 percentDiff);
+    event NewValuing(address indexed newValueAddress);
+
     //Owner Address
     address private _owner;
 
@@ -460,22 +472,24 @@ contract LiquidityLockContract {
     }
 
     // onlyOwner Functions
-
     function setBlockLimit(uint8 newLimit) public onlyOwner {
         require(newLimit > 0, "invalid number");
         blockLimit = newLimit;
+        emit BlockLimitChange(newLimit);
     }
 
     // set collateralization Ratio. 1 = CRNorm
     function setCREnd(uint256 ratio) public onlyOwner {
         require(ratio > 0, "Ratio cannot be 0");
         CREnd = ratio;
+        emit CREndChange(ratio);
     }
 
     // set Max Percent Difference
     function setMaxPercentDifference(uint8 amount) public onlyOwner {
         require(amount <= 100, "cannot be beyond 100");
         maxPercentDiff = amount;
+        emit NewPercentDiff(amount);
     }
 
     // Claim - remove any airdropped tokens
@@ -485,7 +499,7 @@ contract LiquidityLockContract {
         uint256 tokenBal = IERC20_2(_tokenAddr).balanceOf(address(this));
         require(IERC20_2(_tokenAddr).transfer(to, tokenBal), "LLC: Transfer Failed");
     }
-
+    
     // Kill Switch - deactivate locking of LPT
     function disableLock() public onlyOwner {
         killSwitch = !killSwitch;
@@ -501,6 +515,7 @@ contract LiquidityLockContract {
     function setOwner(address _newOwner) public onlyOwner {
         _ownerPending = _newOwner;
         _isPending = true;
+        emit ChangingAdmin(msg.sender, _newOwner);
     }
 
     // changes owner (part 2)
@@ -509,10 +524,12 @@ contract LiquidityLockContract {
         require(_ownerPending == msg.sender, "You are not pending owner");
         _owner = _ownerPending;
         _isPending = false;
+        emit AdminChanged(msg.sender);
     }
 
     // Sets new Valuing Address
     function setValuingAddress(address _newValuing) public onlyOwner {
         valuingContract = IValuing_01(_newValuing);
+        emit NewValuing(_newValuing);
     }
 }

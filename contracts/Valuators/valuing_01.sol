@@ -24,6 +24,18 @@ contract Valuing_01 {
     using SafeMath for uint256;
     using Address for address;
 
+    // Admin Change in-prog
+    event ChangingAdmin(address indexed oldAdmin, address indexed newAdmin);
+
+    // Admin Changed
+    event AdminChanged(address indexed newAdmin);
+
+    // Other Admin Events
+    event NewLLC(address indexed LLCAddr, address indexed UTokenAddr, uint32 loanAmt, uint32 feeAmt);
+    event LTVChange(address indexed LLCAddr, uint32 newLTV);
+    event FeeChange(address indexed LLCAddr, uint32 newFee);
+    event LLCDisable(address indexed LLCAddr);
+
     //Owner Address
     address private _owner;
 
@@ -120,16 +132,19 @@ contract Valuing_01 {
         listOfLLC[LLC].loanRate = loan;
         listOfLLC[LLC].feeRate = fee;
         listOfLLC[LLC].active = true;
+        emit NewLLC(LLC, uToken, loan, fee);
     }
 
     // changes loanRate only
     function changeLoanRate(address LLC, uint32 loan) public onlyOwner {
         listOfLLC[LLC].loanRate = loan;
+        emit LTVChange(LLC, loan);
     }
 
     // changes feeRate only
     function changeFeeRate(address LLC, uint32 fee) public onlyOwner {
         listOfLLC[LLC].feeRate = fee;
+        emit FeeChange(LLC, fee);
     }
 
     // Disables an LLC:
@@ -137,6 +152,7 @@ contract Valuing_01 {
         listOfLLC[LLC].feeRate = 0;
         listOfLLC[LLC].loanRate = 0;
         listOfLLC[LLC].active = false;
+        emit LLCDisable(LLC);
     }
 
     // Checks if sender is owner
@@ -148,6 +164,7 @@ contract Valuing_01 {
     function setOwner(address _newOwner) public onlyOwner {
         _ownerPending = _newOwner;
         _isPending = true;
+        emit ChangingAdmin(msg.sender, _newOwner);
     }
 
     // changes owner (part 2)
@@ -156,6 +173,7 @@ contract Valuing_01 {
         require(_ownerPending == msg.sender, "You are not pending owner");
         _owner = _ownerPending;
         _isPending = false;
+        emit AdminChanged(msg.sender);
     }
 
     // Claim - remove any airdropped tokens

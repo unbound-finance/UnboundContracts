@@ -31,6 +31,20 @@ contract UnboundDollar is Context, IERC20 {
     event Mint(address user, uint256 newMint);
     event Burn(address user, uint256 burned);
 
+    // Admin Change in-prog
+    event ChangingAdmin(address indexed oldAdmin, address indexed newAdmin);
+
+    // Admin Changed
+    event AdminChanged(address indexed newAdmin);
+
+    // Admin Events
+    event NewValuator (address indexed newValuingAddr);
+    event NewDevFund (address indexed newDevAddr);
+    event NewSafu (address indexed newSafuAddr);
+    event NewStaking (address indexed newStakingAddr);
+    event NewStakeShare (uint8 newRate);
+    event NewSafuShare (uint8 newRate);
+
     mapping(address => uint256) private _balances;
     mapping(address => mapping(address => uint256)) private _allowances;
 
@@ -343,32 +357,38 @@ contract UnboundDollar is Context, IERC20 {
     function changeSafuShare(uint8 rate) public onlyOwner {
         require(rate <= 100, "bad input");
         safuSharesOfStoredFee = rate;
+        emit NewSafuShare(rate);
     }
 
     // change stakeShare
     function changeStakeShare(uint8 rate) public onlyOwner {
         require(rate <= 100, "bad input");
         stakeShares = rate;
+        emit NewStakeShare(rate);
     }
 
     // Changes stakingAddr
     function changeStaking(address newStaking) public onlyOwner {
         _stakeAddr = newStaking;
+        emit NewStaking(newStaking);
     }
 
     // Changes safuFund
     function changeSafuFund(address newSafuFund) public onlyOwner {
         _safuAddr = newSafuFund;
+        emit NewSafu(newSafuFund);
     }
 
     // Changes devFund
     function changeDevFund(address newDevFund) public onlyOwner {
         _devFundAddr = newDevFund;
+        emit NewDevFund(newDevFund);
     }
 
     // Changes Valuator Contract Address
     function changeValuator(address newValuator) public onlyOwner {
         _valuator = newValuator;
+        emit NewValuator(newValuator);
     }
 
     // Checks if sender is owner
@@ -380,6 +400,7 @@ contract UnboundDollar is Context, IERC20 {
     function setOwner(address _newOwner) public onlyOwner {
         _ownerPending = _newOwner;
         _isPending = true;
+        emit ChangingAdmin(msg.sender, _newOwner);
     }
 
     // changes owner (part 2)
@@ -388,6 +409,7 @@ contract UnboundDollar is Context, IERC20 {
         require(_ownerPending == msg.sender, "You are not pending owner");
         _owner = _ownerPending;
         _isPending = false;
+        emit AdminChanged(msg.sender);
     }
 
     // Claim - remove any airdropped tokens
