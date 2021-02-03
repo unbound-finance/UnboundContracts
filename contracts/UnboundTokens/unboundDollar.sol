@@ -5,33 +5,48 @@ import "@openzeppelin/contracts/GSN/Context.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
 // ---------------------------------------------------------------------------------------
 //                                   Unbound Dollar (UND)
-//         
+//
 //                                     By: Unbound Finance
 // ---------------------------------------------------------------------------------------
 // This contract holds the erc20 token call UND. This is the token we will be issuing
 // our loans in. This contract contains custom mint and burn functions, only callable from
-// an authorized valuing contract. As this contract will be first to be deployed, the 
+// an authorized valuing contract. As this contract will be first to be deployed, the
 // valuing contract must be authorized by owner.
 //
-// The loan fee is computed on minting, and the amount distributed to the UND liquidity pool 
-// (as a reward for liquidity holders), the SAFU fund, and the dev fund. Initial split is 
-// determined in the constructor. The UND liquidity pool address must be updated on this 
+// The loan fee is computed on minting, and the amount distributed to the UND liquidity pool
+// (as a reward for liquidity holders), the SAFU fund, and the dev fund. Initial split is
+// determined in the constructor. The UND liquidity pool address must be updated on this
 // contract by owner once it is created from the uniswap factory.
 // ----------------------------------------------------------------------------------------
-
 
 contract UnboundDollar is Context, IERC20 {
     using SafeMath for uint256;
     using Address for address;
+    using SafeERC20 for IERC20;
 
     event Mint(address user, uint256 newMint);
     event Burn(address user, uint256 burned);
 
-    mapping (address => uint256) private _balances;
-    mapping (address => mapping (address => uint256)) private _allowances;
+    // Admin Change in-prog
+    event ChangingAdmin(address indexed oldAdmin, address indexed newAdmin);
+
+    // Admin Changed
+    event AdminChanged(address indexed newAdmin);
+
+    // Admin Events
+    event NewValuator (address indexed newValuingAddr);
+    event NewDevFund (address indexed newDevAddr);
+    event NewSafu (address indexed newSafuAddr);
+    event NewStaking (address indexed newStakingAddr);
+    event NewStakeShare (uint8 newRate);
+    event NewSafuShare (uint8 newRate);
+
+    mapping(address => uint256) private _balances;
+    mapping(address => mapping(address => uint256)) private _allowances;
 
     uint256 private _totalSupply;
 
@@ -43,7 +58,7 @@ contract UnboundDollar is Context, IERC20 {
     bytes32 public DOMAIN_SEPARATOR;
     // keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
     bytes32 public constant PERMIT_TYPEHASH = 0x6e71edae12b1b97f4d1f60370fef10105fa2faae0126114a169c64845d6126c9;
-    mapping(address => uint) public nonces;
+    mapping(address => uint256) public nonces;
 
     // staking contract address (40%)
     address private _stakeAddr;
@@ -54,19 +69,20 @@ contract UnboundDollar is Context, IERC20 {
     // Dev fund (20%)
     address private _devFundAddr;
 
-    // auto fee deposit
-    bool public autoFeeDistribution;
-
     // Dev Fund split variables
-    uint256 public stakeShares;// % of staking to total fee
-    uint256 public safuSharesOfStoredFee;// % of safu to stored fee
+    uint8 public stakeShares; // % of staking to total fee
+    uint8 public safuSharesOfStoredFee; // % of safu to stored fee
     uint256 public storedFee;
 
-    // tracks user loan amount in UND. This is the amount of UND they need to pay back to get all locked tokens returned. 
-    mapping (address => mapping (address => uint256)) private _loaned;
+    // tracks user loan amount in UND. This is the amount of UND they need to pay back to get all locked tokens returned.
+    mapping(address => mapping(address => uint256)) private _loaned;
 
     //Owner Address
     address _owner;
+
+    // 2-step owner change variables
+    address private _ownerPending;
+    bool private _isPending = false;
 
     //Valuator Contract Address
     address _valuator;
@@ -81,7 +97,12 @@ contract UnboundDollar is Context, IERC20 {
         _;
     }
 
-    constructor (string memory tokenName, string memory tokenSymbol, address Safu, address devFund) {
+    constructor(
+        string memory tokenName,
+        string memory tokenSymbol,
+        address Safu,
+        address devFund
+    ) {
         _name = tokenName;
         _symbol = tokenSymbol;
         _decimals = 18;
@@ -97,75 +118,82 @@ contract UnboundDollar is Context, IERC20 {
         // MUST BE MANUALLY CHANGED TO UND LIQ pool.
         _stakeAddr = Safu;
 
-        uint chainId;
+        uint256 chainId;
         // get chainId of the chain, required for permit
         assembly {
             chainId := chainid()
         }
 
         // To verify permit() signature
-        DOMAIN_SEPARATOR = keccak256(abi.encode(
-            keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
-            keccak256(bytes(tokenName)),
-            keccak256(bytes('1')),
-            chainId,
-            address(this)
-        ));
+        DOMAIN_SEPARATOR = keccak256(
+            abi.encode(
+                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
+                keccak256(bytes(tokenName)),
+                keccak256(bytes("1")),
+                chainId,
+                address(this)
+            )
+        );
     }
 
     function name() public view returns (string memory) {
         return _name;
     }
 
-   
     function symbol() public view returns (string memory) {
         return _symbol;
     }
 
-    
     function decimals() public view returns (uint8) {
         return _decimals;
     }
 
-   
-    function totalSupply() public override view returns (uint256) {
+    function totalSupply() public view override returns (uint256) {
         return _totalSupply;
     }
 
-
-    function balanceOf(address account) public override view returns (uint256) {
+    function balanceOf(address account) public view override returns (uint256) {
         return _balances[account];
     }
 
-    function stakeAddr() public view returns(address) {
+    function stakeAddr() public view returns (address) {
         return _stakeAddr;
     }
 
-    function safuAddr() public view returns(address) {
+    function safuAddr() public view returns (address) {
         return _safuAddr;
     }
 
-    function devFundAddr() public view returns(address) {
+    function devFundAddr() public view returns (address) {
         return _devFundAddr;
     }
 
-    function valuator() public view returns(address) {
+    function valuator() public view returns (address) {
         return _valuator;
     }
 
     //  PERMIT FUNCTION
-    function permit(address owner, address spender, uint value, uint deadline, uint8 v, bytes32 r, bytes32 s) external {
-        require(deadline >= block.timestamp, 'UnboundDollar: EXPIRED');
-        bytes32 digest = keccak256(
-            abi.encodePacked(
-                '\x19\x01',
-                DOMAIN_SEPARATOR,
-                keccak256(abi.encode(PERMIT_TYPEHASH, owner, spender, value, nonces[owner]++, deadline))
-            )
-        );
+    function permit(
+        address owner,
+        address spender,
+        uint256 value,
+        uint256 deadline,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) external {
+        require(deadline >= block.timestamp, "UnboundDollar: EXPIRED");
+        bytes32 digest =
+            keccak256(
+                abi.encodePacked(
+                    "\x19\x01",
+                    DOMAIN_SEPARATOR,
+                    keccak256(abi.encode(PERMIT_TYPEHASH, owner, spender, value, nonces[owner]++, deadline))
+                )
+            );
         // check if the data is signed by owner
         address recoveredAddress = ecrecover(digest, v, r, s);
-        require(recoveredAddress != address(0) && recoveredAddress == owner, 'UnboundDollar: INVALID_SIGNATURE');
+        require(recoveredAddress != address(0) && recoveredAddress == owner, "UnboundDollar: INVALID_SIGNATURE");
         _approve(owner, spender, value);
     }
 
@@ -175,13 +203,25 @@ contract UnboundDollar is Context, IERC20 {
         return true;
     }
 
-    function transferFrom(address sender, address recipient, uint256 amount) public override returns (bool) {
+    function transferFrom(
+        address sender,
+        address recipient,
+        uint256 amount
+    ) public override returns (bool) {
         _transfer(sender, recipient, amount);
-        _approve(sender, msg.sender, _allowances[sender][msg.sender].sub(amount, "ERC20: transfer amount exceeds allowance"));
+        _approve(
+            sender,
+            msg.sender,
+            _allowances[sender][msg.sender].sub(amount, "ERC20: transfer amount exceeds allowance")
+        );
         return true;
     }
 
-    function _transfer(address sender, address recipient, uint256 amount) internal {
+    function _transfer(
+        address sender,
+        address recipient,
+        uint256 amount
+    ) internal {
         require(sender != address(0), "ERC20: transfer from the zero address");
         require(recipient != address(0), "ERC20: transfer to the zero address");
 
@@ -191,8 +231,8 @@ contract UnboundDollar is Context, IERC20 {
         _balances[recipient] = _balances[recipient].add(amount);
         emit Transfer(sender, recipient, amount);
     }
-    
-    function allowance(address owner, address spender) public override view returns (uint256) {
+
+    function allowance(address owner, address spender) public view override returns (uint256) {
         return _allowances[owner][spender];
     }
 
@@ -201,7 +241,11 @@ contract UnboundDollar is Context, IERC20 {
         return true;
     }
 
-    function _approve(address owner, address spender, uint256 amount) internal {
+    function _approve(
+        address owner,
+        address spender,
+        uint256 amount
+    ) internal {
         require(owner != address(0), "ERC20: approve from the zero address");
         require(spender != address(0), "ERC20: approve to the zero address");
 
@@ -214,15 +258,23 @@ contract UnboundDollar is Context, IERC20 {
         return true;
     }
 
-    
     function decreaseAllowance(address spender, uint256 subtractedValue) public returns (bool) {
-        _approve(msg.sender, spender, _allowances[msg.sender][spender].sub(subtractedValue, "ERC20: decreased allowance below zero"));
+        _approve(
+            msg.sender,
+            spender,
+            _allowances[msg.sender][spender].sub(subtractedValue, "ERC20: decreased allowance below zero")
+        );
         return true;
     }
 
-    
     // MINT: Only callable by valuing contract - Now splits fees
-    function _mint(address account, uint256 loanAmount, uint256 feeAmount, address LLCAddr, uint256 minTokenAmount) external virtual {
+    function _mint(
+        address account,
+        uint256 loanAmount,
+        uint256 feeAmount,
+        address LLCAddr,
+        uint256 minTokenAmount
+    ) external virtual {
         require(account != address(0), "ERC20: mint to the zero address");
         require(msg.sender == _valuator, "Call does not originate from Valuator");
         require(minTokenAmount <= loanAmount.sub(feeAmount), "UND: Tx took too long");
@@ -231,42 +283,33 @@ contract UnboundDollar is Context, IERC20 {
         // Credits user with their UND loan, minus fees
         _balances[account] = _balances[account].add(loanAmount.sub(feeAmount));
 
-        if (autoFeeDistribution) {
-
-            // distribute the fee to staking right away
-            uint256 stakeShare = feeAmount.mul(stakeShares).div(100);
-            
-            // Send fee to staking pool
-            _balances[_stakeAddr] = _balances[_stakeAddr].add(stakeShare);
-            
-            // store remaining fees
-            storedFee = storedFee.add(feeAmount.sub(stakeShare));
-        } else {
-            // store total to distribute later
-            storedFee = storedFee.add(feeAmount);
-        }
+        // store total to distribute later
+        storedFee = storedFee.add(feeAmount);
 
         // adding total amount of new tokens to totalSupply
         _totalSupply = _totalSupply.add(loanAmount);
 
         // crediting loan to user
         _loaned[account][LLCAddr] = _loaned[account][LLCAddr].add(loanAmount);
-        
+
         emit Mint(account, loanAmount);
     }
 
     // BURN function. Only callable from Valuing.
-    function _burn(address account, uint256 toBurn, address LLCAddr) external virtual {
+    function _burn(
+        address account,
+        uint256 toBurn,
+        address LLCAddr
+    ) external virtual {
         require(account != address(0), "ERC20: burn from the zero address");
         require(msg.sender == _valuator, "Call does not originate from Valuator");
         require(_loaned[account][LLCAddr] > 0, "You have no loan");
-        
+
         // checks if user has enough UND to cover loan and 0.25% fee
         require(_balances[account] >= toBurn, "Insufficient UND to pay back loan");
 
         // removes the amount of UND to burn from _loaned mapping/
-        _loaned[account][LLCAddr] = _loaned[account][LLCAddr].sub(toBurn);
-        
+        _loaned[account][LLCAddr] = _loaned[account][LLCAddr].sub(toBurn, "ERC20: Overflow Trigger");
         // Removes loan AND fee from user balance
         _balances[account] = _balances[account].sub(toBurn, "ERC20: burn amount exceeds balance");
 
@@ -278,90 +321,74 @@ contract UnboundDollar is Context, IERC20 {
     }
 
     // Checks how much UND the user has minted (and owes to get liquidity back)
-    function checkLoan(address user, address lockLocation) public view returns (uint256 owed) {
+    function checkLoan(address user, address lockLocation) external view returns (uint256 owed) {
         owed = _loaned[user][lockLocation];
     }
 
     function distributeFee() public returns (bool) {
-        require (storedFee > 0, "There is nothing to distribute");
+        require(storedFee > 0, "There is nothing to distribute");
 
-        if (!autoFeeDistribution) {
+        // amount of fee for safu
+        uint256 stakeShare = storedFee.mul(stakeShares).div(100);
 
-            // amount of fee for safu
-            uint256 stakeShare = storedFee.mul(stakeShares).div(100);
+        uint256 remainingShare = storedFee.sub(stakeShare);
 
-            uint256 remainingShare = storedFee.sub(stakeShare);
+        // amount of fee for staking
+        uint256 safuShare = remainingShare.mul(safuSharesOfStoredFee).div(100);
 
-            // amount of fee for staking
-            uint256 safuShare = remainingShare.mul(safuSharesOfStoredFee).div(100);
+        // send fee to safu
+        _balances[_safuAddr] = _balances[_safuAddr].add(safuShare);
 
-            // send fee to safu
-            _balances[_safuAddr] = _balances[_safuAddr].add(safuShare);
+        // send fee to staking
+        _balances[_stakeAddr] = _balances[_stakeAddr].add(stakeShare);
 
-            // send fee to staking
-            _balances[_stakeAddr] = _balances[_stakeAddr].add(stakeShare);
+        // send remaining fee to the devfund
+        _balances[_devFundAddr] = _balances[_devFundAddr].add(remainingShare.sub(safuShare));
 
-            // send remaining fee to the devfund
-            _balances[_devFundAddr] = _balances[_devFundAddr].add(remainingShare.sub(safuShare));
-            
-        } else {
-            // amount of fee for safu
-            uint256 safuShare = storedFee.mul(safuSharesOfStoredFee).div(100);
-
-            // sends to Safu Fund
-            _balances[_safuAddr] = _balances[_safuAddr].add(safuShare);
-
-            // sends the remaineder to dev fund
-            // this formula is to ensure remainders dropped by integer division are not accidentally burned
-            _balances[_devFundAddr] = _balances[_devFundAddr].add(storedFee.sub(safuShare));
-
-        }
         // set the fees to zero
         storedFee = 0;
 
         return true;
     }
-    
+
     // onlyOwner Functions
 
-    // change autoFeeDistribution
-    function flipFeeDistribution() public onlyOwner {
-        if (storedFee > 0) {
-            require(distributeFee(), "Distribution Error");
-        }
-        autoFeeDistribution = !autoFeeDistribution;
-    }
-
     // change safuShare
-    function changeSafuShare(uint256 rate) public onlyOwner {
+    function changeSafuShare(uint8 rate) public onlyOwner {
         require(rate <= 100, "bad input");
         safuSharesOfStoredFee = rate;
+        emit NewSafuShare(rate);
     }
 
     // change stakeShare
-    function changeStakeShare(uint256 rate) public onlyOwner {
+    function changeStakeShare(uint8 rate) public onlyOwner {
         require(rate <= 100, "bad input");
         stakeShares = rate;
+        emit NewStakeShare(rate);
     }
 
     // Changes stakingAddr
     function changeStaking(address newStaking) public onlyOwner {
         _stakeAddr = newStaking;
+        emit NewStaking(newStaking);
     }
 
     // Changes safuFund
     function changeSafuFund(address newSafuFund) public onlyOwner {
         _safuAddr = newSafuFund;
+        emit NewSafu(newSafuFund);
     }
 
     // Changes devFund
     function changeDevFund(address newDevFund) public onlyOwner {
         _devFundAddr = newDevFund;
+        emit NewDevFund(newDevFund);
     }
 
     // Changes Valuator Contract Address
     function changeValuator(address newValuator) public onlyOwner {
         _valuator = newValuator;
+        emit NewValuator(newValuator);
     }
 
     // Checks if sender is owner
@@ -369,9 +396,20 @@ contract UnboundDollar is Context, IERC20 {
         return msg.sender == _owner;
     }
 
-    // Changes owner
+    // Changes owner (part 1)
     function setOwner(address _newOwner) public onlyOwner {
-        _owner = _newOwner;
+        _ownerPending = _newOwner;
+        _isPending = true;
+        emit ChangingAdmin(msg.sender, _newOwner);
+    }
+
+    // changes owner (part 2)
+    function claimOwner() public {
+        require(_isPending, "Change was not initialized");
+        require(_ownerPending == msg.sender, "You are not pending owner");
+        _owner = _ownerPending;
+        _isPending = false;
+        emit AdminChanged(msg.sender);
     }
 
     // Claim - remove any airdropped tokens

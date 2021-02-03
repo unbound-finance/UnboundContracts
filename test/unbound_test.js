@@ -3,24 +3,25 @@
  * OpenZeppelin Test Helpers
  * https://github.com/OpenZeppelin/openzeppelin-test-helpers
  */
-const { BN, constants, balance, expectEvent, expectRevert } = require('@openzeppelin/test-helpers');
+const { BN, constants, balance, expectEvent, expectRevert } = require("@openzeppelin/test-helpers");
 
 /*
  *  ========================================================
  *  Tests of public & external functions in Tier1a contract
  *  ========================================================
  */
-const uDai = artifacts.require('UnboundDollar');
-const valuing = artifacts.require('Valuing_01');
-const LLC = artifacts.require('LLC_EthDai');
-const testDai = artifacts.require('TestDai');
-const testEth = artifacts.require('TestEth');
-const uniFactory = artifacts.require('UniswapV2Factory');
-const uniPair = artifacts.require('UniswapV2Pair');
-const weth9 = artifacts.require('WETH9');
-const router = artifacts.require('UniswapV2Router02');
+const uDai = artifacts.require("UnboundDollar");
+const valuing = artifacts.require("Valuing_01");
+const LLC = artifacts.require("LLC_EthDai");
+const testDai = artifacts.require("TestDai");
+const testEth = artifacts.require("TestEth");
+const uniFactory = artifacts.require("UniswapV2Factory");
+const uniPair = artifacts.require("UniswapV2Pair");
+const router = artifacts.require("UniswapV2Router02");
+const testAggregatorEth = artifacts.require("TestAggregatorProxyEthUsd");
+const testAggregatorDai = artifacts.require("TestAggregatorProxyDaiUsd");
 
-contract('UND', function (_accounts) {
+contract("UND", function (_accounts) {
   // Initial settings
   const totalSupply = 0;
   const decimal = 10 ** 18;
@@ -34,7 +35,9 @@ contract('UND', function (_accounts) {
   const feeRate = 5000;
   const stakeSharesPercent = 50;
   const safuSharesPercent = 50;
-  const zeroAddress = '0x0000000000000000000000000000000000000000';
+  const zeroAddress = "0x0000000000000000000000000000000000000000";
+  const ethPrice = 128093000000;
+  const daiPrice = 100275167;
 
   let und;
   let valueContract;
@@ -50,7 +53,7 @@ contract('UND', function (_accounts) {
   //=================
   // Default Functionality
   //=================
-  describe('Check functionality', () => {
+  describe("Check functionality", () => {
     before(async function () {
       tEth = await testEth.deployed();
       tDai = await testDai.deployed();
@@ -60,9 +63,15 @@ contract('UND', function (_accounts) {
       lockContract = await LLC.deployed();
       factory = await uniFactory.deployed();
       pair = await uniPair.at(await lockContract.pair());
+      priceFeedEth = await testAggregatorEth.deployed();
+      priceFeedDai = await testAggregatorDai.deployed();
 
-      await tDai.approve(route.address, 400000);
-      await tEth.approve(route.address, 1000);
+      // Set price to aggregator
+      await priceFeedEth.setPrice(ethPrice);
+      await priceFeedDai.setPrice(daiPrice);
+
+      await tDai.approve(route.address, daiAmount);
+      await tEth.approve(route.address, parseInt((daiAmount * daiPrice) / ethPrice));
 
       let d = new Date();
       let time = d.getTime();
@@ -70,7 +79,7 @@ contract('UND', function (_accounts) {
         tDai.address,
         tEth.address,
         daiAmount,
-        1000,
+        parseInt((daiAmount * daiPrice) / ethPrice),
         3000,
         10,
         owner,
@@ -82,111 +91,107 @@ contract('UND', function (_accounts) {
       await und.changeStaking(stakePair.address);
     });
 
-    it('should return its name', async () => {
+    it("should return its name", async () => {
       const retval = await und.name();
-      assert.equal(retval, 'Unbound Dollar', 'Incorrect name');
+      assert.equal(retval, "Unbound Dollar", "Incorrect name");
     });
 
-    it('should return its symbol', async () => {
+    it("should return its symbol", async () => {
       const retval = await und.symbol();
-      assert.equal(retval, 'UND', 'Incorrect symbol');
+      assert.equal(retval, "UND", "Incorrect symbol");
     });
 
-    it('should return its decimals', async () => {
+    it("should return its decimals", async () => {
       const retval = await und.decimals();
-      assert.equal(parseInt(retval), 18, 'Incorrect decimals');
+      assert.equal(parseInt(retval), 18, "Incorrect decimals");
     });
 
-    it('should have 0 as total suply', async () => {
+    it("should have 0 as total suply", async () => {
       const retval = await und.totalSupply();
-      assert.equal(retval, totalSupply * decimal, 'Total suply is not 0');
+      assert.equal(retval, totalSupply * decimal, "Total suply is not 0");
     });
 
-    it('should have valuator', async () => {
+    it("should have valuator", async () => {
       const retval = await und.valuator();
-      assert.equal(retval, valueContract.address, 'incorrect Valuator');
+      assert.equal(retval, valueContract.address, "incorrect Valuator");
     });
 
-    it('should have staking contract address', async () => {
+    it("should have staking contract address", async () => {
       const retval = await und.stakeAddr();
-      assert.equal(retval, stakePair.address, 'incorrect staking contract address');
+      assert.equal(retval, stakePair.address, "incorrect staking contract address");
     });
 
-    it('should have emergency fund address', async () => {
+    it("should have emergency fund address", async () => {
       const retval = await und.safuAddr();
-      assert.equal(retval, safu, 'incorrect emergency fund address');
+      assert.equal(retval, safu, "incorrect emergency fund address");
     });
 
-    it('should have dev fund address', async () => {
+    it("should have dev fund address", async () => {
       const retval = await und.devFundAddr();
-      assert.equal(retval, devFund, 'incorrect dev fund address');
+      assert.equal(retval, devFund, "incorrect dev fund address");
     });
 
-    it('should not transfer without balance', async () => {
+    it("should not transfer without balance", async () => {
       const transferAmount = 5;
 
-      await expectRevert(und.transfer(user, transferAmount), 'ERC20: transfer amount exceeds balance');
+      await expectRevert(und.transfer(user, transferAmount), "ERC20: transfer amount exceeds balance");
     });
 
-    it('should not transferFrom without balance', async () => {
+    it("should not transferFrom without balance", async () => {
       const transferAmount = 5;
 
-      await expectRevert(und.transferFrom(user, owner, transferAmount), 'ERC20: transfer amount exceeds balance');
+      await expectRevert(und.transferFrom(user, owner, transferAmount), "ERC20: transfer amount exceeds balance");
     });
 
-    it('should be not auto fee distribution', async () => {
-      assert.isFalse(await und.autoFeeDistribution(), 'incorrect autoFeeDistribution');
+    it("should not be able to changeSafuShare more than 100", async () => {
+      await expectRevert(und.changeSafuShare(101), "bad input");
     });
 
-    it('should not be able to changeSafuShare more than 100', async () => {
-      await expectRevert(und.changeSafuShare(101), 'bad input');
+    it("should not be able to changeStakeShare more than 100", async () => {
+      await expectRevert(und.changeStakeShare(101), "bad input");
     });
 
-    it('should not be able to changeStakeShare more than 100', async () => {
-      await expectRevert(und.changeStakeShare(101), 'bad input');
-    });
-
-    it('should be able to changeSafuShare', async () => {
+    it("should be able to changeSafuShare", async () => {
       const safuShareTemp = 10;
       await und.changeSafuShare(safuShareTemp);
 
       const share = await und.safuSharesOfStoredFee();
-      assert.equal(parseInt(share), safuShareTemp, 'Invalid stake share');
+      assert.equal(parseInt(share), safuShareTemp, "Invalid stake share");
 
       await und.changeSafuShare(safuSharesPercent);
     });
 
-    it('should be able to changeStakeShare', async () => {
+    it("should be able to changeStakeShare", async () => {
       const stakeShareTemp = 10;
       await und.changeStakeShare(stakeShareTemp);
 
       const share = await und.stakeShares();
-      assert.equal(parseInt(share), stakeShareTemp, 'Invalid stake share');
+      assert.equal(parseInt(share), stakeShareTemp, "Invalid stake share");
 
       await und.changeStakeShare(stakeSharesPercent);
     });
 
-    it('should be able to changeSafuFund', async () => {
+    it("should be able to changeSafuFund", async () => {
       const newFund = _accounts[5];
       await und.changeSafuFund(newFund);
 
       const address = await und.safuAddr();
-      assert.equal(address, newFund, 'Invalid safu address');
+      assert.equal(address, newFund, "Invalid safu address");
 
       await und.changeSafuFund(safu);
     });
 
-    it('should be able to changeDevFund', async () => {
+    it("should be able to changeDevFund", async () => {
       const newFund = _accounts[5];
       await und.changeDevFund(newFund);
 
       const address = await und.devFundAddr();
-      assert.equal(address, newFund, 'Invalid dev fund');
+      assert.equal(address, newFund, "Invalid dev fund");
 
       await und.changeDevFund(devFund);
     });
 
-    it('cannot call lockLPT() without enough tokens', async () => {
+    it("cannot call lockLPT() without enough tokens", async () => {
       const lockAmount = 10;
       const anyNumber = 123;
 
@@ -194,19 +199,19 @@ contract('UND', function (_accounts) {
         lockContract.lockLPT(lockAmount, anyNumber, {
           from: user,
         }),
-        'LLC: Insufficient LPTs'
+        "LLC: Insufficient LPTs"
       );
     });
 
-    it('cannot call lockLPT() small amount', async () => {
+    it("cannot call lockLPT() small amount", async () => {
       const lockAmount = 1;
       const anyNumber = 123;
 
       await pair.approve(lockContract.address, lockAmount);
-      await expectRevert(lockContract.lockLPT(lockAmount, anyNumber), 'amount is too small');
+      await expectRevert(lockContract.lockLPT(lockAmount, anyNumber), "amount is too small");
     });
 
-    it('fails to lockLPT() with minTokenAmount which is more than minting amount', async () => {
+    it("fails to lockLPT() with minTokenAmount which is more than minting amount", async () => {
       const LPTbal = parseInt(await pair.balanceOf(owner));
       const LPtokens = parseInt(LPTbal / 4); // Amount of token to be lock
       const totalUSD = daiAmount * 2; // Total value in Liquidity pool
@@ -216,56 +221,56 @@ contract('UND', function (_accounts) {
       const feeAmount = parseInt((loanAmount * feeRate) / rateBalance); // Amount of fee
 
       await pair.approve(lockContract.address, LPtokens);
-      await expectRevert(lockContract.lockLPT(LPtokens, loanAmount - feeAmount + 1), 'UND: Tx took too long');
+      await expectRevert(lockContract.lockLPT(LPtokens, loanAmount - feeAmount + 1), "UND: Tx took too long");
     });
 
-    it('fails to mint zero address', async () => {
+    it("fails to mint zero address", async () => {
       const anyNumber = 123;
       await expectRevert(
         und._mint(zeroAddress, anyNumber, anyNumber, zeroAddress, anyNumber),
-        'ERC20: mint to the zero address'
+        "ERC20: mint to the zero address"
       );
     });
 
-    it('fails to mint by not valuator', async () => {
+    it("fails to mint by not valuator", async () => {
       const anyNumber = 123;
       await expectRevert(
         und._mint(owner, anyNumber, anyNumber, lockContract.address, anyNumber),
-        'Call does not originate from Valuator'
+        "Call does not originate from Valuator"
       );
     });
 
-    it('fails to burn zero address', async () => {
+    it("fails to burn zero address", async () => {
       const anyNumber = 123;
-      await expectRevert(und._burn(zeroAddress, anyNumber, zeroAddress), 'ERC20: burn from the zero address');
+      await expectRevert(und._burn(zeroAddress, anyNumber, zeroAddress), "ERC20: burn from the zero address");
     });
 
-    it('fails to burn by not valuator', async () => {
+    it("fails to burn by not valuator", async () => {
       const anyNumber = 123;
-      await expectRevert(und._burn(owner, anyNumber, lockContract.address), 'Call does not originate from Valuator');
+      await expectRevert(und._burn(owner, anyNumber, lockContract.address), "Call does not originate from Valuator");
     });
 
-    it('cannot approve with 0 address', async () => {
+    it("cannot approve with 0 address", async () => {
       const transferAmount = 10;
 
       // await expectRevert(und.approve(zeroAddress, transferAmount), 'ERC20: approve from the zero address');
-      await expectRevert(und.approve(zeroAddress, transferAmount), 'ERC20: approve to the zero address');
+      await expectRevert(und.approve(zeroAddress, transferAmount), "ERC20: approve to the zero address");
     });
 
-    it('cannot transferFrom with 0 address', async () => {
+    it("cannot transferFrom with 0 address", async () => {
       const transferAmount = 10;
 
-      await expectRevert(und.transferFrom(zeroAddress, user, transferAmount), 'ERC20: transfer from the zero address');
-      await expectRevert(und.transferFrom(owner, zeroAddress, transferAmount), 'ERC20: transfer to the zero address');
+      await expectRevert(und.transferFrom(zeroAddress, user, transferAmount), "ERC20: transfer from the zero address");
+      await expectRevert(und.transferFrom(owner, zeroAddress, transferAmount), "ERC20: transfer to the zero address");
     });
 
-    it('mint for test', async () => {
+    it("mint for test", async () => {
       // Lock some pool token
       await pair.approve(lockContract.address, 1000);
       lockContract.lockLPT(1000, 1);
     });
 
-    it('can transfer', async () => {
+    it("can transfer", async () => {
       const transferAmount = 10;
       const beforeBal = parseInt(await und.balanceOf(owner));
       const beforeUser = parseInt(await und.balanceOf(user));
@@ -274,24 +279,24 @@ contract('UND', function (_accounts) {
       const finalBal = parseInt(await und.balanceOf(owner));
       const userBal = parseInt(await und.balanceOf(user));
 
-      assert.equal(userBal, beforeUser + transferAmount, 'receiver balance incorrect');
-      assert.equal(finalBal, beforeBal - transferAmount, 'sender balance incorrect');
+      assert.equal(userBal, beforeUser + transferAmount, "receiver balance incorrect");
+      assert.equal(finalBal, beforeBal - transferAmount, "sender balance incorrect");
     });
 
-    it('can increase and decrease arrowance', async () => {
+    it("can increase and decrease arrowance", async () => {
       const transferAmount = 10;
       const allowanceBefore = parseInt(await und.allowance(user, owner));
 
       await und.increaseAllowance(owner, transferAmount, { from: user });
       const allowanceIncreased = parseInt(await und.allowance(user, owner));
-      assert.equal(allowanceIncreased, allowanceBefore + transferAmount, 'increased allowance incorrect');
+      assert.equal(allowanceIncreased, allowanceBefore + transferAmount, "increased allowance incorrect");
 
       await und.decreaseAllowance(owner, transferAmount, { from: user });
       const allowanceDecreased = parseInt(await und.allowance(user, owner));
-      assert.equal(allowanceDecreased, allowanceBefore, 'decreased allowance incorrect');
+      assert.equal(allowanceDecreased, allowanceBefore, "decreased allowance incorrect");
     });
 
-    it('can transferFrom', async () => {
+    it("can transferFrom", async () => {
       const transferAmount = 10;
       let beforeBal = await und.balanceOf(owner);
       let beforeUser = await und.balanceOf(user);
@@ -303,23 +308,28 @@ contract('UND', function (_accounts) {
       let finalBal = parseInt(await und.balanceOf(owner));
       let userBal = parseInt(await und.balanceOf(user));
 
-      assert.equal(userBal, beforeUser - transferAmount, 'receiver balance incorrect');
-      assert.equal(finalBal, beforeBal + transferAmount, 'sender balance incorrect');
+      assert.equal(userBal, beforeUser - transferAmount, "receiver balance incorrect");
+      assert.equal(finalBal, beforeBal + transferAmount, "sender balance incorrect");
     });
 
-    it('can claim tokens', async () => {
+    it("can claim tokens", async () => {
       await tEth.transfer(und.address, 10);
       await und.claimTokens(tEth.address, user);
       const finalBalance = parseInt(await tEth.balanceOf(user));
 
-      assert.equal(10, finalBalance, 'UND Claim is not working');
+      assert.equal(10, finalBalance, "UND Claim is not working");
     });
 
-    it('can set owner', async () => {
+    it("cannot claim owner", async () => {
+      await expectRevert(und.claimOwner(), "Change was not initialized");
       await und.setOwner(user);
-      assert.isTrue(await und.isOwner({ from: user }), 'Set owner is not working');
-      await expectRevert(und.setOwner(user), 'Ownable: caller is not the owner');
-      await und.setOwner(owner, { from: user });
+      await expectRevert(und.claimOwner(), "You are not pending owner");
+    });
+
+    it("can set owner", async () => {
+      await und.claimOwner({ from: user });
+      assert.isTrue(await und.isOwner({ from: user }), "Set owner is not working");
+      await expectRevert(und.setOwner(owner), "Ownable: caller is not the owner");
     });
   });
 });
