@@ -450,7 +450,7 @@ contract LiquidityLockContract {
         // get current CR Ratio
         uint256 CRNow = (valueOfSingleLPT.mul(_tokensLocked[msg.sender])).div(_currentLoan);
 
-        if (CREnd.mul(10**18).div(CRNorm) > CRNow) {
+        if (CREnd.mul(10**18).div(CRNorm) <= CRNow) {
             // LPT to send back. This number should have 18 decimals
             _LPTokenToReturn = (_tokensLocked[msg.sender].mul(_uTokenAmt)).div(_currentLoan);
         } else {
