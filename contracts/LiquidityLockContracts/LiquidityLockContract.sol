@@ -129,6 +129,8 @@ contract LiquidityLockContract {
         address[] memory priceFeedBaseAsset,
         address uTokenAddr
     ) {
+        require(baseAssetDecimal >= 2, "Base asset must have at least 2 decimals");
+        
         _owner = msg.sender;
 
         // initiates interfacing contracts
