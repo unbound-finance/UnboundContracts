@@ -204,13 +204,13 @@ contract LiquidityLockContract {
         require(LPTContract.balanceOf(msg.sender) >= LPTamt, "LLC: Insufficient LPTs");
         require(nextBlock[msg.sender] <= block.number, "LLC: user must wait");
 
+        // sets nextBlock
+        nextBlock[msg.sender] = block.number.add(blockLimit);
+
         uint256 totalLPTokens = LPTContract.totalSupply();
 
         // Acquire total baseAsset value of pair
         uint256 totalUSD = getValue();
-
-        // map locked tokens to user address
-        _tokensLocked[msg.sender] = _tokensLocked[msg.sender].add(LPTamt);
 
         // This should compute % value of Liq pool in Dai. Cannot have decimals in Solidity
         LPTValueInDai = totalUSD.mul(LPTamt).div(totalLPTokens);
@@ -231,11 +231,11 @@ contract LiquidityLockContract {
         // call Permit and Transfer
         transferLPTPermit(msg.sender, LPTamt, deadline, v, r, s);
 
+        // map locked tokens to user address
+        _tokensLocked[msg.sender] = _tokensLocked[msg.sender].add(LPTamt);
+
         // Call Valuing Contract
         valuingContract.unboundCreate(LPTValueInDai, msg.sender, minTokenAmount); // Hardcode "0" for AAA rating
-
-        // sets nextBlock
-        nextBlock[msg.sender] = block.number.add(blockLimit);
 
         // emit lockLPT event
         emit LockLPT(LPTamt, msg.sender);
@@ -248,11 +248,11 @@ contract LiquidityLockContract {
         // transfer LPT to the address
         transferLPT(LPTamt);
 
+        // map locked tokens to user address
+        _tokensLocked[msg.sender] = _tokensLocked[msg.sender].add(LPTamt);
+
         // Call Valuing Contract
         valuingContract.unboundCreate(LPTValueInDai, msg.sender, minTokenAmount);
-
-        // sets nextBlock
-        nextBlock[msg.sender] = block.number.add(blockLimit);
 
         // emit lockLPT event
         emit LockLPT(LPTamt, msg.sender);
@@ -351,6 +351,9 @@ contract LiquidityLockContract {
         require(uTokenAmt > 0, "Cannot unlock nothing");
         require(nextBlock[msg.sender] <= block.number, "LLC: user must wait");
 
+        // sets nextBlock
+        nextBlock[msg.sender] = block.number.add(blockLimit);
+
         // get current amount of uToken Loan
         uint256 currentLoan = unboundContract.checkLoan(msg.sender, address(this));
 
@@ -388,8 +391,7 @@ contract LiquidityLockContract {
             emit UnlockLPT(LPTokenToReturn, msg.sender);
         }
 
-        // sets nextBlock
-        nextBlock[msg.sender] = block.number.add(blockLimit);
+        
     }
 
     function getLPTokensToReturn(uint256 _currentLoan, uint256 _uTokenAmt) internal returns (uint256 _LPTokenToReturn) {
