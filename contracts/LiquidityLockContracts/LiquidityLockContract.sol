@@ -130,7 +130,7 @@ contract LiquidityLockContract {
         address uTokenAddr
     ) {
         require(baseAssetDecimal >= 2, "Base asset must have at least 2 decimals");
-        
+
         _owner = msg.sender;
 
         // initiates interfacing contracts
@@ -533,6 +533,7 @@ contract LiquidityLockContract {
 
     // Sets new Valuing Address
     function setValuingAddress(address _newValuing) public onlyOwner {
+        require(_newValuing != address(0), "Cannot change to 0 address");
         valuingContract = IValuing_01(_newValuing);
         emit NewValuing(_newValuing);
     }

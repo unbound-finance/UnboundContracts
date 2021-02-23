@@ -103,6 +103,8 @@ contract UnboundDollar is Context, IERC20 {
         address Safu,
         address devFund
     ) {
+        require(Safu != address(0), "Cannot change to 0 address");
+        require(devFund != address(0), "Cannot change to 0 address");
         _name = tokenName;
         _symbol = tokenSymbol;
         _decimals = 18;
@@ -369,24 +371,28 @@ contract UnboundDollar is Context, IERC20 {
 
     // Changes stakingAddr
     function changeStaking(address newStaking) public onlyOwner {
+        require(newStaking != address(0), "Cannot change to 0 address");
         _stakeAddr = newStaking;
         emit NewStaking(newStaking);
     }
 
     // Changes safuFund
     function changeSafuFund(address newSafuFund) public onlyOwner {
+        require(newSafuFund != address(0), "Cannot change to 0 address");
         _safuAddr = newSafuFund;
         emit NewSafu(newSafuFund);
     }
 
     // Changes devFund
     function changeDevFund(address newDevFund) public onlyOwner {
+        require(newDevFund != address(0), "Cannot change to 0 address");
         _devFundAddr = newDevFund;
         emit NewDevFund(newDevFund);
     }
 
     // Changes Valuator Contract Address
     function changeValuator(address newValuator) public onlyOwner {
+        require(newValuator != address(0), "Cannot change to 0 address");
         _valuator = newValuator;
         emit NewValuator(newValuator);
     }
@@ -398,6 +404,7 @@ contract UnboundDollar is Context, IERC20 {
 
     // Changes owner (part 1)
     function setOwner(address _newOwner) public onlyOwner {
+        require(_newOwner != address(0), "Cannot change to 0 address");
         _ownerPending = _newOwner;
         _isPending = true;
         emit ChangingAdmin(msg.sender, _newOwner);
