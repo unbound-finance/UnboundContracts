@@ -71,9 +71,6 @@ contract LiquidityLockContract {
     // If killSwitch = true, cannot lock LPT and mint new uTokens
     bool public killSwitch;
 
-    // LPT address
-    address public pair;
-
     // tokens locked by users
     mapping(address => uint256) _tokensLocked;
 
@@ -141,9 +138,6 @@ contract LiquidityLockContract {
 
         // killSwitch MUST be false for lockLPT to work
         killSwitch = false;
-
-        // set LPT address
-        pair = LPTaddress;
 
         // set block limit (10 by default)
         blockLimit = 10;
@@ -499,7 +493,7 @@ contract LiquidityLockContract {
     // Claim - remove any airdropped tokens
     // currently sends all tokens to "to" address (in param)
     function claimTokens(address _tokenAddr, address to) public onlyOwner {
-        require(_tokenAddr != pair, "Cannot move LP tokens");
+        require(_tokenAddr != address(LPTContract), "Cannot move LP tokens");
         uint256 tokenBal = IERC20_2(_tokenAddr).balanceOf(address(this));
         require(IERC20_2(_tokenAddr).transfer(to, tokenBal), "LLC: Transfer Failed");
     }
