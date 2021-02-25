@@ -267,7 +267,7 @@ contract UnboundDollar is IERC20 {
     }
 
     // MINT: Only callable by valuing contract - Now splits fees
-    function _mint(
+    function mint(
         address account,
         uint256 loanAmount,
         uint256 feeAmount,
@@ -295,7 +295,7 @@ contract UnboundDollar is IERC20 {
     }
 
     // BURN function. Only callable from Valuing.
-    function _burn(
+    function burn(
         address account,
         uint256 toBurn,
         address LLCAddr

@@ -97,7 +97,7 @@ contract Valuing_01 {
         }
 
         // calls mint
-        unboundContract._mint(user, loanAmt, feeAmt, msg.sender, minTokenAmount);
+        unboundContract.mint(user, loanAmt, feeAmt, msg.sender, minTokenAmount);
     }
 
     // Loan repayment Intermediary - only called from LLC
@@ -108,7 +108,7 @@ contract Valuing_01 {
         IUnboundToken unboundContract = IUnboundToken(listOfLLC[msg.sender].uToken);
 
         // calls burn
-        unboundContract._burn(user, toUnlock, msg.sender);
+        unboundContract.burn(user, toUnlock, msg.sender);
     }
 
     // returns the fee and loanrate variables attached to an LLC
