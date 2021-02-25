@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.7.5;
 
-import "@openzeppelin/contracts/GSN/Context.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
 // ---------------------------------------------------------------------------------------
@@ -23,9 +21,8 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 // contract by owner once it is created from the uniswap factory.
 // ----------------------------------------------------------------------------------------
 
-contract UnboundDollar is Context, IERC20 {
+contract UnboundDollar is IERC20 {
     using SafeMath for uint256;
-    using Address for address;
     using SafeERC20 for IERC20;
 
     event Mint(address user, uint256 newMint);
