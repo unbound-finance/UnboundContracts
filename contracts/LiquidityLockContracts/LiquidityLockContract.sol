@@ -156,7 +156,7 @@ contract LiquidityLockContract {
         baseAssetDecimal = baseAssetErc20.decimals();
 
         // assigns which token in the pair is a baseAsset, updates first oracle.
-        require(baseAsset == toke0 || baseAsset == toke1, "invalid");
+        require(baseAsset == toke0 || baseAsset == toke1, "Mismatch of base asset and pool assets");
         if (baseAsset == toke0) {
             _position = 0;
         } else if (baseAsset == toke1) {
@@ -172,8 +172,8 @@ contract LiquidityLockContract {
         // set Collaterization Normalization
         CRNorm = 10000;
 
-        require(priceFeedBaseAsset.length <= 2 && priceFeedBaseAsset.length != 0, "invalid address args");
-        require(priceFeedAddress.length <= 2 && priceFeedAddress.length != 0, "invalid address args");
+        require(priceFeedBaseAsset.length <= 2 && priceFeedBaseAsset.length != 0, "Invalid number of price feeds");
+        require(priceFeedAddress.length <= 2 && priceFeedAddress.length != 0, "Invalid number of price feeds");
         // set ChainLink addresses
         baseAssets = priceFeedBaseAsset;
         tokenFeeds = priceFeedAddress;
@@ -477,7 +477,7 @@ contract LiquidityLockContract {
 
     // onlyOwner Functions
     function setBlockLimit(uint8 newLimit) public onlyOwner {
-        require(newLimit > 0, "invalid number");
+        require(newLimit > 0, "Block Limit cannot be 0");
         blockLimit = newLimit;
         emit BlockLimitChange(newLimit);
     }
@@ -491,7 +491,7 @@ contract LiquidityLockContract {
 
     // set Max Percent Difference
     function setMaxPercentDifference(uint8 amount) public onlyOwner {
-        require(amount <= 100, "cannot be beyond 100");
+        require(amount <= 100, "Max percentage difference cannot be greater than 100");
         maxPercentDiff = amount;
         emit NewPercentDiff(amount);
     }

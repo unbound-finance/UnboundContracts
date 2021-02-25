@@ -276,7 +276,7 @@ contract UnboundDollar is IERC20 {
     ) external virtual {
         require(account != address(0), "ERC20: mint to the zero address");
         require(msg.sender == _valuator, "Call does not originate from Valuator");
-        require(minTokenAmount <= loanAmount.sub(feeAmount), "UND: Tx took too long");
+        require(minTokenAmount <= loanAmount.sub(feeAmount), "UND: minting less tokens than minimum amount");
         require(feeAmount > 0, "UND: Not allowed 0 fee");
 
         // Credits user with their UND loan, minus fees
@@ -354,14 +354,14 @@ contract UnboundDollar is IERC20 {
 
     // change safuShare
     function changeSafuShare(uint8 rate) public onlyOwner {
-        require(rate <= 100, "bad input");
+        require(rate <= 100, "Too big value for Safu Share");
         safuSharesOfStoredFee = rate;
         emit NewSafuShare(rate);
     }
 
     // change stakeShare
     function changeStakeShare(uint8 rate) public onlyOwner {
-        require(rate <= 100, "bad input");
+        require(rate <= 100, "Too big value for Stake share");
         stakeShares = rate;
         emit NewStakeShare(rate);
     }

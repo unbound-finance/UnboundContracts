@@ -86,13 +86,13 @@ contract Valuing_01 {
         uint256 loanAmt = amount;
         if (listOfLLC[msg.sender].loanRate != 0) {
             loanAmt = amount.mul(listOfLLC[msg.sender].loanRate).div(rateBalance);
-            require(loanAmt > 0, "value too small");
+            require(loanAmt > 0, "Cannot mint 0 loan value");
         }
 
         // computes fee amount
         uint256 feeAmt = 0;
         if (listOfLLC[msg.sender].feeRate != 0) {
-            require(loanAmt.mul(listOfLLC[msg.sender].feeRate) >= rateBalance, "amount is too small");
+            require(loanAmt.mul(listOfLLC[msg.sender].feeRate) >= rateBalance, "Too small loan value to pay the fee");
             feeAmt = loanAmt.mul(listOfLLC[msg.sender].feeRate).div(rateBalance);
         }
 
@@ -128,7 +128,7 @@ contract Valuing_01 {
     ) public onlyOwner {
         // add uToken to mint
         listOfLLC[LLC].uToken = uToken;
-        // Enter 2500 for 0.25%, 250 for 2.5%, and 25 for 25%.
+        // Enter 2500 for 0.25%, 25000 for 2.5%, and 250000 for 25%.
         listOfLLC[LLC].loanRate = loan;
         listOfLLC[LLC].feeRate = fee;
         listOfLLC[LLC].active = true;
