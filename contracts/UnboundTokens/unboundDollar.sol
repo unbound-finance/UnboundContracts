@@ -89,11 +89,6 @@ contract UnboundDollar is IERC20 {
         _;
     }
 
-    modifier onlyValuator() {
-        require(msg.sender == _valuator, "Call does not originate from Valuator");
-        _;
-    }
-
     constructor(
         string memory tokenName,
         string memory tokenSymbol,
