@@ -29,10 +29,11 @@ jobs:
           firefly compile
           firefly launch -p 8545 &
       - name: run firefly test
-        run: |
-          firefly test
-          firefly coverage -p 8545
-          firefly close -p 8545
+        run: firefly test
+      - name: get coverage
+        run: firefly coverage -p 8545
+      - name: close firefly
+        run: firefly close -p 8545
       - name: export test result
         run: |
           export FIREFLY_TOKEN=UVhTUFNENVJrSEE5bFNSYXMySTJGZU41NDNqejhxbDducm1PV21jdjBsbz0=
