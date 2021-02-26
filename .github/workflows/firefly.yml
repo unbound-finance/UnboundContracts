@@ -20,6 +20,8 @@ jobs:
           registry-url: "https://registry.npmjs.org"
       - name: install modules
         run: npm install
+      - name: install truffle
+        run: npm install truffle
       - name: install firefly
         run: sudo apt-get install ./firefly_amd64_bionic.deb
       - name: start firefly
