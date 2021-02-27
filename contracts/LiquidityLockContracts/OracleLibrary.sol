@@ -21,8 +21,9 @@ library OracleLibrary {
     }
 
     // check baseAsset price for existing pair on chainlink (direct)
-    function checkBaseAssetValue(address baseAssetAddr, uint8 percentDiff) internal view {
-        (, int256 price, , , ) = AggregatorV3Interface(baseAssetAddr).latestRoundData();
+    function checkBaseAssetValue(address baseAssetAddr, uint8 percentDiff, uint256 allowedDelay) internal view {
+        (, int256 price, , uint256 updatedAt, ) = AggregatorV3Interface(baseAssetAddr).latestRoundData();
+        require(updatedAt >= block.timestamp.sub(allowedDelay), "price oracle data is too old. Wait for update.");
         uint256 _baseAssetValue = uint256(price);
         uint256 _decimals = getDecimals(baseAssetAddr);
         _baseAssetValue = _baseAssetValue / (10**(_decimals - 2));
@@ -36,10 +37,13 @@ library OracleLibrary {
     function checkBaseAssetValueTriangulate(
         address baseAssetAddr,
         address secondBaseAsset,
-        uint8 percentDiff
+        uint8 percentDiff,
+        uint256 allowedDelay
     ) internal view {
-        (, int256 price, , , ) = AggregatorV3Interface(baseAssetAddr).latestRoundData();
-        (, int256 price2, , , ) = AggregatorV3Interface(secondBaseAsset).latestRoundData();
+        (, int256 price, , uint256 updatedAt, ) = AggregatorV3Interface(baseAssetAddr).latestRoundData();
+        (, int256 price2, , uint256 updatedAtSecond, ) = AggregatorV3Interface(secondBaseAsset).latestRoundData();
+        require(updatedAt >= block.timestamp.sub(allowedDelay), "price oracle data is too old. Wait for update.");
+        require(updatedAtSecond >= block.timestamp.sub(allowedDelay), "price oracle second data is too old. Wait for update.");
 
         uint256 _baseAssetValue = uint256(price);
         uint256 _secondBaseAsset = uint256(price2);
@@ -55,18 +59,22 @@ library OracleLibrary {
     }
 
     // Returns latest price from ChainLink Oracle (direct)
-    function getLatestPrice(address assetAddr) internal view returns (uint256) {
-        (, int256 price, , , ) = AggregatorV3Interface(assetAddr).latestRoundData();
+    function getLatestPrice(address assetAddr, uint256 allowedDelay) internal view returns (uint256) {
+        (, int256 price, , uint256 updatedAt, ) = AggregatorV3Interface(assetAddr).latestRoundData();
+        require(updatedAt >= block.timestamp.sub(allowedDelay), "price oracle data is too old. Wait for update.");
         return uint256(price);
     }
 
     // Returns latest price from ChainLink Oracle (Triangulation)
-    function getLatestPriceTriangulate(address erc20PriceAddr, address ethPriceAddr) internal view returns (uint256) {
+    function getLatestPriceTriangulate(address erc20PriceAddr, address ethPriceAddr, uint256 allowedDelay) internal view returns (uint256) {
         // bat price in ETH
-        (, int256 price, , , ) = AggregatorV3Interface(erc20PriceAddr).latestRoundData();
+        (, int256 price, , uint256 updatedAt, ) = AggregatorV3Interface(erc20PriceAddr).latestRoundData();
 
         // ETH price in USD
-        (, int256 price2, , , ) = AggregatorV3Interface(ethPriceAddr).latestRoundData();
+        (, int256 price2, , uint256 updatedAtSecond, ) = AggregatorV3Interface(ethPriceAddr).latestRoundData();
+
+        require(updatedAt >= block.timestamp.sub(allowedDelay), "price oracle data is too old. Wait for update.");
+        require(updatedAtSecond >= block.timestamp.sub(allowedDelay), "price oracle second data is too old. Wait for update.");
 
         // convert to uint256
         uint256 priceA = uint256(price);
@@ -81,25 +89,26 @@ library OracleLibrary {
         return finalPrice;
     }
 
-    function getPriceFeeds(bool _triangulatePriceFeed, address[] memory _addresses) internal view returns (uint256) {
+    function getPriceFeeds(bool _triangulatePriceFeed, address[] memory _addresses, uint256 _allowedDelay) internal view returns (uint256) {
         // get latest price from oracle
         if (_triangulatePriceFeed) {
-            return getLatestPriceTriangulate(_addresses[0], _addresses[1]);
+            return getLatestPriceTriangulate(_addresses[0], _addresses[1], _allowedDelay);
         } else {
-            return getLatestPrice(_addresses[0]);
+            return getLatestPrice(_addresses[0], _allowedDelay);
         }
     }
 
     function checkBaseAssetPrices(
         bool _triangulateBaseAsset,
         uint8 _maxPercentDiffBaseAsset,
-        address[] memory _addresses
+        address[] memory _addresses,
+        uint256 _allowedDelay
     ) internal view {
         // check if baseAsset value is stable
         if (_triangulateBaseAsset) {
-            checkBaseAssetValueTriangulate(_addresses[0], _addresses[1], _maxPercentDiffBaseAsset);
+            checkBaseAssetValueTriangulate(_addresses[0], _addresses[1], _maxPercentDiffBaseAsset, _allowedDelay);
         } else {
-            checkBaseAssetValue(_addresses[0], _maxPercentDiffBaseAsset);
+            checkBaseAssetValue(_addresses[0], _maxPercentDiffBaseAsset, _allowedDelay);
         }
     }
 }

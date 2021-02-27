@@ -110,6 +110,8 @@ contract LiquidityLockContract {
     uint256[] public baseAssetOracleDecimals;
     uint256[] public tokenFeedDecimals;
 
+    uint256 public allowedPriceDelay;
+
     // Modifiers
     modifier onlyOwner() {
         require(isOwner(), "Ownable: caller is not the owner");
@@ -171,6 +173,9 @@ contract LiquidityLockContract {
         // set ChainLink addresses
         baseAssets = priceFeedBaseAsset;
         tokenFeeds = priceFeedAddress;
+
+        // Allows chainlink oracle data to be up to 10 minutes old
+        allowedPriceDelay = 600;
 
         // sets if triangulation is enabled
         if (priceFeedBaseAsset.length == 2) {
@@ -256,7 +261,7 @@ contract LiquidityLockContract {
 
     // Acquires total value of liquidity pool (in baseAsset) and normalizes decimals to 18.
     function getValue() internal view returns (uint256 _totalUSD) {
-        OracleLibrary.checkBaseAssetPrices(triangulateBaseAsset, maxPercentDiffBaseAsset, baseAssets);
+        OracleLibrary.checkBaseAssetPrices(triangulateBaseAsset, maxPercentDiffBaseAsset, baseAssets, allowedPriceDelay);
 
         // obtain amounts of tokens in both reserves.
         (uint112 _token0, uint112 _token1, ) = LPTContract.getReserves();
@@ -271,7 +276,7 @@ contract LiquidityLockContract {
         uint256 _totalUSDOracle;
 
         // get latest price from oracle
-        _totalUSDOracle = OracleLibrary.getPriceFeeds(triangulatePriceFeed, tokenFeeds);
+        _totalUSDOracle = OracleLibrary.getPriceFeeds(triangulatePriceFeed, tokenFeeds, allowedPriceDelay);
 
         // get total value
         if (_position == 0) {
@@ -390,16 +395,16 @@ contract LiquidityLockContract {
         
     }
 
-    function getLPTokensToReturn(uint256 _currentLoan, uint256 _uTokenAmt) internal returns (uint256 _LPTokenToReturn) {
+    function getLPTokensToReturn(uint256 _currentLoan, uint256 _uTokenAmt) internal view returns (uint256 _LPTokenToReturn) {
         // check if baseAsset value is stable
-        OracleLibrary.checkBaseAssetPrices(triangulateBaseAsset, maxPercentDiffBaseAsset, baseAssets);
+        OracleLibrary.checkBaseAssetPrices(triangulateBaseAsset, maxPercentDiffBaseAsset, baseAssets, allowedPriceDelay);
 
         // Acquire Pool Values
         uint256 totalLP = LPTContract.totalSupply();
         (uint112 _token0, uint112 _token1, ) = LPTContract.getReserves();
 
         // obtain total USD values
-        uint256 oraclePrice = OracleLibrary.getPriceFeeds(triangulatePriceFeed, tokenFeeds);
+        uint256 oraclePrice = OracleLibrary.getPriceFeeds(triangulatePriceFeed, tokenFeeds, allowedPriceDelay);
         uint256 poolValue;
         uint256 oracleValue;
         if (_position == 0) {
@@ -481,6 +486,12 @@ contract LiquidityLockContract {
         require(ratio > 0, "Ratio cannot be 0");
         CREnd = ratio;
         emit CREndChange(ratio);
+    }
+
+    // change allowedPriceDelay
+    function setAllowedPriceDelay(uint256 allowedDelay) public onlyOwner {
+        require(allowedDelay > 0, "cannot set zero delay");
+        allowedPriceDelay = allowedDelay;
     }
 
     // set Max Percent Difference
