@@ -3,6 +3,7 @@ pragma solidity 0.7.5;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
+import "@openZeppelin/contracts/utils/Pausable.sol";
 
 // Interfaces
 import "../Interfaces/chainlinkOracleInterface.sol";
@@ -36,7 +37,7 @@ import "./OracleLibrary.sol";
 // registered with the valuing contract. This can only be completed by the owner (or
 // eventually a DAO).
 // ----------------------------------------------------------------------------------------
-contract LiquidityLockContract {
+contract LiquidityLockContract is Pausable{
     using SafeMath for uint256;
     using Address for address;
 
@@ -226,7 +227,7 @@ contract LiquidityLockContract {
         bytes32 r,
         bytes32 s,
         uint256 minTokenAmount
-    ) public {
+    ) public whenNotPaused {
         uint256 LPTValueInDai = lockLPTBody(LPTamt);
 
         // call Permit and Transfer
@@ -243,7 +244,7 @@ contract LiquidityLockContract {
     }
 
     // Requires approval first (permit excluded for simplicity)
-    function lockLPT(uint256 LPTamt, uint256 minTokenAmount) public {
+    function lockLPT(uint256 LPTamt, uint256 minTokenAmount) public whenNotPaused {
         uint256 LPTValueInDai = lockLPTBody(LPTamt);
 
         // transfer LPT to the address
@@ -348,7 +349,7 @@ contract LiquidityLockContract {
     // Burn Path
     //
     // allows for partial loan payment by using the ratio of LPtokens to unlock and total LPtokens locked
-    function unlockLPT(uint256 uTokenAmt) public {
+    function unlockLPT(uint256 uTokenAmt) public whenNotPaused {
         require(uTokenAmt > 0, "Cannot unlock nothing");
         require(nextBlock[msg.sender] <= block.number, "LLC: user must wait");
 
@@ -475,6 +476,14 @@ contract LiquidityLockContract {
     }
 
     // onlyOwner Functions
+
+    function setPause() public onlyOwner {
+        _pause();
+    }
+
+    function setUnpause() public onlyOwner {
+        _unpause();
+    }
     function setBlockLimit(uint8 newLimit) public onlyOwner {
         require(newLimit > 0, "Block Limit cannot be 0");
         blockLimit = newLimit;
