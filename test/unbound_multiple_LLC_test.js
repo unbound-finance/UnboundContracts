@@ -4,6 +4,7 @@
  * https://github.com/OpenZeppelin/openzeppelin-test-helpers
  */
 const { BN, constants, balance, expectEvent, expectRevert } = require("@openzeppelin/test-helpers");
+const helper = require("./helper");
 
 /*
  *  ========================================================
@@ -60,24 +61,36 @@ contract("unboundSystem multiple LLC", function (_accounts) {
   let route;
   let storedFee = 0;
   let stakePair;
-  let lastBlockEth;
-  let lastBlockLink;
 
   before(async function () {
     tEth = await testEth.deployed();
+    console.log("tEth");
     tLink = await testLink.deployed();
+    console.log("tLink");
     tDai = await testDai.deployed();
+    console.log("tDai");
     route = await router.deployed();
+    console.log("route");
     und = await UND.deployed();
+    console.log("und");
     valueContract = await valuing.deployed();
+    console.log("valueContract");
     lockContractEth = await llcEth.deployed();
+    console.log("lockContractEth");
     lockContractLink = await llcLink.deployed();
+    console.log("lockContractLink");
     factory = await uniFactory.deployed();
+    console.log("factory");
     pairEthDai = await uniPair.at(await lockContractEth.pair());
+    console.log("pairEthDai");
     pairLinkDai = await uniPair.at(await lockContractLink.pair());
+    console.log("pairLinkDai");
     priceFeedEth = await testAggregatorEth.deployed();
+    console.log("pairFeedEth");
     priceFeedLink = await testAggregatorLink.deployed();
+    console.log("pairFeedLink");
     priceFeedDai = await testAggregatorDai.deployed();
+    console.log("pairFeedDai");
 
     // Set price to aggregator
     await priceFeedEth.setPrice(ethPrice);
@@ -138,8 +151,6 @@ contract("unboundSystem multiple LLC", function (_accounts) {
         user: owner,
         newMint: loanAmount.toString(),
       });
-      const block = await web3.eth.getBlock("latest");
-      lastBlockEth = block.number;
 
       const lptBalanceAfter = parseInt(await pairEthDai.balanceOf(owner));
       const lockedTokenAfter = parseInt(await lockContractEth.tokensLocked(owner));
@@ -173,8 +184,6 @@ contract("unboundSystem multiple LLC", function (_accounts) {
         user: owner,
         newMint: loanAmount.toString(),
       });
-      const block = await web3.eth.getBlock("latest");
-      lastBlockLink = block.number;
 
       const lptBalanceAfter = parseInt(await pairLinkDai.balanceOf(owner));
       const lockedTokenAfter = parseInt(await lockContractLink.tokensLocked(owner));
@@ -211,7 +220,7 @@ contract("unboundSystem multiple LLC", function (_accounts) {
       const mintedUND = parseInt(await und.checkLoan(owner, lockContractEth.address));
 
       // burn
-      await waitBlock(lastBlockEth);
+      await helper.advanceBlockNumber(blockLimit);
       const receipt = await lockContractEth.unlockLPT(mintedUND);
       expectEvent.inTransaction(receipt.tx, und, "Burn", {
         user: owner,
@@ -249,7 +258,7 @@ contract("unboundSystem multiple LLC", function (_accounts) {
       const unlockAmountLPT = parseInt((lockedTokenAmount * burnAmountUND) / mintedUND);
 
       // burn
-      await waitBlock(lastBlockLink);
+      await helper.advanceBlockNumber(blockLimit);
       const receipt = await lockContractLink.unlockLPT(burnAmountUND);
       expectEvent.inTransaction(receipt.tx, und, "Burn", {
         user: owner,
@@ -269,13 +278,4 @@ contract("unboundSystem multiple LLC", function (_accounts) {
       console.log(`UND.balance: ${undBalanceAfter}`);
     });
   });
-
-  async function waitBlock(lastBlock) {
-    let latestBlock;
-    do {
-      await tDai._mint(owner, 1);
-      const block = await web3.eth.getBlock("latest");
-      latestBlock = block.number;
-    } while (lastBlock + blockLimit > latestBlock);
-  }
 });

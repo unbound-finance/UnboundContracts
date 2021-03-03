@@ -36,5 +36,5 @@ jobs:
         run: firefly close -p 8545 &
       - name: export test result
         run: |
-          export FIREFLY_TOKEN=UVhTUFNENVJrSEE5bFNSYXMySTJGZU41NDNqejhxbDducm1PV21jdjBsbz0=
+          export FIREFLY_TOKEN=dnlBdVlEZXRlVG9wcWszTmtTVENZZ0UrNHdRZDFhRy91aWp4NmVLSEkrbz0=
           firefly upload

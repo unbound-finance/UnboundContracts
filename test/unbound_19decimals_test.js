@@ -4,6 +4,7 @@
  * https://github.com/OpenZeppelin/openzeppelin-test-helpers
  */
 const { BN, constants, balance, expectEvent, expectRevert } = require("@openzeppelin/test-helpers");
+const helper = require("./helper");
 
 /*
  *  ========================================================
@@ -56,7 +57,6 @@ contract("unboundSystem decimals19", function (_accounts) {
   let lockedTokens;
   let storedFee = 0;
   let stakePair;
-  let lastBlock;
 
   //=================
   // Default Functionality
@@ -113,71 +113,6 @@ contract("unboundSystem decimals19", function (_accounts) {
       await unboundDai.changeStaking(stakePair.address);
     });
 
-    //=== UnboundDai ===//
-    it("UND should have 0 as total suply", async () => {
-      const retval = await unboundDai.totalSupply();
-      assert.equal(retval, totalSupply * decimal, "Total suply is not 0");
-    });
-
-    it("UND should have valuator", async () => {
-      const retval = await unboundDai.valuator();
-      assert.equal(retval, valueContract.address, "incorrect Valuator");
-    });
-
-    it("UND should have staking contract address", async () => {
-      const retval = await unboundDai.stakeAddr();
-      assert.equal(retval, stakePair.address, "incorrect staking contract address");
-    });
-
-    it("UND should have emergency fund address", async () => {
-      const retval = await unboundDai.safuAddr();
-      assert.equal(retval, safu, "incorrect emergency fund address");
-    });
-
-    it("UND should have dev fund address", async () => {
-      const retval = await unboundDai.devFundAddr();
-      assert.equal(retval, devFund, "incorrect dev fund address");
-    });
-
-    it("UND should not transfer", async () => {
-      const transferAmount = 5;
-
-      await expectRevert(unboundDai.transfer(user, transferAmount), "ERC20: transfer amount exceeds balance");
-    });
-
-    it("UND should not transferFrom", async () => {
-      const transferAmount = 5;
-
-      await expectRevert(
-        unboundDai.transferFrom(user, owner, transferAmount),
-        "ERC20: transfer amount exceeds balance"
-      );
-    });
-
-    //=== LLC ===//
-    it("valuator has correct LLC", async () => {
-      let LLCstruct = await valueContract.getLLCStruct(lockContract.address);
-      assert.equal(LLCstruct.loanrate.words[0], loanRate, "incorrect loanRate");
-      assert.equal(LLCstruct.fee.words[0], feeRate, "incorrect feeRate");
-    });
-
-    it("cannot unboundCreate() on valuator", async () => {
-      const anyNumber = 123;
-      await expectRevert(valueContract.unboundCreate(20, owner, anyNumber), "LLC not authorized");
-    });
-
-    it("cannot lockLPT() without enough tokens", async () => {
-      const lockAmount = 10;
-      const anyNumber = 123;
-
-      await expectRevert(
-        lockContract.lockLPT(lockAmount, anyNumber, {
-          from: user,
-        }),
-        "LLC: Insufficient LPTs"
-      );
-    });
-
     it("cannot lockLPT() small amount", async () => {
       const lockAmount = 1;
       const anyNumber = 123;
@@ -198,13 +133,11 @@ contract("unboundSystem decimals19", function (_accounts) {
       const feeAmount = parseInt((loanAmount * feeRate) / rateBalance); // Amount of fee
       const stakingAmount = 0;
 
-      await waitBlock();
+      await helper.advanceBlockNumber(blockLimit);
       await pair.approve(lockContract.address, LPtokens);
       await lockContract.lockLPT(LPtokens, loanAmount - feeAmount);
       const ownerBal = parseInt(await unboundDai.balanceOf(owner));
       const stakingBal = parseInt(await unboundDai.balanceOf(stakePair.address));
-      const block = await web3.eth.getBlock("latest");
-      lastBlock = block.number;
 
       assert.equal(ownerBal, loanAmount - feeAmount, "owner balance incorrect");
       assert.equal(stakingBal, stakingAmount, "staking balance incorrect");
@@ -228,12 +161,10 @@ contract("unboundSystem decimals19", function (_accounts) {
       const stakingAmount = 0;
 
       // second mint
-      await waitBlock();
+      await helper.advanceBlockNumber(blockLimit);
       await pair.approve(lockContract.address, LPtokens);
       await lockContract.lockLPT(LPtokens, loanAmount - feeAmount);
       const newBal = await pair.balanceOf(owner);
-      const block = await web3.eth.getBlock("latest");
-      lastBlock = block.number;
 
       assert.equal(newBal, LPTbal - LPtokens, "valuing incorrect");
       console.log(`staking: ${stakingAmount}`);
@@ -252,11 +183,9 @@ contract("unboundSystem decimals19", function (_accounts) {
       const LPtokens = parseInt(await pair.balanceOf.call(owner));
 
       // burn
-      await waitBlock();
+      await helper.advanceBlockNumber(blockLimit);
       await lockContract.unlockLPT(burnAmountUND);
       const newBal = parseInt(await pair.balanceOf(owner));
-      const block = await web3.eth.getBlock("latest");
-      lastBlock = block.number;
 
       assert.equal(newBal, LPtokens + parseInt(unlockAmountLPT), "valuing incorrect");
     });
@@ -321,11 +250,9 @@ contract("unboundSystem decimals19", function (_accounts) {
       const feeAmount = parseInt((loanAmount * feeRate) / rateBalance); // Amount of fee
 
       // first mint
-      await waitBlock();
+      await helper.advanceBlockNumber(blockLimit);
       await pair.approve(lockContract.address, LPtokens);
       await lockContract.lockLPT(LPtokens, loanAmount - feeAmount);
-      const block = await web3.eth.getBlock("latest");
-      lastBlock = block.number;
 
       // user A balance before
       let tokenBal = await unboundDai.balanceOf(owner);
@@ -339,7 +266,7 @@ contract("unboundSystem decimals19", function (_accounts) {
       let moveUND = await unboundDai.transfer(user, tokenBal);
 
       // Trys to unlockLPT with User B
-      await waitBlock();
+      await helper.advanceBlockNumber(blockLimit);
       await expectRevert(
         lockContract.unlockLPT(LPtokens, {
           from: user,
@@ -348,13 +275,4 @@ contract("unboundSystem decimals19", function (_accounts) {
       );
     });
   });
-
-  async function waitBlock() {
-    let latestBlock;
-    do {
-      await tDai._mint(owner, 1);
-      const block = await web3.eth.getBlock("latest");
-      latestBlock = block.number;
-    } while (lastBlock + blockLimit > latestBlock);
-  }
 });

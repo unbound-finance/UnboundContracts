@@ -4,6 +4,7 @@
  * https://github.com/OpenZeppelin/openzeppelin-test-helpers
  */
 const { BN, constants, balance, expectEvent, expectRevert } = require("@openzeppelin/test-helpers");
+const helper = require("./helper");
 
 /*
  *  ========================================================
@@ -138,8 +139,7 @@ contract("LLC", function (_accounts) {
       // Check public functions
       const anyNumber = 123;
       const b32 = web3.utils.asciiToHex("1");
-      await waitBlock();
-
+      await helper.advanceBlockNumber(blockLimit);
       await expectRevert(lockContract.lockLPTWithPermit(1, 1, b32, b32, b32, anyNumber), "LLC: This LLC is Deprecated");
       await expectRevert(lockContract.lockLPT(1, anyNumber), "LLC: This LLC is Deprecated");
       await lockContract.unlockLPT(1); // Be able to unlock under killed status
@@ -171,8 +171,7 @@ contract("LLC", function (_accounts) {
       await und.changeValuator(newValuing.address);
 
       const beforeBalance = parseInt(await und.balanceOf(owner));
-      await waitBlock();
-
+      await helper.advanceBlockNumber(blockLimit);
       await lockContract.setValuingAddress(newValuing.address);
       await pair.approve(lockContract.address, 10);
       await lockContract.lockLPT(10, 1);
@@ -181,13 +180,4 @@ contract("LLC", function (_accounts) {
       assert.isTrue(balance > beforeBalance, "valuing address is incorrect");
     });
   });
-
-  async function waitBlock() {
-    let latestBlock;
-    do {
-      await tDai._mint(owner, 1);
-      const block = await web3.eth.getBlock("latest");
-      latestBlock = block.number;
-    } while (lastBlock + blockLimit > latestBlock);
-  }
 });
