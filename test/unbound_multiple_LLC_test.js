@@ -64,33 +64,19 @@ contract("unboundSystem multiple LLC", function (_accounts) {
 
   before(async function () {
     tEth = await testEth.deployed();
-    console.log("tEth");
     tLink = await testLink.deployed();
-    console.log("tLink");
     tDai = await testDai.deployed();
-    console.log("tDai");
     route = await router.deployed();
-    console.log("route");
     und = await UND.deployed();
-    console.log("und");
     valueContract = await valuing.deployed();
-    console.log("valueContract");
     lockContractEth = await llcEth.deployed();
-    console.log("lockContractEth");
     lockContractLink = await llcLink.deployed();
-    console.log("lockContractLink");
     factory = await uniFactory.deployed();
-    console.log("factory");
     pairEthDai = await uniPair.at(await lockContractEth.pair());
-    console.log("pairEthDai");
     pairLinkDai = await uniPair.at(await lockContractLink.pair());
-    console.log("pairLinkDai");
     priceFeedEth = await testAggregatorEth.deployed();
-    console.log("pairFeedEth");
     priceFeedLink = await testAggregatorLink.deployed();
-    console.log("pairFeedLink");
     priceFeedDai = await testAggregatorDai.deployed();
-    console.log("pairFeedDai");
 
     // Set price to aggregator
     await priceFeedEth.setPrice(ethPrice);
