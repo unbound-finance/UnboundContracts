@@ -363,37 +363,24 @@ contract LiquidityLockContract is Pausable{
         require(currentLoan >= uTokenAmt, "Insufficient liquidity locked");
 
         // check if repayment is partial or full
+        uint256 LPTokenToReturn;
         if (currentLoan == uTokenAmt) {
-            uint256 LPTokenToReturn = _tokensLocked[msg.sender];
-
-            // Burning of uToken will happen first
-            valuingContract.unboundRemove(uTokenAmt, msg.sender);
-
-            // update mapping
-            _tokensLocked[msg.sender] = _tokensLocked[msg.sender].sub(LPTokenToReturn);
-
-            // send LP tokens back to user
-            require(LPTContract.transfer(msg.sender, LPTokenToReturn), "LLC: Transfer Failed");
-
-            // emit unlockLPT event
-            emit UnlockLPT(_tokensLocked[msg.sender], msg.sender);
+            LPTokenToReturn = _tokensLocked[msg.sender];
         } else {
-            uint256 LPTokenToReturn = getLPTokensToReturn(currentLoan, uTokenAmt);
-
-            // Burning of uTokens will happen first
-            valuingContract.unboundRemove(uTokenAmt, msg.sender);
-
-            // update mapping
-            _tokensLocked[msg.sender] = _tokensLocked[msg.sender].sub(LPTokenToReturn);
-
-            // send LP tokens back to user
-            require(LPTContract.transfer(msg.sender, LPTokenToReturn), "LLC: Transfer Failed");
-
-            // emit unlockLPT event
-            emit UnlockLPT(LPTokenToReturn, msg.sender);
+            LPTokenToReturn = getLPTokensToReturn(currentLoan, uTokenAmt);
         }
 
-        
+        // Burning of uToken will happen first
+        valuingContract.unboundRemove(uTokenAmt, msg.sender);
+
+        // update mapping
+        _tokensLocked[msg.sender] = _tokensLocked[msg.sender].sub(LPTokenToReturn);
+
+        // send LP tokens back to user
+        require(LPTContract.transfer(msg.sender, LPTokenToReturn), "LLC: Transfer Failed");
+
+        // emit unlockLPT event
+        emit UnlockLPT(_tokensLocked[msg.sender], msg.sender);
     }
 
     function getLPTokensToReturn(uint256 _currentLoan, uint256 _uTokenAmt) internal view returns (uint256 _LPTokenToReturn) {

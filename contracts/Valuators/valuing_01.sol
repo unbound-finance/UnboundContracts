@@ -95,7 +95,7 @@ contract Valuing_01 {
             require(loanAmt.mul(listOfLLC[msg.sender].feeRate) >= rateBalance, "Too small loan value to pay the fee");
             feeAmt = loanAmt.mul(listOfLLC[msg.sender].feeRate).div(rateBalance);
         }
-
+        require(minTokenAmount <= loanAmt.sub(feeAmt), "Valuing: minting less tokens than minimum amount");
         // calls mint
         unboundContract.mint(user, loanAmt, feeAmt, msg.sender, minTokenAmount);
     }
@@ -125,7 +125,7 @@ contract Valuing_01 {
         address uToken,
         uint32 loan,
         uint32 fee
-    ) public onlyOwner {
+    ) external onlyOwner {
         // add uToken to mint
         listOfLLC[LLC].uToken = uToken;
         // Enter 2500 for 0.25%, 25000 for 2.5%, and 250000 for 25%.
@@ -136,19 +136,19 @@ contract Valuing_01 {
     }
 
     // changes loanRate only
-    function changeLoanRate(address LLC, uint32 loan) public onlyOwner {
+    function changeLoanRate(address LLC, uint32 loan) external onlyOwner {
         listOfLLC[LLC].loanRate = loan;
         emit LTVChange(LLC, loan);
     }
 
     // changes feeRate only
-    function changeFeeRate(address LLC, uint32 fee) public onlyOwner {
+    function changeFeeRate(address LLC, uint32 fee) external onlyOwner {
         listOfLLC[LLC].feeRate = fee;
         emit FeeChange(LLC, fee);
     }
 
     // Disables an LLC:
-    function disableLLC(address LLC) public onlyOwner {
+    function disableLLC(address LLC) external onlyOwner {
         listOfLLC[LLC].feeRate = 0;
         listOfLLC[LLC].loanRate = 0;
         listOfLLC[LLC].active = false;
@@ -161,14 +161,14 @@ contract Valuing_01 {
     }
 
     // Changes owner (part 1)
-    function setOwner(address _newOwner) public onlyOwner {
+    function setOwner(address _newOwner) external onlyOwner {
         _ownerPending = _newOwner;
         _isPending = true;
         emit ChangingAdmin(msg.sender, _newOwner);
     }
 
     // changes owner (part 2)
-    function claimOwner() public {
+    function claimOwner() external {
         require(_isPending, "Change was not initialized");
         require(_ownerPending == msg.sender, "You are not pending owner");
         _owner = _ownerPending;
@@ -178,7 +178,7 @@ contract Valuing_01 {
 
     // Claim - remove any airdropped tokens
     // currently sends all tokens to "to" address (in param)
-    function claimTokens(address _tokenAddr, address to) public onlyOwner {
+    function claimTokens(address _tokenAddr, address to) external onlyOwner {
         uint256 tokenBal = IERC20(_tokenAddr).balanceOf(address(this));
         require(IERC20(_tokenAddr).transfer(to, tokenBal), "Valuing: misc. Token Transfer Failed");
     }

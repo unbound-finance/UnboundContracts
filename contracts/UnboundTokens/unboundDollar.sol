@@ -230,7 +230,7 @@ contract UnboundDollar is IERC20 {
         return _allowances[owner][spender];
     }
 
-    function approve(address spender, uint256 amount) public override returns (bool) {
+    function approve(address spender, uint256 amount) external override returns (bool) {
         _approve(msg.sender, spender, amount);
         return true;
     }
@@ -247,12 +247,12 @@ contract UnboundDollar is IERC20 {
         emit Approval(owner, spender, amount);
     }
 
-    function increaseAllowance(address spender, uint256 addedValue) public returns (bool) {
+    function increaseAllowance(address spender, uint256 addedValue) external returns (bool) {
         _approve(msg.sender, spender, _allowances[msg.sender][spender].add(addedValue));
         return true;
     }
 
-    function decreaseAllowance(address spender, uint256 subtractedValue) public returns (bool) {
+    function decreaseAllowance(address spender, uint256 subtractedValue) external returns (bool) {
         _approve(
             msg.sender,
             spender,
@@ -266,12 +266,10 @@ contract UnboundDollar is IERC20 {
         address account,
         uint256 loanAmount,
         uint256 feeAmount,
-        address LLCAddr,
-        uint256 minTokenAmount
+        address LLCAddr
     ) external virtual {
         require(account != address(0), "ERC20: mint to the zero address");
         require(msg.sender == _valuator, "Call does not originate from Valuator");
-        require(minTokenAmount <= loanAmount.sub(feeAmount), "UND: minting less tokens than minimum amount");
         require(feeAmount > 0, "UND: Not allowed 0 fee");
 
         // Credits user with their UND loan, minus fees
@@ -299,8 +297,8 @@ contract UnboundDollar is IERC20 {
         require(msg.sender == _valuator, "Call does not originate from Valuator");
         require(_loaned[account][LLCAddr] > 0, "You have no loan");
 
-        // checks if user has enough UND to cover loan and 0.25% fee
-        require(_balances[account] >= toBurn, "Insufficient UND to pay back loan");
+        // // checks if user has enough UND to cover loan and 0.25% fee
+        // require(_balances[account] >= toBurn, "Insufficient UND to pay back loan");
 
         // removes the amount of UND to burn from _loaned mapping/
         _loaned[account][LLCAddr] = _loaned[account][LLCAddr].sub(toBurn, "ERC20: Overflow Trigger");
@@ -348,42 +346,42 @@ contract UnboundDollar is IERC20 {
     // onlyOwner Functions
 
     // change safuShare
-    function changeSafuShare(uint256 rate) public onlyOwner {
+    function changeSafuShare(uint256 rate) external onlyOwner {
         require(rate <= 100, "Too big value for Safu Share");
         safuSharesOfStoredFee = rate;
         emit NewSafuShare(rate);
     }
 
     // change stakeShare
-    function changeStakeShare(uint256 rate) public onlyOwner {
+    function changeStakeShare(uint256 rate) external onlyOwner {
         require(rate <= 100, "Too big value for Stake share");
         stakeShares = rate;
         emit NewStakeShare(rate);
     }
 
     // Changes stakingAddr
-    function changeStaking(address newStaking) public onlyOwner {
+    function changeStaking(address newStaking) external onlyOwner {
         require(newStaking != address(0), "Cannot change to 0 address");
         _stakeAddr = newStaking;
         emit NewStaking(newStaking);
     }
 
     // Changes safuFund
-    function changeSafuFund(address newSafuFund) public onlyOwner {
+    function changeSafuFund(address newSafuFund) external onlyOwner {
         require(newSafuFund != address(0), "Cannot change to 0 address");
         _safuAddr = newSafuFund;
         emit NewSafu(newSafuFund);
     }
 
     // Changes devFund
-    function changeDevFund(address newDevFund) public onlyOwner {
+    function changeDevFund(address newDevFund) external onlyOwner {
         require(newDevFund != address(0), "Cannot change to 0 address");
         _devFundAddr = newDevFund;
         emit NewDevFund(newDevFund);
     }
 
     // Changes Valuator Contract Address
-    function changeValuator(address newValuator) public onlyOwner {
+    function changeValuator(address newValuator) external onlyOwner {
         require(newValuator != address(0), "Cannot change to 0 address");
         _valuator = newValuator;
         emit NewValuator(newValuator);
@@ -395,7 +393,7 @@ contract UnboundDollar is IERC20 {
     }
 
     // Changes owner (part 1)
-    function setOwner(address _newOwner) public onlyOwner {
+    function setOwner(address _newOwner) external onlyOwner {
         require(_newOwner != address(0), "Cannot change to 0 address");
         _ownerPending = _newOwner;
         _isPending = true;
@@ -403,7 +401,7 @@ contract UnboundDollar is IERC20 {
     }
 
     // changes owner (part 2)
-    function claimOwner() public {
+    function claimOwner() external {
         require(_isPending, "Change was not initialized");
         require(_ownerPending == msg.sender, "You are not pending owner");
         _owner = _ownerPending;
@@ -413,7 +411,7 @@ contract UnboundDollar is IERC20 {
 
     // Claim - remove any airdropped tokens
     // currently sends all tokens to "to" address (in param)
-    function claimTokens(address _tokenAddr, address to) public onlyOwner {
+    function claimTokens(address _tokenAddr, address to) external onlyOwner {
         uint256 tokenBal = IERC20(_tokenAddr).balanceOf(address(this));
         require(IERC20(_tokenAddr).transfer(to, tokenBal), "UND: misc. Token Transfer Failed");
     }
