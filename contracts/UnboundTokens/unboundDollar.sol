@@ -39,8 +39,8 @@ contract UnboundDollar is IERC20 {
     event NewDevFund (address indexed newDevAddr);
     event NewSafu (address indexed newSafuAddr);
     event NewStaking (address indexed newStakingAddr);
-    event NewStakeShare (uint8 newRate);
-    event NewSafuShare (uint8 newRate);
+    event NewStakeShare (uint256 newRate);
+    event NewSafuShare (uint256 newRate);
 
     mapping(address => uint256) private _balances;
     mapping(address => mapping(address => uint256)) private _allowances;
@@ -49,7 +49,7 @@ contract UnboundDollar is IERC20 {
 
     string private _name;
     string private _symbol;
-    uint8 private _decimals;
+    uint256 private _decimals;
 
     // PERMIT VARIABLES
     bytes32 public DOMAIN_SEPARATOR;
@@ -67,8 +67,8 @@ contract UnboundDollar is IERC20 {
     address private _devFundAddr;
 
     // Dev Fund split variables
-    uint8 public stakeShares; // % of staking to total fee
-    uint8 public safuSharesOfStoredFee; // % of safu to stored fee
+    uint256 public stakeShares; // % of staking to total fee
+    uint256 public safuSharesOfStoredFee; // % of safu to stored fee
     uint256 public storedFee;
 
     // tracks user loan amount in UND. This is the amount of UND they need to pay back to get all locked tokens returned.
@@ -138,7 +138,7 @@ contract UnboundDollar is IERC20 {
         return _symbol;
     }
 
-    function decimals() public view returns (uint8) {
+    function decimals() public view returns (uint256) {
         return _decimals;
     }
 
@@ -348,14 +348,14 @@ contract UnboundDollar is IERC20 {
     // onlyOwner Functions
 
     // change safuShare
-    function changeSafuShare(uint8 rate) public onlyOwner {
+    function changeSafuShare(uint256 rate) public onlyOwner {
         require(rate <= 100, "Too big value for Safu Share");
         safuSharesOfStoredFee = rate;
         emit NewSafuShare(rate);
     }
 
     // change stakeShare
-    function changeStakeShare(uint8 rate) public onlyOwner {
+    function changeStakeShare(uint256 rate) public onlyOwner {
         require(rate <= 100, "Too big value for Stake share");
         stakeShares = rate;
         emit NewStakeShare(rate);

@@ -77,17 +77,17 @@ contract LiquidityLockContract is Pausable{
 
     // next block that user can make an action in
     mapping(address => uint256) public nextBlock;
-    uint8 public blockLimit;
+    uint256 public blockLimit;
 
     // token position of baseAsset
-    uint8 public _position;
+    uint256 public _position;
 
     // set this in constructor, tracks decimals of baseAsset
-    uint8 public baseAssetDecimal;
+    uint256 public baseAssetDecimal;
 
     // maximum percent difference in oracle vs. standard valuation
-    uint8 public maxPercentDiff;
-    uint8 public maxPercentDiffBaseAsset;
+    uint256 public maxPercentDiff;
+    uint256 public maxPercentDiffBaseAsset;
 
     // Collateralization Ratio End
     uint256 public CREnd;

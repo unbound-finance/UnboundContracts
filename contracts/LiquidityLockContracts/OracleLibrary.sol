@@ -21,7 +21,7 @@ library OracleLibrary {
     }
 
     // check baseAsset price for existing pair on chainlink (direct)
-    function checkBaseAssetValue(address baseAssetAddr, uint8 percentDiff, uint256 allowedDelay) internal view {
+    function checkBaseAssetValue(address baseAssetAddr, uint256 percentDiff, uint256 allowedDelay) internal view {
         (, int256 price, , uint256 updatedAt, ) = AggregatorV3Interface(baseAssetAddr).latestRoundData();
         require(updatedAt >= block.timestamp.sub(allowedDelay), "price oracle data is too old. Wait for update.");
         uint256 _baseAssetValue = uint256(price);
@@ -37,7 +37,7 @@ library OracleLibrary {
     function checkBaseAssetValueTriangulate(
         address baseAssetAddr,
         address secondBaseAsset,
-        uint8 percentDiff,
+        uint256 percentDiff,
         uint256 allowedDelay
     ) internal view {
         (, int256 price, , uint256 updatedAt, ) = AggregatorV3Interface(baseAssetAddr).latestRoundData();
@@ -100,7 +100,7 @@ library OracleLibrary {
 
     function checkBaseAssetPrices(
         bool _triangulateBaseAsset,
-        uint8 _maxPercentDiffBaseAsset,
+        uint256 _maxPercentDiffBaseAsset,
         address[] memory _addresses,
         uint256 _allowedDelay
     ) internal view {
