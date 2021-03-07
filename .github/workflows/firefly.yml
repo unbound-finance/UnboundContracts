@@ -1,0 +1,40 @@
+name: firefly
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: checkout
+        uses: actions/checkout@v2
+      - name: setup Node
+        uses: actions/setup-node@v2.1.5
+        with:
+          node-version: 10.x
+          registry-url: "https://registry.npmjs.org"
+      - name: install modules
+        run: npm install
+      - name: install truffle
+        run: npm install truffle
+      - name: install firefly
+        run: sudo apt-get install ./firefly_amd64_bionic.deb
+      - name: start firefly
+        run: |
+          firefly compile
+          firefly launch -p 8545 &
+      - name: run firefly test
+        run: firefly test
+      - name: get coverage
+        run: firefly coverage -p 8545
+      - name: close firefly
+        run: firefly close -p 8545 &
+      - name: export test result
+        run: |
+          export FIREFLY_TOKEN=dnlBdVlEZXRlVG9wcWszTmtTVENZZ0UrNHdRZDFhRy91aWp4NmVLSEkrbz0=
+          firefly upload
