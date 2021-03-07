@@ -4,6 +4,7 @@
  * https://github.com/OpenZeppelin/openzeppelin-test-helpers
  */
 const { BN, constants, balance, expectEvent, expectRevert } = require("@openzeppelin/test-helpers");
+const helper = require("./helper");
 
 /*
  *  ========================================================
@@ -52,7 +53,6 @@ contract("Scenario", function (_accounts) {
   let route;
   let storedFeeTotal = 0;
   let stakePair;
-  let lastBlock;
 
   //=================
   // Default Functionality
@@ -118,7 +118,7 @@ contract("Scenario", function (_accounts) {
       const feeAmount = parseInt((loanAmount * feeRate) / rateBalance); // Amount of fee
       const stakingAmount = 0;
 
-      await waitBlock();
+      await helper.advanceBlockNumber(blockLimit);
       await pair.approve(lockContract.address, LPtokens);
       const receipt = await lockContract.lockLPT(LPtokens, loanAmount - feeAmount);
       expectEvent(receipt, "LockLPT", {
@@ -129,8 +129,6 @@ contract("Scenario", function (_accounts) {
         user: owner,
         newMint: loanAmount.toString(),
       });
-      const block = await web3.eth.getBlock("latest");
-      lastBlock = block.number;
 
       const ownerBal = parseInt(await und.balanceOf(owner));
       const stakingBal = parseInt(await und.balanceOf(stakePair.address));
@@ -157,15 +155,13 @@ contract("Scenario", function (_accounts) {
       // const stakingAmount = parseInt((feeAmount * stakeSharesPercent) / 100);
       const stakingAmount = 0;
 
-      await waitBlock();
+      await helper.advanceBlockNumber(blockLimit);
       await pair.approve(lockContract.address, LPtokens);
       const receipt = await lockContract.lockLPT(LPtokens, loanAmount - feeAmount);
       expectEvent.inTransaction(receipt.tx, und, "Mint", {
         user: owner,
         newMint: loanAmount.toString(),
       });
-      const block = await web3.eth.getBlock("latest");
-      lastBlock = block.number;
 
       const ownerBal = parseInt(await und.balanceOf(owner));
       const stakingBal = parseInt(await und.balanceOf(stakePair.address));
@@ -221,7 +217,7 @@ contract("Scenario", function (_accounts) {
     });
 
     it("cannot unlock when the price diff is big", async () => {
-      await waitBlock();
+      await helper.advanceBlockNumber(blockLimit);
       await priceFeedEth.setPrice(parseInt(ethPrice * 0.9025));
       const dummyNumber = 100;
       await expectRevert(lockContract.unlockLPT(dummyNumber), "LLC-Unlock: Manipulation Evident");
@@ -255,8 +251,6 @@ contract("Scenario", function (_accounts) {
         user: owner,
         burned: burnAmountUND.toString(),
       });
-      const block = await web3.eth.getBlock("latest");
-      lastBlock = block.number;
 
       const tokenBal = parseInt(await und.balanceOf(owner));
       const newBal = parseInt(await pair.balanceOf(owner));
@@ -272,7 +266,7 @@ contract("Scenario", function (_accounts) {
       // Lock again
       const LPTbal = parseInt(await pair.balanceOf(owner));
       const LPtokens = parseInt(LPTbal / 2); // Amount of token to be lock
-      await waitBlock();
+      await helper.advanceBlockNumber(blockLimit);
       await pair.approve(lockContract.address, LPtokens);
       await lockContract.lockLPT(LPtokens, 0);
       const blockTemp = await web3.eth.getBlock("latest");
@@ -287,7 +281,7 @@ contract("Scenario", function (_accounts) {
       const unlockAmountLPT = parseInt((lockedLPT * burnAmountUND) / mintedUND);
 
       // burn
-      await waitBlock();
+      await helper.advanceBlockNumber(blockLimit);
       const receipt = await lockContract.unlockLPT(burnAmountUND);
       expectEvent(receipt, "UnlockLPT", {
         LPTamt: unlockAmountLPT.toString(),
@@ -297,8 +291,6 @@ contract("Scenario", function (_accounts) {
         user: owner,
         burned: burnAmountUND.toString(),
       });
-      const block = await web3.eth.getBlock("latest");
-      lastBlock = block.number;
 
       const tokenBal = parseInt(await und.balanceOf(owner));
       const newBal = parseInt(await pair.balanceOf(owner));
@@ -308,12 +300,4 @@ contract("Scenario", function (_accounts) {
       assert.equal(newBal, LPtokens + unlockAmountLPT, "valuing incorrect");
     });
   });
-  async function waitBlock() {
-    let latestBlock;
-    do {
-      await tDai._mint(owner, 1);
-      const block = await web3.eth.getBlock("latest");
-      latestBlock = block.number;
-    } while (lastBlock + blockLimit > latestBlock);
-  }
 });

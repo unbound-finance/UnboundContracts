@@ -4,6 +4,7 @@
  * https://github.com/OpenZeppelin/openzeppelin-test-helpers
  */
 const { BN, constants, balance, expectEvent, expectRevert } = require("@openzeppelin/test-helpers");
+const helper = require("./helper");
 
 /*
  *  ========================================================
@@ -60,8 +61,6 @@ contract("unboundSystem multiple LLC", function (_accounts) {
   let route;
   let storedFee = 0;
   let stakePair;
-  let lastBlockEth;
-  let lastBlockLink;
 
   before(async function () {
     tEth = await testEth.deployed();
@@ -138,8 +137,6 @@ contract("unboundSystem multiple LLC", function (_accounts) {
         user: owner,
         newMint: loanAmount.toString(),
       });
-      const block = await web3.eth.getBlock("latest");
-      lastBlockEth = block.number;
 
       const lptBalanceAfter = parseInt(await pairEthDai.balanceOf(owner));
       const lockedTokenAfter = parseInt(await lockContractEth.tokensLocked(owner));
@@ -173,8 +170,6 @@ contract("unboundSystem multiple LLC", function (_accounts) {
         user: owner,
         newMint: loanAmount.toString(),
       });
-      const block = await web3.eth.getBlock("latest");
-      lastBlockLink = block.number;
 
       const lptBalanceAfter = parseInt(await pairLinkDai.balanceOf(owner));
       const lockedTokenAfter = parseInt(await lockContractLink.tokensLocked(owner));
@@ -211,7 +206,7 @@ contract("unboundSystem multiple LLC", function (_accounts) {
       const mintedUND = parseInt(await und.checkLoan(owner, lockContractEth.address));
 
       // burn
-      await waitBlock(lastBlockEth);
+      await helper.advanceBlockNumber(blockLimit);
       const receipt = await lockContractEth.unlockLPT(mintedUND);
       expectEvent.inTransaction(receipt.tx, und, "Burn", {
         user: owner,
@@ -249,7 +244,7 @@ contract("unboundSystem multiple LLC", function (_accounts) {
       const unlockAmountLPT = parseInt((lockedTokenAmount * burnAmountUND) / mintedUND);
 
       // burn
-      await waitBlock(lastBlockLink);
+      await helper.advanceBlockNumber(blockLimit);
       const receipt = await lockContractLink.unlockLPT(burnAmountUND);
       expectEvent.inTransaction(receipt.tx, und, "Burn", {
         user: owner,
@@ -269,13 +264,4 @@ contract("unboundSystem multiple LLC", function (_accounts) {
       console.log(`UND.balance: ${undBalanceAfter}`);
     });
   });
-
-  async function waitBlock(lastBlock) {
-    let latestBlock;
-    do {
-      await tDai._mint(owner, 1);
-      const block = await web3.eth.getBlock("latest");
-      latestBlock = block.number;
-    } while (lastBlock + blockLimit > latestBlock);
-  }
 });
