@@ -44,7 +44,7 @@ contract TestAggregatorProxyBase is AggregatorV3Interface {
         roundId = 0;
         answer = _price;
         startedAt = 0;
-        updatedAt = 0;
+        updatedAt = block.timestamp;
         answeredInRound = 0;
     }
 
@@ -63,7 +63,7 @@ contract TestAggregatorProxyBase is AggregatorV3Interface {
         roundId = _roundId;
         answer = _price;
         startedAt = 0;
-        updatedAt = 0;
+        updatedAt = block.timestamp;
         answeredInRound = 0;
     }
 }

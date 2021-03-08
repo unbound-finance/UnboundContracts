@@ -111,13 +111,14 @@ contract UnboundDollar is IERC20 {
 
         // MUST BE MANUALLY CHANGED TO UND LIQ pool.
         _stakeAddr = Safu;
-
+        
         uint256 chainId;
         // get chainId of the chain, required for permit
+        
         assembly {
             chainId := chainid()
         }
-
+        
         // To verify permit() signature
         DOMAIN_SEPARATOR = keccak256(
             abi.encode(
@@ -271,13 +272,13 @@ contract UnboundDollar is IERC20 {
         require(account != address(0), "ERC20: mint to the zero address");
         require(msg.sender == _valuator, "Call does not originate from Valuator");
         require(feeAmount > 0, "UND: Not allowed 0 fee");
-
+        
         // Credits user with their UND loan, minus fees
         _balances[account] = _balances[account].add(loanAmount.sub(feeAmount));
-
+        
         // store total to distribute later
         storedFee = storedFee.add(feeAmount);
-
+        
         // adding total amount of new tokens to totalSupply
         _totalSupply = _totalSupply.add(loanAmount);
 

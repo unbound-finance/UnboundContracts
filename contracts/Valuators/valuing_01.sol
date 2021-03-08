@@ -79,25 +79,27 @@ contract Valuing_01 {
     ) external {
         require(amount > 0, "Cannot valuate nothing");
         require(listOfLLC[msg.sender].active, "LLC not authorized");
-
+        
         IUnboundToken unboundContract = IUnboundToken(listOfLLC[msg.sender].uToken);
-
+        
         // computes loan amount
         uint256 loanAmt = amount;
         if (listOfLLC[msg.sender].loanRate != 0) {
             loanAmt = amount.mul(listOfLLC[msg.sender].loanRate).div(rateBalance);
             require(loanAmt > 0, "Cannot mint 0 loan value");
         }
-
+        
         // computes fee amount
         uint256 feeAmt = 0;
         if (listOfLLC[msg.sender].feeRate != 0) {
             require(loanAmt.mul(listOfLLC[msg.sender].feeRate) >= rateBalance, "Too small loan value to pay the fee");
             feeAmt = loanAmt.mul(listOfLLC[msg.sender].feeRate).div(rateBalance);
         }
+        
         require(minTokenAmount <= loanAmt.sub(feeAmt), "Valuing: minting less tokens than minimum amount");
+        
         // calls mint
-        unboundContract.mint(user, loanAmt, feeAmt, msg.sender, minTokenAmount);
+        unboundContract.mint(user, loanAmt, feeAmt, msg.sender);
     }
 
     // Loan repayment Intermediary - only called from LLC

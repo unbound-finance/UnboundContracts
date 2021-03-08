@@ -8,6 +8,7 @@ module.exports = async (deployer, network, accounts) => {
     safu = accounts[1];
     devFund = accounts[2];
   }
-
+  
   await deployer.deploy(uDai, "Unbound Dollar", "UND", safu, devFund);
+  console.log(1);
 };

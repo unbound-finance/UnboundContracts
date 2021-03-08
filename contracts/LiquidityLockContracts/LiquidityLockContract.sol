@@ -129,8 +129,6 @@ contract LiquidityLockContract is Pausable{
         address[] memory priceFeedBaseAsset,
         address uTokenAddr
     ) {
-        require(baseAssetDecimal >= 2, "Base asset must have at least 2 decimals");
-
         _owner = msg.sender;
 
         // initiates interfacing contracts
@@ -151,7 +149,7 @@ contract LiquidityLockContract is Pausable{
 
         // sets the decimals value of the baseAsset
         baseAssetDecimal = baseAssetErc20.decimals();
-
+        require(baseAssetDecimal >= 2, "Base asset must have at least 2 decimals");
         // assigns which token in the pair is a baseAsset, updates first oracle.
         require(baseAsset == toke0 || baseAsset == toke1, "Mismatch of base asset and pool assets");
         if (baseAsset == toke0) {
@@ -246,16 +244,16 @@ contract LiquidityLockContract is Pausable{
     // Requires approval first (permit excluded for simplicity)
     function lockLPT(uint256 LPTamt, uint256 minTokenAmount) public whenNotPaused {
         uint256 LPTValueInDai = lockLPTBody(LPTamt);
-
+        
         // transfer LPT to the address
         transferLPT(LPTamt);
-
+        
         // map locked tokens to user address
         _tokensLocked[msg.sender] = _tokensLocked[msg.sender].add(LPTamt);
-
+        
         // Call Valuing Contract
         valuingContract.unboundCreate(LPTValueInDai, msg.sender, minTokenAmount);
-
+        
         // emit lockLPT event
         emit LockLPT(LPTamt, msg.sender);
     }
@@ -380,7 +378,8 @@ contract LiquidityLockContract is Pausable{
         require(LPTContract.transfer(msg.sender, LPTokenToReturn), "LLC: Transfer Failed");
 
         // emit unlockLPT event
-        emit UnlockLPT(_tokensLocked[msg.sender], msg.sender);
+        // emit UnlockLPT(_tokensLocked[msg.sender], msg.sender);
+        emit UnlockLPT(LPTokenToReturn, msg.sender);
     }
 
     function getLPTokensToReturn(uint256 _currentLoan, uint256 _uTokenAmt) internal view returns (uint256 _LPTokenToReturn) {
@@ -460,6 +459,10 @@ contract LiquidityLockContract is Pausable{
 
     function tokensLocked(address account) public view returns (uint256) {
         return _tokensLocked[account];
+    }
+
+    function pair() external view returns(address LPAddr) {
+        LPAddr = address(LPTContract);
     }
 
     // onlyOwner Functions
