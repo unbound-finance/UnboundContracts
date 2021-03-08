@@ -19,8 +19,6 @@ jobs:
         uses: actions/setup-node@v2
         with:
           node-version: 10.x
-      - name: update npm
-        run: npm update npm
       - name: install modules
         run: yarn install
       - name: install ganache

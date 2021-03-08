@@ -3,7 +3,7 @@ pragma solidity 0.7.5;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
-import "@openZeppelin/contracts/utils/Pausable.sol";
+import "@openzeppelin/contracts/utils/Pausable.sol";
 
 // Interfaces
 import "../Interfaces/chainlinkOracleInterface.sol";
