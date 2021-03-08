@@ -3,7 +3,7 @@ pragma solidity 0.7.5;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
-import "@openZeppelin/contracts/utils/Pausable.sol";
+import "@openZeppelin/contracts/security/Pausable.sol";
 
 // Interfaces
 import "../Interfaces/chainlinkOracleInterface.sol";
@@ -37,7 +37,7 @@ import "./OracleLibrary.sol";
 // registered with the valuing contract. This can only be completed by the owner (or
 // eventually a DAO).
 // ----------------------------------------------------------------------------------------
-contract LiquidityLockContract is Pausable{
+contract LiquidityLockContract is Pausable {
     using SafeMath for uint256;
     using Address for address;
 
@@ -190,7 +190,7 @@ contract LiquidityLockContract is Pausable{
         }
 
         // Assigns oracle decimals
-        for (uint8 i = 0; i <priceFeedAddress.length; i++) {
+        for (uint8 i = 0; i < priceFeedAddress.length; i++) {
             tokenFeedDecimals.push(OracleLibrary.getDecimals(priceFeedAddress[i]));
         }
 
@@ -244,23 +244,28 @@ contract LiquidityLockContract is Pausable{
     // Requires approval first (permit excluded for simplicity)
     function lockLPT(uint256 LPTamt, uint256 minTokenAmount) public whenNotPaused {
         uint256 LPTValueInDai = lockLPTBody(LPTamt);
-        
+
         // transfer LPT to the address
         transferLPT(LPTamt);
-        
+
         // map locked tokens to user address
         _tokensLocked[msg.sender] = _tokensLocked[msg.sender].add(LPTamt);
-        
+
         // Call Valuing Contract
         valuingContract.unboundCreate(LPTValueInDai, msg.sender, minTokenAmount);
-        
+
         // emit lockLPT event
         emit LockLPT(LPTamt, msg.sender);
     }
 
     // Acquires total value of liquidity pool (in baseAsset) and normalizes decimals to 18.
     function getValue() internal view returns (uint256 _totalUSD) {
-        OracleLibrary.checkBaseAssetPrices(triangulateBaseAsset, maxPercentDiffBaseAsset, baseAssets, allowedPriceDelay);
+        OracleLibrary.checkBaseAssetPrices(
+            triangulateBaseAsset,
+            maxPercentDiffBaseAsset,
+            baseAssets,
+            allowedPriceDelay
+        );
 
         // obtain amounts of tokens in both reserves.
         (uint112 _token0, uint112 _token1, ) = LPTContract.getReserves();
@@ -280,16 +285,10 @@ contract LiquidityLockContract is Pausable{
         // get total value
         if (_position == 0) {
             // _totalUSDOracle = _token1 * _totalUSDOracle + _token0;
-            _totalUSDOracle = uint256(_token1)
-                .mul(_totalUSDOracle)
-                .div(10**tokenFeedDecimals[0])
-                .add(_token0);
+            _totalUSDOracle = uint256(_token1).mul(_totalUSDOracle).div(10**tokenFeedDecimals[0]).add(_token0);
         } else {
             // _totalUSDOracle = _token0 * _totalUSDOracle + _token1;
-            _totalUSDOracle = uint256(_token0)
-                .mul(_totalUSDOracle)
-                .div(10**tokenFeedDecimals[0])
-                .add(_token1);
+            _totalUSDOracle = uint256(_token0).mul(_totalUSDOracle).div(10**tokenFeedDecimals[0]).add(_token1);
         }
         // Calculate percent difference (x2 - x1 / x1)
         uint256 percentDiff;
@@ -382,9 +381,18 @@ contract LiquidityLockContract is Pausable{
         emit UnlockLPT(LPTokenToReturn, msg.sender);
     }
 
-    function getLPTokensToReturn(uint256 _currentLoan, uint256 _uTokenAmt) internal view returns (uint256 _LPTokenToReturn) {
+    function getLPTokensToReturn(uint256 _currentLoan, uint256 _uTokenAmt)
+        internal
+        view
+        returns (uint256 _LPTokenToReturn)
+    {
         // check if baseAsset value is stable
-        OracleLibrary.checkBaseAssetPrices(triangulateBaseAsset, maxPercentDiffBaseAsset, baseAssets, allowedPriceDelay);
+        OracleLibrary.checkBaseAssetPrices(
+            triangulateBaseAsset,
+            maxPercentDiffBaseAsset,
+            baseAssets,
+            allowedPriceDelay
+        );
 
         // Acquire Pool Values
         uint256 totalLP = LPTContract.totalSupply();
@@ -396,14 +404,10 @@ contract LiquidityLockContract is Pausable{
         uint256 oracleValue;
         if (_position == 0) {
             poolValue = _token0 * 2;
-            oracleValue = uint256(_token1).mul(oraclePrice).div(10**tokenFeedDecimals[0]).add(
-                _token0
-            );
+            oracleValue = uint256(_token1).mul(oraclePrice).div(10**tokenFeedDecimals[0]).add(_token0);
         } else {
             poolValue = _token1 * 2;
-            oracleValue = uint256(_token0).mul(oraclePrice).div(10**tokenFeedDecimals[0]).add(
-                _token1
-            );
+            oracleValue = uint256(_token0).mul(oraclePrice).div(10**tokenFeedDecimals[0]).add(_token1);
         }
 
         // normalize back to value with 18 decimals
@@ -443,7 +447,6 @@ contract LiquidityLockContract is Pausable{
         if (CREnd.mul(10**18).div(CRNorm) <= CRNow) {
             // LPT to send back. This number should have 18 decimals
             _LPTokenToReturn = (_tokensLocked[msg.sender].mul(_uTokenAmt)).div(_currentLoan);
-           
         } else {
             // value of users locked LP before paying loan
             uint256 valueStart = valueOfSingleLPT.mul(_tokensLocked[msg.sender]);
@@ -455,7 +458,6 @@ contract LiquidityLockContract is Pausable{
 
             // LPT to send back. This number should have 18 decimals
             _LPTokenToReturn = valueStart.sub(valueAfter).div(valueOfSingleLPT);
-            
         }
     }
 
@@ -463,7 +465,7 @@ contract LiquidityLockContract is Pausable{
         return _tokensLocked[account];
     }
 
-    function pair() external view returns(address LPAddr) {
+    function pair() external view returns (address LPAddr) {
         LPAddr = address(LPTContract);
     }
 
@@ -476,6 +478,7 @@ contract LiquidityLockContract is Pausable{
     function setUnpause() public onlyOwner {
         _unpause();
     }
+
     function setBlockLimit(uint8 newLimit) public onlyOwner {
         require(newLimit > 0, "Block Limit cannot be 0");
         blockLimit = newLimit;
@@ -509,7 +512,7 @@ contract LiquidityLockContract is Pausable{
         uint256 tokenBal = IERC20_2(_tokenAddr).balanceOf(address(this));
         require(IERC20_2(_tokenAddr).transfer(to, tokenBal), "LLC: Transfer Failed");
     }
-    
+
     // Kill Switch - deactivate locking of LPT
     function disableLock() public onlyOwner {
         killSwitch = !killSwitch;
