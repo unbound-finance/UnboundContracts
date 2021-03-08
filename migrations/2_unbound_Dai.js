@@ -10,5 +10,5 @@ module.exports = async (deployer, network, accounts) => {
   }
   
   await deployer.deploy(uDai, "Unbound Dollar", "UND", safu, devFund);
-  console.log(1);
+  
 };

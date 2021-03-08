@@ -231,7 +231,7 @@ contract("unboundSystem multiple LLC", function (_accounts) {
       const mintedUND = parseInt(await und.checkLoan(owner, lockContractLink.address));
 
       // burn
-      await expectRevert(lockContractLink.unlockLPT(mintedUND), "Insufficient UND to pay back loan");
+      await expectRevert(lockContractLink.unlockLPT(mintedUND), "ERC20: burn amount exceeds balance");
     });
 
     it("UND burn - LinkDai", async () => {
@@ -240,8 +240,8 @@ contract("unboundSystem multiple LLC", function (_accounts) {
       const undBalanceBefore = parseInt(await und.balanceOf(owner));
       const mintedUND = parseInt(await und.checkLoan(owner, lockContractLink.address));
       const burnAmountUND = mintedUND / 2;
-      const unlockAmountLPT = lockedTokenAmount - ((mintedUND - burnAmountUND) * CREnd) / CRNorm / priceLPT;
-      // const unlockAmountLPT = parseInt((lockedTokenAmount * burnAmountUND) / mintedUND);
+      // const unlockAmountLPT = lockedTokenAmount - ((mintedUND - burnAmountUND) * CREnd) / CRNorm / priceLPT;
+      const unlockAmountLPT = parseInt((lockedTokenAmount * burnAmountUND) / mintedUND);
 
       // burn
       await helper.advanceBlockNumber(blockLimit);
@@ -250,7 +250,6 @@ contract("unboundSystem multiple LLC", function (_accounts) {
         user: owner,
         burned: burnAmountUND.toString(),
       });
-
       const lptBalanceAfter = parseInt(await pairLinkDai.balanceOf(owner));
       const lockedTokenAmountAfter = parseInt(await lockContractLink.tokensLocked(owner));
       const undBalanceAfter = parseInt(await und.balanceOf(owner));

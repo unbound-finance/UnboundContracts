@@ -278,7 +278,8 @@ contract("Scenario", function (_accounts) {
       await lockContract.lockLPT(LPtokens, 0);
       const blockTemp = await web3.eth.getBlock("latest");
       lastBlock = blockTemp.number;
-      // Unlock
+      // Unlock 
+
       const totalSupply = await pair.totalSupply();
       const priceLPT = (daiAmount * 2) / parseInt(totalSupply);
       const lockedLPT = parseInt(await lockContract.tokensLocked(owner));
@@ -287,8 +288,8 @@ contract("Scenario", function (_accounts) {
       const burnAmountUND = parseInt(mintedUND * 0.4);
       // const unlockAmountLPT = parseInt((lockedLPT * burnAmountUND) / mintedUND);
 
-      const unlockAmountLPT = parseInt(lockedLPT - ((mintedUND - burnAmountUND) * CREnd) / CRNorm / priceLPT);
-
+      const unlockAmountLPT = parseInt(lockedLPT - parseInt(parseInt((mintedUND - burnAmountUND) * CREnd / CRNorm) / priceLPT));
+      console.log(unlockAmountLPT);
       // burn
       await helper.advanceBlockNumber(blockLimit);
       const receipt = await lockContract.unlockLPT(burnAmountUND);

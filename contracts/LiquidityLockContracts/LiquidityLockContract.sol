@@ -443,6 +443,7 @@ contract LiquidityLockContract is Pausable{
         if (CREnd.mul(10**18).div(CRNorm) <= CRNow) {
             // LPT to send back. This number should have 18 decimals
             _LPTokenToReturn = (_tokensLocked[msg.sender].mul(_uTokenAmt)).div(_currentLoan);
+           
         } else {
             // value of users locked LP before paying loan
             uint256 valueStart = valueOfSingleLPT.mul(_tokensLocked[msg.sender]);
@@ -454,6 +455,7 @@ contract LiquidityLockContract is Pausable{
 
             // LPT to send back. This number should have 18 decimals
             _LPTokenToReturn = valueStart.sub(valueAfter).div(valueOfSingleLPT);
+            
         }
     }
 
