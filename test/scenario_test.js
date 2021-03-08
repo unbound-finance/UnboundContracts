@@ -278,7 +278,9 @@ contract("Scenario", function (_accounts) {
       const mintedUND = parseInt(await und.checkLoan(owner, lockContract.address));
       const tokenBalBefore = await und.balanceOf(owner);
       const burnAmountUND = parseInt(mintedUND * 0.4);
-      const unlockAmountLPT = parseInt((lockedLPT * burnAmountUND) / mintedUND);
+      // const unlockAmountLPT = parseInt((lockedLPT * burnAmountUND) / mintedUND);
+
+      const unlockAmountLPT = parseInt(lockedLPT - ((mintedUND - burnAmountUND) * CREnd) / CRNorm / priceLPT);
 
       // burn
       await helper.advanceBlockNumber(blockLimit);

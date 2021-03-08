@@ -118,7 +118,7 @@ contract("unboundSystem decimals19", function (_accounts) {
       const anyNumber = 123;
 
       await pair.approve(lockContract.address, lockAmount);
-      await expectRevert(lockContract.lockLPT(lockAmount, anyNumber), "amount is too small");
+      await expectRevert(lockContract.lockLPT(lockAmount, anyNumber), "Too small loan value to pay the fee");
     });
 
     it("UND mint - first", async () => {

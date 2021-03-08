@@ -144,11 +144,11 @@ contract("UND", function (_accounts) {
     });
 
     it("should not be able to changeSafuShare more than 100", async () => {
-      await expectRevert(und.changeSafuShare(101), "bad input");
+      await expectRevert(und.changeSafuShare(101), "Too big value for Safu Share");
     });
 
     it("should not be able to changeStakeShare more than 100", async () => {
-      await expectRevert(und.changeStakeShare(101), "bad input");
+      await expectRevert(und.changeStakeShare(101), "Too big value for Stake share");
     });
 
     it("should be able to changeSafuShare", async () => {
@@ -208,7 +208,7 @@ contract("UND", function (_accounts) {
       const anyNumber = 123;
 
       await pair.approve(lockContract.address, lockAmount);
-      await expectRevert(lockContract.lockLPT(lockAmount, anyNumber), "amount is too small");
+      await expectRevert(lockContract.lockLPT(lockAmount, anyNumber), "Too small loan value to pay");
     });
 
     it("fails to lockLPT() with minTokenAmount which is more than minting amount", async () => {
@@ -221,13 +221,13 @@ contract("UND", function (_accounts) {
       const feeAmount = parseInt((loanAmount * feeRate) / rateBalance); // Amount of fee
 
       await pair.approve(lockContract.address, LPtokens);
-      await expectRevert(lockContract.lockLPT(LPtokens, loanAmount - feeAmount + 1), "UND: Tx took too long");
+      await expectRevert(lockContract.lockLPT(LPtokens, loanAmount - feeAmount + 1), "Valuing: minting less tokens than minimum amount");
     });
 
     it("fails to mint zero address", async () => {
       const anyNumber = 123;
       await expectRevert(
-        und._mint(zeroAddress, anyNumber, anyNumber, zeroAddress, anyNumber),
+        und.mint(zeroAddress, anyNumber, anyNumber, zeroAddress),
         "ERC20: mint to the zero address"
       );
     });
@@ -235,19 +235,19 @@ contract("UND", function (_accounts) {
     it("fails to mint by not valuator", async () => {
       const anyNumber = 123;
       await expectRevert(
-        und._mint(owner, anyNumber, anyNumber, lockContract.address, anyNumber),
+        und.mint(owner, anyNumber, anyNumber, lockContract.address),
         "Call does not originate from Valuator"
       );
     });
 
     it("fails to burn zero address", async () => {
       const anyNumber = 123;
-      await expectRevert(und._burn(zeroAddress, anyNumber, zeroAddress), "ERC20: burn from the zero address");
+      await expectRevert(und.burn(zeroAddress, anyNumber, zeroAddress), "ERC20: burn from the zero address");
     });
 
     it("fails to burn by not valuator", async () => {
       const anyNumber = 123;
-      await expectRevert(und._burn(owner, anyNumber, lockContract.address), "Call does not originate from Valuator");
+      await expectRevert(und.burn(owner, anyNumber, lockContract.address), "Call does not originate from Valuator");
     });
 
     it("cannot approve with 0 address", async () => {

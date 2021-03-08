@@ -240,8 +240,8 @@ contract("unboundSystem multiple LLC", function (_accounts) {
       const undBalanceBefore = parseInt(await und.balanceOf(owner));
       const mintedUND = parseInt(await und.checkLoan(owner, lockContractLink.address));
       const burnAmountUND = mintedUND / 2;
-      // const unlockAmountLPT = lockedTokenAmount - ((mintedUND - burnAmountUND) * CREnd) / CRNorm / priceLPT;
-      const unlockAmountLPT = parseInt((lockedTokenAmount * burnAmountUND) / mintedUND);
+      const unlockAmountLPT = lockedTokenAmount - ((mintedUND - burnAmountUND) * CREnd) / CRNorm / priceLPT;
+      // const unlockAmountLPT = parseInt((lockedTokenAmount * burnAmountUND) / mintedUND);
 
       // burn
       await helper.advanceBlockNumber(blockLimit);
