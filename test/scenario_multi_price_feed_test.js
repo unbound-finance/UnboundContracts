@@ -24,7 +24,7 @@ const testAggregatorEth = artifacts.require("TestAggregatorProxyEthUsd");
 const testAggregatorDai = artifacts.require("TestAggregatorProxyDaiUsd");
 const testAggregatorBat = artifacts.require("TestAggregatorProxyBatEth");
 
-contract("Scenario", function (_accounts) {
+contract("Scenario(multi price feed)", function (_accounts) {
   // Initial settings
   const totalSupply = 0;
   const decimal = 10 ** 18;
@@ -247,7 +247,7 @@ contract("Scenario", function (_accounts) {
 
       // const unlockAmountLPT = parseInt(lockedLPT - ((mintedUND - burnAmountUND) * CREnd) / CRNorm / priceLPT);
 
-      const unlockAmountLPT = parseInt(lockedLPT * burnAmountUND / mintedUND)
+      const unlockAmountLPT = parseInt((lockedLPT * burnAmountUND) / mintedUND);
       // burn
       const receipt = await lockContract.unlockLPT(burnAmountUND);
       expectEvent(receipt, "UnlockLPT", {
@@ -278,7 +278,8 @@ contract("Scenario", function (_accounts) {
       await lockContract.lockLPT(LPtokens, 0);
       const blockTemp = await web3.eth.getBlock("latest");
       lastBlock = blockTemp.number;
-      // Unlock 
+      const beforeBalance = parseInt(await pair.balanceOf(owner));
+      // Unlock
 
       const totalSupply = await pair.totalSupply();
       const priceLPT = (daiAmount * 2) / parseInt(totalSupply);
@@ -287,9 +288,8 @@ contract("Scenario", function (_accounts) {
       const tokenBalBefore = await und.balanceOf(owner);
       const burnAmountUND = parseInt(mintedUND * 0.4);
       // const unlockAmountLPT = parseInt((lockedLPT * burnAmountUND) / mintedUND);
+      const unlockAmountLPT = parseInt(lockedLPT - ((mintedUND - burnAmountUND) * CREnd) / CRNorm / priceLPT);
 
-      const unlockAmountLPT = parseInt(lockedLPT - parseInt(parseInt((mintedUND - burnAmountUND) * CREnd / CRNorm) / priceLPT));
-      console.log(unlockAmountLPT);
       // burn
       await helper.advanceBlockNumber(blockLimit);
       const receipt = await lockContract.unlockLPT(burnAmountUND);
@@ -303,11 +303,10 @@ contract("Scenario", function (_accounts) {
       });
 
       const tokenBal = parseInt(await und.balanceOf(owner));
-      const newBal = parseInt(await pair.balanceOf(owner));
-      const uDaiBalFinal = parseInt(await und.balanceOf(owner));
+      const balance = parseInt(await pair.balanceOf(owner));
 
       assert.equal(tokenBal, tokenBalBefore - burnAmountUND, "token amount incorrect");
-      assert.equal(newBal, LPtokens + unlockAmountLPT, "valuing incorrect");
+      assert.equal(balance, beforeBalance + unlockAmountLPT, "valuing incorrect");
     });
   });
 });
