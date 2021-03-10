@@ -67,7 +67,7 @@ library OracleLibrary {
 
     // Returns latest price from ChainLink Oracle (Triangulation)
     function getLatestPriceTriangulate(address erc20PriceAddr, address ethPriceAddr, uint256 allowedDelay) internal view returns (uint256) {
-        // bat price in ETH
+        // erc20 price in ETH
         (, int256 price, , uint256 updatedAt, ) = AggregatorV3Interface(erc20PriceAddr).latestRoundData();
 
         // ETH price in USD

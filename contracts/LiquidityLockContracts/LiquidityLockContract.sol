@@ -41,9 +41,6 @@ contract LiquidityLockContract is Pausable {
     using SafeMath for uint256;
     using Address for address;
 
-    // killswitch event
-    event KillSwitch(bool position);
-
     // lockLPTEvent
     event LockLPT(uint256 LPTamt, address indexed user);
 
@@ -68,9 +65,6 @@ contract LiquidityLockContract is Pausable {
     // 2-step owner change variables
     address private _ownerPending;
     bool private _isPending = false;
-
-    // If killSwitch = true, cannot lock LPT and mint new uTokens
-    bool public killSwitch;
 
     // tokens locked by users
     mapping(address => uint256) _tokensLocked;
@@ -137,9 +131,6 @@ contract LiquidityLockContract is Pausable {
         baseAssetErc20 = IERC20_2(baseAsset);
         unboundContract = IUnboundToken(uTokenAddr);
 
-        // killSwitch MUST be false for lockLPT to work
-        killSwitch = false;
-
         // set block limit (10 by default)
         blockLimit = 10;
 
@@ -200,7 +191,6 @@ contract LiquidityLockContract is Pausable {
     }
 
     function lockLPTBody(uint256 LPTamt) internal returns (uint256 LPTValueInDai) {
-        require(!killSwitch, "LLC: This LLC is Deprecated");
         require(LPTContract.balanceOf(msg.sender) >= LPTamt, "LLC: Insufficient LPTs");
         require(nextBlock[msg.sender] <= block.number, "LLC: user must wait");
 
@@ -511,12 +501,6 @@ contract LiquidityLockContract is Pausable {
         require(_tokenAddr != address(LPTContract), "Cannot move LP tokens");
         uint256 tokenBal = IERC20_2(_tokenAddr).balanceOf(address(this));
         require(IERC20_2(_tokenAddr).transfer(to, tokenBal), "LLC: Transfer Failed");
-    }
-
-    // Kill Switch - deactivate locking of LPT
-    function disableLock() public onlyOwner {
-        killSwitch = !killSwitch;
-        emit KillSwitch(killSwitch);
     }
 
     // Checks if sender is owner
