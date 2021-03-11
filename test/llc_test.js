@@ -109,8 +109,8 @@ contract("LLC", function (_accounts) {
       await expectRevert(lockContract.unlockLPT(1), "LLC: user must wait");
     });
 
-    it("default kill switch", async () => {
-      const killSwitch = await lockContract.killSwitch();
+    it("default Paused switch", async () => {
+      const killSwitch = await lockContract.paused();
       assert.isFalse(killSwitch, "Default killSwitch incorrect");
     });
 
@@ -128,27 +128,27 @@ contract("LLC", function (_accounts) {
     });
 
     it("only owner can use disableLock", async () => {
-      await expectRevert(lockContract.disableLock({ from: user }), "Ownable: caller is not the owner");
+      await expectRevert(lockContract.setUnpause({ from: user }), "Ownable: caller is not the owner");
     });
 
     it("change kill switch", async () => {
       // Change kill switch
-      expectEvent(await lockContract.disableLock(), "KillSwitch", { position: true });
-      assert.isTrue(await lockContract.killSwitch(), "Changed killSwitch incorrect");
+      expectEvent(await lockContract.setPause(), "Paused", { account: owner });
+      assert.isTrue(await lockContract.paused(), "Changed killSwitch incorrect");
 
       // Check public functions
       const anyNumber = 123;
       const b32 = web3.utils.asciiToHex("1");
       await helper.advanceBlockNumber(blockLimit);
-      await expectRevert(lockContract.lockLPTWithPermit(1, 1, b32, b32, b32, anyNumber), "LLC: This LLC is Deprecated");
-      await expectRevert(lockContract.lockLPT(1, anyNumber), "LLC: This LLC is Deprecated");
-      await lockContract.unlockLPT(1); // Be able to unlock under killed status
+      await expectRevert(lockContract.lockLPTWithPermit(1, 1, b32, b32, b32, anyNumber), "Pausable: paused");
+      await expectRevert(lockContract.lockLPT(1, anyNumber), "Pausable: paused");
+      await expectRevert(lockContract.unlockLPT(1), "Pausable: paused"); // Be able to unlock under killed status
       const block = await web3.eth.getBlock("latest");
       lastBlock = block.number;
 
       // Rechange kill switch
-      expectEvent(await lockContract.disableLock(), "KillSwitch", { position: false });
-      assert.isFalse(await lockContract.killSwitch(), "Changed killSwitch incorrect");
+      expectEvent(await lockContract.setUnpause(), "Unpaused", { account: owner });
+      assert.isFalse(await lockContract.paused(), "Changed killSwitch incorrect");
     });
 
     it("cannot claim owner", async () => {

@@ -39,7 +39,7 @@ import "./OracleLibrary.sol";
 // ----------------------------------------------------------------------------------------
 contract LiquidityLockContract is Pausable {
     using SafeMath for uint256;
-    using Address for address;
+    // using Address for address;
 
     // lockLPTEvent
     event LockLPT(uint256 LPTamt, address indexed user);
@@ -267,11 +267,9 @@ contract LiquidityLockContract is Pausable {
             _totalUSD = _token1 * 2;
         }
 
-        uint256 _totalUSDOracle;
-
         // get latest price from oracle
-        _totalUSDOracle = OracleLibrary.getPriceFeeds(triangulatePriceFeed, tokenFeeds, allowedPriceDelay);
-
+        uint256 oraclePrice = OracleLibrary.getPriceFeeds(triangulatePriceFeed, tokenFeeds, allowedPriceDelay);
+        uint256 _totalUSDOracle = oraclePrice;
         // get total value
         if (_position == 0) {
             // _totalUSDOracle = _token1 * _totalUSDOracle + _token0;
@@ -432,9 +430,10 @@ contract LiquidityLockContract is Pausable {
         uint256 valueOfSingleLPT = poolValue.mul(10**18).div(totalLP);
 
         // get current CR Ratio
-        uint256 CRNow = (valueOfSingleLPT.mul(_tokensLocked[msg.sender])).div(_currentLoan);
+        uint256 CRNow = (valueOfSingleLPT.mul(_tokensLocked[msg.sender])).mul(1000).div(_currentLoan);
 
-        if (CREnd.mul(10**18).div(CRNorm) <= CRNow) {
+        // multiply by 21 (adding 3 to 18), to account for the multiplication by 1000 above.
+        if (CREnd.mul(10**21).div(CRNorm) <= CRNow) {
             // LPT to send back. This number should have 18 decimals
             _LPTokenToReturn = (_tokensLocked[msg.sender].mul(_uTokenAmt)).div(_currentLoan);
         } else {
