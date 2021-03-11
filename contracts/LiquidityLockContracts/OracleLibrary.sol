@@ -66,12 +66,12 @@ library OracleLibrary {
     }
 
     // Returns latest price from ChainLink Oracle (Triangulation)
-    function getLatestPriceTriangulate(address erc20PriceAddr, address ethPriceAddr, uint256 allowedDelay) internal view returns (uint256) {
+    function getLatestPriceTriangulate(address erc20PriceAddr, address baseAssetPriceAddr, uint256 allowedDelay) internal view returns (uint256) {
         // erc20 price in ETH
         (, int256 price, , uint256 updatedAt, ) = AggregatorV3Interface(erc20PriceAddr).latestRoundData();
 
         // ETH price in USD
-        (, int256 price2, , uint256 updatedAtSecond, ) = AggregatorV3Interface(ethPriceAddr).latestRoundData();
+        (, int256 price2, , uint256 updatedAtSecond, ) = AggregatorV3Interface(baseAssetPriceAddr).latestRoundData();
 
         require(updatedAt >= block.timestamp.sub(allowedDelay), "price oracle data is too old. Wait for update.");
         require(updatedAtSecond >= block.timestamp.sub(allowedDelay), "price oracle second data is too old. Wait for update.");
@@ -81,10 +81,10 @@ library OracleLibrary {
         uint256 priceB = uint256(price2);
 
         // get decimals
-        uint256 ethPriceDecimal = getDecimals(ethPriceAddr);
+        uint256 baseAssetPriceDecimal = getDecimals(baseAssetPriceAddr);
 
         // multiply prices
-        uint256 finalPrice = priceA.mul(priceB).div(10**ethPriceDecimal);
+        uint256 finalPrice = priceA.mul(priceB).div(10**baseAssetPriceDecimal);
 
         return finalPrice;
     }
