@@ -107,6 +107,9 @@ contract LiquidityLockContract is Pausable {
 
     uint256 public allowedPriceDelay;
 
+    address public baseAssetAddr;
+    address public otherAssetAddr;
+
     // Modifiers
     modifier onlyOwner() {
         require(isOwner(), "Ownable: caller is not the owner");
@@ -145,8 +148,12 @@ contract LiquidityLockContract is Pausable {
         require(baseAsset == toke0 || baseAsset == toke1, "Mismatch of base asset and pool assets");
         if (baseAsset == toke0) {
             _position = 0;
+            baseAssetAddr = toke0;
+            otherAssetAddr = toke1;
         } else if (baseAsset == toke1) {
             _position = 1;
+            baseAssetAddr = toke1;
+            otherAssetAddr = toke0;
         }
         // set maxPercentDiff, used for Oracle fallback
         maxPercentDiff = 5;
@@ -258,59 +265,68 @@ contract LiquidityLockContract is Pausable {
         );
 
         // obtain amounts of tokens in both reserves.
-        (uint112 _token0, uint112 _token1, ) = LPTContract.getReserves();
+        (uint112 _token0_, uint112 _token1_, ) = LPTContract.getReserves();
 
+        uint256 _token0 = uint256(_token0_);
+        uint256 _token1 = uint256(_token1_);
+
+        uint256 _baseAssetDecimal;
+        uint256 otherAssetDecimal;
+        uint256 reservePrice;
         // obtain total USD value
         if (_position == 0) {
+            
+            _baseAssetDecimal = uint256(IERC20_2(baseAssetAddr).decimals());
+            if (_baseAssetDecimal < 18) {
+                uint256 normalization = uint256(18).sub(_baseAssetDecimal);
+                _token0 = _token0.mul(10 ** normalization);
+            } else if (_baseAssetDecimal > 18) {
+                uint256 normalization = _baseAssetDecimal.sub(18);
+                _token0 = _token0.div(10 ** normalization);
+            }
+
+            otherAssetDecimal = uint256(IERC20_2(otherAssetAddr).decimals());
+            if (otherAssetDecimal < 18) {
+                uint256 normalization = uint256(18).sub(otherAssetDecimal);
+                _token1 = _token1.mul(10 ** normalization);
+            } else if (otherAssetDecimal > 18) {
+                uint256 normalization = otherAssetDecimal.sub(18);
+                _token1 = _token1.div(10 ** normalization);
+            }
+
             _totalUSD = _token0 * 2;
+
+            reservePrice = _token0.mul(10 ** 18).div(_token1);
         } else {
+
+            _baseAssetDecimal = uint256(IERC20_2(baseAssetAddr).decimals());
+            if (_baseAssetDecimal < 18) {
+               uint256 normalization = uint256(18).sub(_baseAssetDecimal);
+                _token1 = _token1.mul(10 ** normalization); 
+            } else if (_baseAssetDecimal > 18) {
+                uint256 normalization = _baseAssetDecimal.sub(18);
+                _token1 = _token1.div(10 ** normalization);
+            }
+
+            otherAssetDecimal = uint256(IERC20_2(otherAssetAddr).decimals());
+            if (otherAssetDecimal < 18) {
+                uint256 normalization = uint256(18).sub(otherAssetDecimal);
+                _token0 = _token0.mul(10 ** normalization);
+            } else if (otherAssetDecimal > 18) {
+                uint256 normalization = otherAssetDecimal.sub(18);
+                _token0 = _token0.div(10 ** normalization);
+            }
+
             _totalUSD = _token1 * 2;
+            
+            reservePrice = _token1.mul(10 ** 18).div(_token0);
         }
 
         // get latest price from oracle
         uint256 oraclePrice = OracleLibrary.getPriceFeeds(triangulatePriceFeed, tokenFeeds, allowedPriceDelay);
-        uint256 _totalUSDOracle = oraclePrice;
-        // get total value
-        if (_position == 0) {
-            // _totalUSDOracle = _token1 * _totalUSDOracle + _token0;
-            _totalUSDOracle = uint256(_token1).mul(_totalUSDOracle).div(10**tokenFeedDecimals[0]).add(_token0);
-        } else {
-            // _totalUSDOracle = _token0 * _totalUSDOracle + _token1;
-            _totalUSDOracle = uint256(_token0).mul(_totalUSDOracle).div(10**tokenFeedDecimals[0]).add(_token1);
-        }
-        // Calculate percent difference (x2 - x1 / x1)
-        uint256 percentDiff;
-        if (_totalUSDOracle > _totalUSD) {
-            percentDiff = (100 * _totalUSDOracle.sub(_totalUSD)).div(_totalUSD);
-        } else {
-            percentDiff = (100 * _totalUSD.sub(_totalUSDOracle)).div(_totalUSDOracle);
-        }
 
-        require(percentDiff < maxPercentDiff, "LLC-Lock: Manipulation Evident");
-
-        // Token Decimal Normalization
-        //
-        // The following block ensures that all baseAsset valuations follow consistency with decimals
-        // and match the 18 decimals used by uToken. This block also solves a potential vulnerability,
-        // where a baseAsset pair which contains beyond 18 decimals could be used to calculate significantly
-        // more uToken (by orders of 10). Likewise, baseAssets such as USDC or USDT with 6 decimals would also
-        // result in far less uToken minted than desired.
-        //
-        // this should only happen if baseAsset decimals is NOT 18.
-        if (baseAssetDecimal != 18) {
-            // first case: tokenDecimal is smaller than 18
-            // for baseAssets with less than 18 decimals
-            if (baseAssetDecimal < 18) {
-                // adds decimals to match 18
-                _totalUSD = _totalUSD.mul(10**uint256(18 - baseAssetDecimal));
-            }
-            // second case: tokenDecimal is greater than 18
-            // for tokens with more than 18 decimals
-            else if (baseAssetDecimal > 18) {
-                // removes decimals to match 18
-                _totalUSD = _totalUSD.div(10**uint256(baseAssetDecimal - 18));
-            }
-        }
+        checkPriceDifference(oraclePrice, reservePrice);
+       
     }
 
     // calls transfer only, for use with non-permit lock function
@@ -383,71 +399,109 @@ contract LiquidityLockContract is Pausable {
         );
 
         // Acquire Pool Values
-        uint256 totalLP = LPTContract.totalSupply();
-        (uint112 _token0, uint112 _token1, ) = LPTContract.getReserves();
+        
+        (uint112 _token0_, uint112 _token1_, ) = LPTContract.getReserves();
+
+        uint256 _token0 = uint256(_token0_);
+        uint256 _token1 = uint256(_token1_);
 
         // obtain total USD values
         uint256 oraclePrice = OracleLibrary.getPriceFeeds(triangulatePriceFeed, tokenFeeds, allowedPriceDelay);
         uint256 poolValue;
-        uint256 oracleValue;
+
+        uint256 _baseAssetDecimal;
+        uint256 otherAssetDecimal;
+        uint256 reservePrice;
+        // uint256 oracleValue;
         if (_position == 0) {
-            poolValue = _token0 * 2;
-            oracleValue = uint256(_token1).mul(oraclePrice).div(10**tokenFeedDecimals[0]).add(_token0);
-        } else {
-            poolValue = _token1 * 2;
-            oracleValue = uint256(_token0).mul(oraclePrice).div(10**tokenFeedDecimals[0]).add(_token1);
-        }
 
-        // normalize back to value with 18 decimals
-        // Calculate percent difference (x2 - x1 / x1)
-        uint256 percentDiff;
-        if (oracleValue > poolValue) {
-            percentDiff = (100 * oracleValue.sub(poolValue)).div(poolValue);
-        } else {
-            percentDiff = (100 * poolValue.sub(oracleValue)).div(oracleValue);
-        }
-
-        require(percentDiff < maxPercentDiff, "LLC-Unlock: Manipulation Evident");
-
-        // this should only happen if baseAsset decimals is NOT 18.
-        if (baseAssetDecimal != 18) {
-            // first case: tokenDecimal is smaller than 18
-            // for baseAssets with less than 18 decimals
-            if (baseAssetDecimal < 18) {
-                // calculate amount of decimals under 18
-                poolValue = poolValue.mul(10**uint256(18 - baseAssetDecimal));
+            _baseAssetDecimal = uint256(IERC20_2(baseAssetAddr).decimals());
+            if (_baseAssetDecimal < 18) {
+                uint256 normalization = uint256(18).sub(_baseAssetDecimal);
+                _token0 = _token0.mul(10 ** normalization);
+            } else if (_baseAssetDecimal > 18) {
+                uint256 normalization = _baseAssetDecimal.sub(18);
+                _token0 = _token0.div(10 ** normalization);
             }
-            // second case: tokenDecimal is greater than 18
-            // for tokens with more than 18 decimals
-            else if (baseAssetDecimal > 18) {
-                // caclulate amount of decimals over 18
-                poolValue = poolValue.div(10**uint256(baseAssetDecimal - 18));
-            }
-        }
 
-        // Calculate value of a single LP token
-        // We will add some decimals to this
-        uint256 valueOfSingleLPT = poolValue.mul(10**18).div(totalLP);
+            otherAssetDecimal = uint256(IERC20_2(otherAssetAddr).decimals());
+            if (otherAssetDecimal < 18) {
+                uint256 normalization = uint256(18).sub(otherAssetDecimal);
+                _token1 = _token1.mul(10 ** normalization);
+            } else if (otherAssetDecimal > 18) {
+                uint256 normalization = otherAssetDecimal.sub(18);
+                _token1 = _token1.div(10 ** normalization);
+            }
+
+            poolValue = _token0.mul(2);
+
+            reservePrice = _token0.mul(10 ** 18).div(_token1);
+
+        } else {
+
+            _baseAssetDecimal = uint256(IERC20_2(baseAssetAddr).decimals());
+            if (_baseAssetDecimal < 18) {
+               uint256 normalization = uint256(18).sub(_baseAssetDecimal);
+                _token1 = _token1.mul(10 ** normalization); 
+            } else if (_baseAssetDecimal > 18) {
+                uint256 normalization = _baseAssetDecimal.sub(18);
+                _token1 = _token1.div(10 ** normalization);
+            }
+
+            otherAssetDecimal = uint256(IERC20_2(otherAssetAddr).decimals());
+            if (otherAssetDecimal < 18) {
+                uint256 normalization = uint256(18).sub(otherAssetDecimal);
+                _token0 = _token0.mul(10 ** normalization);
+            } else if (otherAssetDecimal > 18) {
+                uint256 normalization = otherAssetDecimal.sub(18);
+                _token0 = _token0.div(10 ** normalization);
+            }
+
+            poolValue = _token1.mul(2);
+            
+            reservePrice = _token1.mul(10 ** 18).div(_token0);
+            
+        }
+        checkPriceDifference(oraclePrice, reservePrice);
+
+        _LPTokenToReturn = LPReturnFormulas(poolValue, _currentLoan, _uTokenAmt);
+
+    }
+
+    function LPReturnFormulas(uint256 _poolValue, uint256 _currentLoan_, uint256 _uTokenAmt_) internal view returns(uint256 _LPTokenToReturn_){
+        uint256 totalLP = LPTContract.totalSupply();
+        uint256 valueOfSingleLPT = _poolValue.mul(10**18).div(totalLP);
 
         // get current CR Ratio
-        uint256 CRNow = (valueOfSingleLPT.mul(_tokensLocked[msg.sender])).mul(1000).div(_currentLoan);
+        uint256 CRNow = (valueOfSingleLPT.mul(_tokensLocked[msg.sender])).mul(1000).div(_currentLoan_);
 
         // multiply by 21 (adding 3 to 18), to account for the multiplication by 1000 above.
         if (CREnd.mul(10**21).div(CRNorm) <= CRNow) {
             // LPT to send back. This number should have 18 decimals
-            _LPTokenToReturn = (_tokensLocked[msg.sender].mul(_uTokenAmt)).div(_currentLoan);
+            _LPTokenToReturn_ = (_tokensLocked[msg.sender].mul(_uTokenAmt_)).div(_currentLoan_);
         } else {
             // value of users locked LP before paying loan
             uint256 valueStart = valueOfSingleLPT.mul(_tokensLocked[msg.sender]);
 
-            uint256 loanAfter = _currentLoan.sub(_uTokenAmt);
+            uint256 loanAfter = _currentLoan_.sub(_uTokenAmt_);
 
             // Value After - Collateralization Ratio times LoanAfter (divided by CRNorm, then normalized with valueOfSingleLPT)
             uint256 valueAfter = CREnd.mul(loanAfter).div(CRNorm).mul(10**18);
 
             // LPT to send back. This number should have 18 decimals
-            _LPTokenToReturn = valueStart.sub(valueAfter).div(valueOfSingleLPT);
+            _LPTokenToReturn_ = valueStart.sub(valueAfter).div(valueOfSingleLPT);
         }
+    }  
+
+    function checkPriceDifference(uint256 _oraclePrice, uint256 _reservePrice) internal view{
+        uint256 percentDiff;
+        if (_oraclePrice > _reservePrice) {
+            percentDiff = (100 * _oraclePrice.sub(_reservePrice)).div(_reservePrice);
+        } else {
+            percentDiff = (100 * _reservePrice.sub(_oraclePrice)).div(_oraclePrice);
+        }
+
+        require(percentDiff < maxPercentDiff, "LLC: Manipulation Evident");
     }
 
     function tokensLocked(address account) public view returns (uint256) {

@@ -96,7 +96,7 @@ contract("Scenario", function (_accounts) {
     it("cannot lock when the price diff is big", async () => {
       await priceFeedEth.setPrice(parseInt(ethPrice * 1.12));
       const dummyNumber = 100;
-      await expectRevert(lockContract.lockLPT(dummyNumber, 0), "LLC-Lock: Manipulation Evident");
+      await expectRevert(lockContract.lockLPT(dummyNumber, 0), "LLC: Manipulation Evident");
       await priceFeedEth.setPrice(ethPrice);
     });
 
@@ -220,7 +220,7 @@ contract("Scenario", function (_accounts) {
       await helper.advanceBlockNumber(blockLimit);
       await priceFeedEth.setPrice(parseInt(ethPrice * 0.9025));
       const dummyNumber = 100;
-      await expectRevert(lockContract.unlockLPT(dummyNumber), "LLC-Unlock: Manipulation Evident");
+      await expectRevert(lockContract.unlockLPT(dummyNumber), "LLC: Manipulation Evident");
       await priceFeedEth.setPrice(ethPrice);
     });
 

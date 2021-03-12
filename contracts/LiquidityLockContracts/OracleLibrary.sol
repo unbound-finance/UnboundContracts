@@ -60,9 +60,18 @@ library OracleLibrary {
 
     // Returns latest price from ChainLink Oracle (direct)
     function getLatestPrice(address assetAddr, uint256 allowedDelay) internal view returns (uint256) {
-        (, int256 price, , uint256 updatedAt, ) = AggregatorV3Interface(assetAddr).latestRoundData();
+        (, int256 _price, , uint256 updatedAt, ) = AggregatorV3Interface(assetAddr).latestRoundData();
         require(updatedAt >= block.timestamp.sub(allowedDelay), "price oracle data is too old. Wait for update.");
-        return uint256(price);
+        uint256 price = uint256(_price);
+        uint256 _decimal = getDecimals(assetAddr);
+        if (_decimal < 18) {
+            uint256 normalization = uint256(18).sub(_decimal);
+            price = price.mul(10 ** normalization);
+        } else if (_decimal > 18) {
+            uint256 normalization = _decimal.sub(18);
+            price = price.div(10 ** normalization);
+        }
+        return price;
     }
 
     // Returns latest price from ChainLink Oracle (Triangulation)
@@ -77,14 +86,30 @@ library OracleLibrary {
         require(updatedAtSecond >= block.timestamp.sub(allowedDelay), "price oracle second data is too old. Wait for update.");
 
         // convert to uint256
-        uint256 priceA = uint256(price);
-        uint256 priceB = uint256(price2);
+        uint256 priceErc20 = uint256(price);
+        uint256 priceBaseAsset = uint256(price2);
 
         // get decimals
         uint256 baseAssetPriceDecimal = getDecimals(baseAssetPriceAddr);
+        if (baseAssetPriceDecimal < 18) {
+            uint256 normalization = uint256(18).sub(baseAssetPriceDecimal);
+            priceBaseAsset = priceBaseAsset.mul(10 ** normalization);
+        } else if (baseAssetPriceDecimal > 18) {
+            uint256 normalization = baseAssetPriceDecimal.sub(18);
+            priceBaseAsset = priceBaseAsset.div(10 ** normalization);
+        }
+
+        uint256 erc20PriceDecimal = getDecimals(erc20PriceAddr);
+        if (erc20PriceDecimal < 18) {
+            uint256 normalization = uint256(18).sub(erc20PriceDecimal);
+            priceErc20 = priceErc20.mul(10 ** normalization);
+        } else if (erc20PriceDecimal > 18) {
+            uint256 normalization = erc20PriceDecimal.sub(18);
+            priceErc20 = priceErc20.div(10 ** normalization);
+        }
 
         // multiply prices
-        uint256 finalPrice = priceA.mul(priceB).div(10**baseAssetPriceDecimal);
+        uint256 finalPrice = priceErc20.mul(priceBaseAsset).div(10**18);
 
         return finalPrice;
     }
