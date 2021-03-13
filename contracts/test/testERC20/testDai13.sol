@@ -25,9 +25,9 @@ contract TestDai13 is IERC20 {
     // event Transfer(address indexed from, address indexed to, uint value);
 
     constructor(address tester, uint256 chainId_) {
-        balanceOf[msg.sender] = balanceOf[msg.sender].add(100000000000 * (10**18));
-        balanceOf[tester] = balanceOf[tester].add(100000000000 * (10**18));
-        totalSupply = totalSupply.add(1000000 * (10**18));
+        balanceOf[msg.sender] = balanceOf[msg.sender].add(100000000000 * (10**13));
+        balanceOf[tester] = balanceOf[tester].add(100000000000 * (10**13));
+        totalSupply = totalSupply.add(1000000 * (10**13));
 
         // Permit??
         DOMAIN_SEPARATOR = keccak256(

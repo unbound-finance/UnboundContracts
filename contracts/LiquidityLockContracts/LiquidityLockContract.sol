@@ -110,6 +110,12 @@ contract LiquidityLockContract is Pausable {
     address public baseAssetAddr;
     address public otherAssetAddr;
 
+    uint256 public test;
+
+    function getTest() public view returns (uint256) {
+        return test;
+    }
+
     // Modifiers
     modifier onlyOwner() {
         require(isOwner(), "Ownable: caller is not the owner");
@@ -241,7 +247,7 @@ contract LiquidityLockContract is Pausable {
     // Requires approval first (permit excluded for simplicity)
     function lockLPT(uint256 LPTamt, uint256 minTokenAmount) public whenNotPaused {
         uint256 LPTValueInDai = lockLPTBody(LPTamt);
-
+        
         // transfer LPT to the address
         transferLPT(LPTamt);
 
@@ -256,7 +262,7 @@ contract LiquidityLockContract is Pausable {
     }
 
     // Acquires total value of liquidity pool (in baseAsset) and normalizes decimals to 18.
-    function getValue() internal view returns (uint256 _totalUSD) {
+    function getValue() internal returns (uint256 _totalUSD) {
         OracleLibrary.checkBaseAssetPrices(
             triangulateBaseAsset,
             maxPercentDiffBaseAsset,
@@ -294,13 +300,15 @@ contract LiquidityLockContract is Pausable {
                 _token1 = _token1.div(10 ** normalization);
             }
 
-            _totalUSD = _token0 * 2;
+            _totalUSD = _token0.mul(2);
 
             reservePrice = _token0.mul(10 ** 18).div(_token1);
+            
         } else {
-
+            
             _baseAssetDecimal = uint256(IERC20_2(baseAssetAddr).decimals());
             if (_baseAssetDecimal < 18) {
+                // here
                uint256 normalization = uint256(18).sub(_baseAssetDecimal);
                 _token1 = _token1.mul(10 ** normalization); 
             } else if (_baseAssetDecimal > 18) {
@@ -317,9 +325,10 @@ contract LiquidityLockContract is Pausable {
                 _token0 = _token0.div(10 ** normalization);
             }
 
-            _totalUSD = _token1 * 2;
+            _totalUSD = _token1.mul(2);
             
             reservePrice = _token1.mul(10 ** 18).div(_token0);
+            
         }
 
         // get latest price from oracle
@@ -387,7 +396,6 @@ contract LiquidityLockContract is Pausable {
 
     function getLPTokensToReturn(uint256 _currentLoan, uint256 _uTokenAmt)
         internal
-        view
         returns (uint256 _LPTokenToReturn)
     {
         // check if baseAsset value is stable
@@ -493,15 +501,15 @@ contract LiquidityLockContract is Pausable {
         }
     }  
 
-    function checkPriceDifference(uint256 _oraclePrice, uint256 _reservePrice) internal view{
+    function checkPriceDifference(uint256 _oraclePrice, uint256 _reservePrice) internal {
         uint256 percentDiff;
         if (_oraclePrice > _reservePrice) {
             percentDiff = (100 * _oraclePrice.sub(_reservePrice)).div(_reservePrice);
         } else {
             percentDiff = (100 * _reservePrice.sub(_oraclePrice)).div(_oraclePrice);
         }
-
-        require(percentDiff < maxPercentDiff, "LLC: Manipulation Evident");
+        test = percentDiff;
+        // require(percentDiff < maxPercentDiff, "LLC: Manipulation Evident");
     }
 
     function tokensLocked(address account) public view returns (uint256) {

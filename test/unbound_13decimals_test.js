@@ -145,6 +145,8 @@ contract("unboundSystem decimals13", function (_accounts) {
       await helper.advanceBlockNumber(blockLimit);
       await pair.approve(lockContract.address, LPtokens);
       await lockContract.lockLPT(LPtokens, loanAmount - feeAmount);
+      const test = await lockContract.getTest();
+      console.log(test.toString());
       const ownerBal = parseInt(await unboundDai.balanceOf.call(owner));
       const stakingBal = parseInt(await unboundDai.balanceOf.call(stakePair.address));
 
