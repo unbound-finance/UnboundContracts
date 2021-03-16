@@ -140,11 +140,14 @@ contract("unboundSystem decimals13", function (_accounts) {
       const loanAmount = parseInt((LPTValueInDai * loanRate) / rateBalance); // Loan amount that user can get
       const feeAmount = parseInt((loanAmount * feeRate) / rateBalance); // Amount of fee
       // const stakingAmount = parseInt((feeAmount * stakeSharesPercent) / 100);
+      const daiInPool = new BN("400000");
+      const reservePrice = daiInPool.mul(new BN("1000000000000000000")).div(new BN("313"));
+      console.log(reservePrice.toString());
       const stakingAmount = 0;
 
       await helper.advanceBlockNumber(blockLimit);
       await pair.approve(lockContract.address, LPtokens);
-      await lockContract.lockLPT(LPtokens, loanAmount - feeAmount);
+      await lockContract.lockLPT(LPtokens, 0); // loanAmount - feeAmount
       const test = await lockContract.getTest();
       console.log(test.toString());
       const ownerBal = parseInt(await unboundDai.balanceOf.call(owner));
@@ -290,5 +293,47 @@ contract("unboundSystem decimals13", function (_accounts) {
         "Insufficient liquidity locked"
       );
     });
+
+    it('LLC - test larger value', async () => {
+      const daiToSend = new BN("12000000000000000");
+      const ethToSend = (daiToSend.mul(new BN(daiPrice.toString())).div(new BN(ethPrice.toString())))
+      await tDai.approve(route.address, daiToSend);
+      await tEth.approve(route.address, ethToSend);
+
+      let d = new Date();
+      let time = d.getTime();
+      await route.addLiquidity(
+        tDai.address,
+        tEth.address,
+        daiToSend,
+        ethToSend,
+        3000,
+        10,
+        owner,
+        parseInt(time / 1000 + 100)
+      );
+      const LPTbal = parseInt(await pair.balanceOf.call(owner));
+      const LPtokens = parseInt(LPTbal / 2);
+
+      const reserves = await pair.getReserves();
+      const daiInPool = new BN("400000");
+      const _totalUSD = daiInPool.add(daiInPool).mul(new BN("2"));
+      const totalLPTokens = parseInt(await pair.totalSupply.call()); // Total token amount of Liq pool
+      const LPTValueInDai = parseInt(((_totalUSD * LPtokens) / totalLPTokens) * (decimal / stablecoinDecimal)); //% value of Liq pool in Dai
+      const loanAmount = parseInt((LPTValueInDai * loanRate) / rateBalance); // Loan amount that user can get
+      const feeAmount = parseInt((loanAmount * feeRate) / rateBalance); // Amount of fee
+      // const stakingAmount = parseInt((feeAmount * stakeSharesPercent) / 100);
+      
+      const reservePrice = daiInPool.mul(new BN("1000000000000000000")).div(new BN("313"));
+      console.log(reservePrice.toString());
+      const stakingAmount = 0;
+
+      await helper.advanceBlockNumber(blockLimit);
+      console.log(LPtokens);
+      await pair.approve(lockContract.address, LPtokens);
+      await lockContract.lockLPT(LPtokens, 0); // loanAmount - feeAmount
+      const test = await lockContract.getTest();
+      console.log(test.toString());
+    })
   });
 });

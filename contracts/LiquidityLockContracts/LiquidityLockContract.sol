@@ -281,6 +281,8 @@ contract LiquidityLockContract is Pausable {
         uint256 reservePrice;
         // obtain total USD value
         if (_position == 0) {
+
+            reservePrice = _token0.mul(10 ** 18).div(_token1);
             
             _baseAssetDecimal = uint256(IERC20_2(baseAssetAddr).decimals());
             if (_baseAssetDecimal < 18) {
@@ -301,10 +303,10 @@ contract LiquidityLockContract is Pausable {
             }
 
             _totalUSD = _token0.mul(2);
-
-            reservePrice = _token0.mul(10 ** 18).div(_token1);
             
         } else {
+
+            reservePrice = _token1.mul(10 ** 18).div(_token0);
             
             _baseAssetDecimal = uint256(IERC20_2(baseAssetAddr).decimals());
             if (_baseAssetDecimal < 18) {
@@ -326,8 +328,6 @@ contract LiquidityLockContract is Pausable {
             }
 
             _totalUSD = _token1.mul(2);
-            
-            reservePrice = _token1.mul(10 ** 18).div(_token0);
             
         }
 
@@ -423,6 +423,8 @@ contract LiquidityLockContract is Pausable {
         // uint256 oracleValue;
         if (_position == 0) {
 
+            reservePrice = _token0.mul(10 ** 18).div(_token1);
+
             _baseAssetDecimal = uint256(IERC20_2(baseAssetAddr).decimals());
             if (_baseAssetDecimal < 18) {
                 uint256 normalization = uint256(18).sub(_baseAssetDecimal);
@@ -443,9 +445,9 @@ contract LiquidityLockContract is Pausable {
 
             poolValue = _token0.mul(2);
 
-            reservePrice = _token0.mul(10 ** 18).div(_token1);
-
         } else {
+
+            reservePrice = _token1.mul(10 ** 18).div(_token0);
 
             _baseAssetDecimal = uint256(IERC20_2(baseAssetAddr).decimals());
             if (_baseAssetDecimal < 18) {
@@ -466,9 +468,7 @@ contract LiquidityLockContract is Pausable {
             }
 
             poolValue = _token1.mul(2);
-            
-            reservePrice = _token1.mul(10 ** 18).div(_token0);
-            
+             
         }
         checkPriceDifference(oraclePrice, reservePrice);
 
@@ -509,7 +509,7 @@ contract LiquidityLockContract is Pausable {
             percentDiff = (100 * _reservePrice.sub(_oraclePrice)).div(_oraclePrice);
         }
         test = percentDiff;
-        // require(percentDiff < maxPercentDiff, "LLC: Manipulation Evident");
+        require(percentDiff < maxPercentDiff, "LLC: Manipulation Evident");
     }
 
     function tokensLocked(address account) public view returns (uint256) {
