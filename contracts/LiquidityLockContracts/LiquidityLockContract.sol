@@ -4,8 +4,10 @@ pragma solidity 0.7.5;
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
+import "../utils/Math.sol";
 
 // Interfaces
+import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 import "../Interfaces/chainlinkOracleInterface.sol";
 import "../Interfaces/IUniswapV2Pair.sol";
 import "../Interfaces/IValuing_01.sol";
@@ -279,10 +281,14 @@ contract LiquidityLockContract is Pausable {
         uint256 _baseAssetDecimal;
         uint256 otherAssetDecimal;
         uint256 reservePrice;
+
+        // get latest price from oracle
+        uint256 oraclePrice = OracleLibrary.getPriceFeeds(triangulatePriceFeed, tokenFeeds, allowedPriceDelay);
+
         // obtain total USD value
         if (_position == 0) {
 
-            reservePrice = _token0.mul(10 ** 18).div(_token1);
+            reservePrice = _token0.mul(Math.BONE).div(_token1);
             
             _baseAssetDecimal = uint256(IERC20_2(baseAssetAddr).decimals());
             if (_baseAssetDecimal < 18) {
@@ -303,10 +309,16 @@ contract LiquidityLockContract is Pausable {
             }
 
             _totalUSD = _token0.mul(2);
+
+            if (!checkPriceDifference(oraclePrice, reservePrice)) {
+                uint256 geometricMean = getWeightedGeometricMean(_token1);
+                uint256 LPTokens = LPTContract.totalSupply();
+                _totalUSD = geometricMean.mul(LPTokens).div(Math.BONE);
+            }
             
         } else {
 
-            reservePrice = _token1.mul(10 ** 18).div(_token0);
+            reservePrice = _token1.mul(Math.BONE).div(_token0);
             
             _baseAssetDecimal = uint256(IERC20_2(baseAssetAddr).decimals());
             if (_baseAssetDecimal < 18) {
@@ -328,14 +340,59 @@ contract LiquidityLockContract is Pausable {
             }
 
             _totalUSD = _token1.mul(2);
+
+            // if uniswap price disagrees with chainlink, calculate _totalUSD using geometric mean
+            if (!checkPriceDifference(oraclePrice, reservePrice)) {
+                uint256 geometricMean = getWeightedGeometricMean(_token1);
+                uint256 LPTokens = LPTContract.totalSupply();
+                _totalUSD = geometricMean.mul(LPTokens).div(Math.BONE);
+            }
             
         }
 
-        // get latest price from oracle
-        uint256 oraclePrice = OracleLibrary.getPriceFeeds(triangulatePriceFeed, tokenFeeds, allowedPriceDelay);
+    }
 
-        checkPriceDifference(oraclePrice, reservePrice);
-       
+    
+    function getWeightedGeometricMean(uint256 totalBaseAsset)
+        internal
+        view
+        returns (uint256)
+    {
+        uint256 square = Math.bsqrt(Math.bmul(totalBaseAsset, totalBaseAsset), true);
+        return
+            Math.bdiv(
+                Math.bmul(Math.TWO_BONES, square),
+                getTotalSupplyAtWithdrawal()
+            );
+    }
+
+    /**
+     * Returns Uniswap V2 pair total supply at the time of withdrawal.
+     */
+    function getTotalSupplyAtWithdrawal()
+        private
+        view
+        returns (uint256 totalSupply)
+    {
+        totalSupply = LPTContract.totalSupply();
+        address feeTo =
+            IUniswapV2Factory(LPTContract.factory()).feeTo();
+        bool feeOn = feeTo != address(0);
+        if (feeOn) {
+            uint256 kLast = LPTContract.kLast();
+            if (kLast != 0) {
+                (uint112 reserve_0, uint112 reserve_1, ) = LPTContract.getReserves();
+                uint256 rootK =
+                    Math.bsqrt(uint256(reserve_0).mul(reserve_1), false);
+                uint256 rootKLast = Math.bsqrt(kLast, false);
+                if (rootK > rootKLast) {
+                    uint256 numerator = totalSupply.mul(rootK.sub(rootKLast));
+                    uint256 denominator = rootK.mul(5).add(rootKLast);
+                    uint256 liquidity = numerator / denominator;
+                    totalSupply = totalSupply.add(liquidity);
+                }
+            }
+        }
     }
 
     // calls transfer only, for use with non-permit lock function
@@ -423,7 +480,7 @@ contract LiquidityLockContract is Pausable {
         // uint256 oracleValue;
         if (_position == 0) {
 
-            reservePrice = _token0.mul(10 ** 18).div(_token1);
+            reservePrice = _token0.mul(Math.BONE).div(_token1);
 
             _baseAssetDecimal = uint256(IERC20_2(baseAssetAddr).decimals());
             if (_baseAssetDecimal < 18) {
@@ -445,9 +502,16 @@ contract LiquidityLockContract is Pausable {
 
             poolValue = _token0.mul(2);
 
+            // if uniswap price disagrees with chainlink, calculate poolValue using geometric mean
+            if (!checkPriceDifference(oraclePrice, reservePrice)) {
+                uint256 geometricMean = getWeightedGeometricMean(_token1);
+                uint256 LPTokens = LPTContract.totalSupply();
+                poolValue = geometricMean.mul(LPTokens).div(Math.BONE);
+            }
+
         } else {
 
-            reservePrice = _token1.mul(10 ** 18).div(_token0);
+            reservePrice = _token1.mul(Math.BONE).div(_token0);
 
             _baseAssetDecimal = uint256(IERC20_2(baseAssetAddr).decimals());
             if (_baseAssetDecimal < 18) {
@@ -468,9 +532,15 @@ contract LiquidityLockContract is Pausable {
             }
 
             poolValue = _token1.mul(2);
+
+            // if uniswap price disagrees with chainlink, calculate poolValue using geometric mean
+            if (!checkPriceDifference(oraclePrice, reservePrice)) {
+                uint256 geometricMean = getWeightedGeometricMean(_token1);
+                uint256 LPTokens = LPTContract.totalSupply();
+                poolValue = geometricMean.mul(LPTokens).div(Math.BONE);
+            }
              
         }
-        checkPriceDifference(oraclePrice, reservePrice);
 
         _LPTokenToReturn = LPReturnFormulas(poolValue, _currentLoan, _uTokenAmt);
 
@@ -478,7 +548,7 @@ contract LiquidityLockContract is Pausable {
 
     function LPReturnFormulas(uint256 _poolValue, uint256 _currentLoan_, uint256 _uTokenAmt_) internal view returns(uint256 _LPTokenToReturn_){
         uint256 totalLP = LPTContract.totalSupply();
-        uint256 valueOfSingleLPT = _poolValue.mul(10**18).div(totalLP);
+        uint256 valueOfSingleLPT = _poolValue.mul(Math.BONE).div(totalLP);
 
         // get current CR Ratio
         uint256 CRNow = (valueOfSingleLPT.mul(_tokensLocked[msg.sender])).mul(1000).div(_currentLoan_);
@@ -501,7 +571,7 @@ contract LiquidityLockContract is Pausable {
         }
     }  
 
-    function checkPriceDifference(uint256 _oraclePrice, uint256 _reservePrice) internal {
+    function checkPriceDifference(uint256 _oraclePrice, uint256 _reservePrice) internal returns (bool result) {
         uint256 percentDiff;
         if (_oraclePrice > _reservePrice) {
             percentDiff = (100 * _oraclePrice.sub(_reservePrice)).div(_reservePrice);
@@ -509,7 +579,8 @@ contract LiquidityLockContract is Pausable {
             percentDiff = (100 * _reservePrice.sub(_oraclePrice)).div(_oraclePrice);
         }
         test = percentDiff;
-        require(percentDiff < maxPercentDiff, "LLC: Manipulation Evident");
+        percentDiff < maxPercentDiff ? result = true : result = false;
+        // require(percentDiff < maxPercentDiff, "LLC: Manipulation Evident");
     }
 
     function tokensLocked(address account) public view returns (uint256) {
