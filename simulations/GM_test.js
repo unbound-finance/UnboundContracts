@@ -41,7 +41,7 @@ contract("Scenario", function (_accounts) {
   const CREnd = 20000;
   const CRNorm = 10000;
   const blockLimit = 10;
-  const ethPrice = 87500000000; // this should trigger GM. Expected price is 1000. This is 850
+  const ethPrice = 100000000000; // this should trigger GM. Expected price is 1000. This is 850
   const daiPrice = 100000000;
 
   let und;
@@ -89,6 +89,25 @@ contract("Scenario", function (_accounts) {
         owner,
         parseInt(time / 1000 + 100)
       );
+
+      // await tDai.approve(route.address, new BN("400000000000000000000"));
+      // await route.swapExactTokensForTokens(
+      //   new BN("400000000000000000000"),
+      //   new BN("1"),
+      //   [tDai.address, tEth.address],
+      //   _accounts[1],
+      //   10000000000000
+      // )
+
+      // await tEth.approve(route.address, new BN("1000000000000000000"));
+      // await route.swapExactTokensForTokens(
+      //   new BN("1000000000000000000"),
+      //   new BN("1"),
+      //   [tEth.address, tDai.address],
+      //   _accounts[1],
+      //   10000000000000
+      // )
+
       let stakePool = await factory.createPair(tDai.address, und.address);
       stakePair = await uniPair.at(stakePool.logs[0].args.pair);
       await und.changeStaking(stakePair.address);

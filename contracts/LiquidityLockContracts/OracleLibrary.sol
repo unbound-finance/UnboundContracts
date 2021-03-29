@@ -21,16 +21,16 @@ library OracleLibrary {
     }
 
     // check baseAsset price for existing pair on chainlink (direct)
-    function checkBaseAssetValue(address baseAssetAddr, uint256 percentDiff, uint256 allowedDelay) internal view {
+    function checkBaseAssetValue(address baseAssetAddr, uint256 percentDiff, uint256 allowedDelay) internal view returns (uint256) {
         (, int256 price, , uint256 updatedAt, ) = AggregatorV3Interface(baseAssetAddr).latestRoundData();
         require(updatedAt >= block.timestamp.sub(allowedDelay), "price oracle data is too old. Wait for update.");
         uint256 _baseAssetValue = uint256(price);
         uint256 _decimals = getDecimals(baseAssetAddr);
-        _baseAssetValue = _baseAssetValue / (10**(_decimals - 2));
-        require(
-            _baseAssetValue <= (100 + percentDiff) && _baseAssetValue >= (100 - percentDiff),
-            "stableCoin not stable"
-        );
+        return _baseAssetValue / (10**(_decimals - 2));
+        // require(
+        //     _baseAssetValue <= (100 + percentDiff) && _baseAssetValue >= (100 - percentDiff),
+        //     "stableCoin not stable"
+        // );
     }
 
     // check baseAsset price for existing pair on chainlink (Triangulated)
@@ -39,7 +39,7 @@ library OracleLibrary {
         address secondBaseAsset,
         uint256 percentDiff,
         uint256 allowedDelay
-    ) internal view {
+    ) internal view returns (uint256) {
         (, int256 price, , uint256 updatedAt, ) = AggregatorV3Interface(baseAssetAddr).latestRoundData();
         (, int256 price2, , uint256 updatedAtSecond, ) = AggregatorV3Interface(secondBaseAsset).latestRoundData();
         require(updatedAt >= block.timestamp.sub(allowedDelay), "price oracle data is too old. Wait for update.");
@@ -53,9 +53,9 @@ library OracleLibrary {
         uint256 secondBaseDecimal = getDecimals(secondBaseAsset);
         uint256 toNormalize = firstBaseDecimal.add(secondBaseDecimal).sub(2);
 
-        uint256 finalPrice = _baseAssetValue.mul(_secondBaseAsset).div(10**(toNormalize));
+        return _baseAssetValue.mul(_secondBaseAsset).div(10**(toNormalize));
 
-        require(finalPrice <= (100 + percentDiff) && finalPrice >= (100 - percentDiff), "stableCoin not stable");
+        // require(finalPrice <= (100 + percentDiff) && finalPrice >= (100 - percentDiff), "stableCoin not stable");
     }
 
     // Returns latest price from ChainLink Oracle (direct)
@@ -128,12 +128,12 @@ library OracleLibrary {
         uint256 _maxPercentDiffBaseAsset,
         address[] memory _addresses,
         uint256 _allowedDelay
-    ) internal view {
+    ) internal view returns (uint256) {
         // check if baseAsset value is stable
         if (_triangulateBaseAsset) {
-            checkBaseAssetValueTriangulate(_addresses[0], _addresses[1], _maxPercentDiffBaseAsset, _allowedDelay);
+            return checkBaseAssetValueTriangulate(_addresses[0], _addresses[1], _maxPercentDiffBaseAsset, _allowedDelay);
         } else {
-            checkBaseAssetValue(_addresses[0], _maxPercentDiffBaseAsset, _allowedDelay);
+            return checkBaseAssetValue(_addresses[0], _maxPercentDiffBaseAsset, _allowedDelay);
         }
     }
 }
