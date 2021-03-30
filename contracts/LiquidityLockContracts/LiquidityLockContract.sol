@@ -8,14 +8,12 @@ import "../utils/Math.sol";
 
 // Interfaces
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
-import "../Interfaces/chainlinkOracleInterface.sol";
 import "../Interfaces/IUniswapV2Pair.sol";
 import "../Interfaces/IValuing_01.sol";
 import "../Interfaces/IUnboundToken.sol";
 import "../Interfaces/IERC20.sol";
 
-// import libraries
-import "./OracleLibrary.sol";
+import "./Oracle.sol";
 
 // ---------------------------------------------------------------------------------------
 //                                Liquidity Lock Contract V1
@@ -44,10 +42,10 @@ contract LiquidityLockContract is Pausable {
     // using Address for address;
 
     // lockLPTEvent
-    event LockLPT(uint256 LPTamt, address indexed user);
+    event LockLPT(uint256 LPTAmt, address indexed user);
 
     // unlockLPTEvent
-    event UnlockLPT(uint256 LPTamt, address indexed user);
+    event UnlockLPT(uint256 LPTAmt, address indexed user);
 
     // Admin Change in-prog
     event ChangingAdmin(address indexed oldAdmin, address indexed newAdmin);
@@ -75,16 +73,6 @@ contract LiquidityLockContract is Pausable {
     mapping(address => uint256) public nextBlock;
     uint256 public blockLimit;
 
-    // token position of baseAsset
-    uint256 public _position;
-
-    // set this in constructor, tracks decimals of baseAsset
-    uint256 public baseAssetDecimal;
-
-    // maximum percent difference in oracle vs. standard valuation
-    uint256 public maxPercentDiff;
-    uint256 public maxPercentDiffBaseAsset;
-
     // Collateralization Ratio End
     uint256 public CREnd;
 
@@ -93,30 +81,15 @@ contract LiquidityLockContract is Pausable {
 
     // Interfaced Contracts
     IValuing_01 private valuingContract;
-    IUniswapV2Pair_0 private LPTContract;
-    IERC20_2 private baseAssetErc20;
+    IUniswapV2Pair private LPTContract;
     IUnboundToken private unboundContract;
-
-    // Oracle Address Arrays
-    address[] public baseAssets;
-    address[] public tokenFeeds;
-
-    bool private triangulateBaseAsset;
-    bool private triangulatePriceFeed;
-
-    uint256[] public baseAssetOracleDecimals;
-    uint256[] public tokenFeedDecimals;
 
     uint256 public allowedPriceDelay;
 
     address public baseAssetAddr;
     address public otherAssetAddr;
 
-    uint256 public test;
-
-    function getTest() public view returns (uint256) {
-        return test;
-    }
+    UniswapV2PriceProvider oracle;
 
     // Modifiers
     modifier onlyOwner() {
@@ -129,44 +102,18 @@ contract LiquidityLockContract is Pausable {
     constructor(
         address valuingAddress,
         address LPTaddress,
-        address baseAsset,
-        address[] memory priceFeedAddress,
-        address[] memory priceFeedBaseAsset,
-        address uTokenAddr
+        address uTokenAddr,
+        UniswapV2PriceProvider oracleAddress
     ) {
         _owner = msg.sender;
 
         // initiates interfacing contracts
         valuingContract = IValuing_01(valuingAddress);
-        LPTContract = IUniswapV2Pair_0(LPTaddress);
-        baseAssetErc20 = IERC20_2(baseAsset);
+        LPTContract = IUniswapV2Pair(LPTaddress);
         unboundContract = IUnboundToken(uTokenAddr);
 
         // set block limit (10 by default)
         blockLimit = 10;
-
-        // saves pair token addresses to memory
-        address toke0 = LPTContract.token0();
-        address toke1 = LPTContract.token1();
-
-        // sets the decimals value of the baseAsset
-        baseAssetDecimal = baseAssetErc20.decimals();
-        require(baseAssetDecimal >= 2, "Base asset must have at least 2 decimals");
-
-        // assigns which token in the pair is a baseAsset, updates first oracle.
-        require(baseAsset == toke0 || baseAsset == toke1, "Mismatch of base asset and pool assets");
-        if (baseAsset == toke0) {
-            _position = 0;
-            baseAssetAddr = toke0;
-            otherAssetAddr = toke1;
-        } else if (baseAsset == toke1) {
-            _position = 1;
-            baseAssetAddr = toke1;
-            otherAssetAddr = toke0;
-        }
-        // set maxPercentDiff, used for Oracle fallback
-        maxPercentDiff = 5;
-        maxPercentDiffBaseAsset = 5;
 
         // set Collateralization Ratio
         CREnd = 20000;
@@ -174,266 +121,9 @@ contract LiquidityLockContract is Pausable {
         // set Collaterization Normalization
         CRNorm = 10000;
 
-        require(priceFeedBaseAsset.length <= 2 && priceFeedBaseAsset.length != 0, "Invalid number of price feeds");
-        require(priceFeedAddress.length <= 2 && priceFeedAddress.length != 0, "Invalid number of price feeds");
-        // set ChainLink addresses
-        baseAssets = priceFeedBaseAsset;
-        tokenFeeds = priceFeedAddress;
+        // set oracle
+        oracle = oracleAddress;
 
-        // Allows chainlink oracle data to be up to 10 minutes old
-        allowedPriceDelay = 600;
-
-        // sets if triangulation is enabled
-        if (priceFeedBaseAsset.length == 2) {
-            triangulateBaseAsset = true;
-        } else {
-            triangulateBaseAsset = false;
-        }
-
-        if (priceFeedAddress.length == 2) {
-            triangulatePriceFeed = true;
-        } else {
-            triangulatePriceFeed = false;
-        }
-
-        // Assigns oracle decimals
-        for (uint8 i = 0; i < priceFeedAddress.length; i++) {
-            tokenFeedDecimals.push(OracleLibrary.getDecimals(priceFeedAddress[i]));
-        }
-
-        for (uint8 k = 0; k < priceFeedBaseAsset.length; k++) {
-            baseAssetOracleDecimals.push(OracleLibrary.getDecimals(priceFeedBaseAsset[k]));
-        }
-    }
-
-    function lockLPTBody(uint256 LPTamt) internal returns (uint256 LPTValueInDai) {
-        require(LPTContract.balanceOf(msg.sender) >= LPTamt, "LLC: Insufficient LPTs");
-        require(nextBlock[msg.sender] <= block.number, "LLC: user must wait");
-
-        // sets nextBlock
-        nextBlock[msg.sender] = block.number.add(blockLimit);
-
-        uint256 totalLPTokens = LPTContract.totalSupply();
-
-        // Acquire total baseAsset value of pair
-        uint256 totalUSD = getValue();
-
-        // This should compute % value of Liq pool in Dai. Cannot have decimals in Solidity
-        LPTValueInDai = totalUSD.mul(LPTamt).div(totalLPTokens);
-    }
-
-    // Lock/Unlock functions
-    // Mint path
-    function lockLPTWithPermit(
-        uint256 LPTamt,
-        uint256 deadline,
-        uint8 v,
-        bytes32 r,
-        bytes32 s,
-        uint256 minTokenAmount
-    ) public whenNotPaused {
-        uint256 LPTValueInDai = lockLPTBody(LPTamt);
-
-        // call Permit and Transfer
-        transferLPTPermit(msg.sender, LPTamt, deadline, v, r, s);
-
-        // map locked tokens to user address
-        _tokensLocked[msg.sender] = _tokensLocked[msg.sender].add(LPTamt);
-
-        // Call Valuing Contract
-        valuingContract.unboundCreate(LPTValueInDai, msg.sender, minTokenAmount); // Hardcode "0" for AAA rating
-
-        // emit lockLPT event
-        emit LockLPT(LPTamt, msg.sender);
-    }
-
-    // Requires approval first (permit excluded for simplicity)
-    function lockLPT(uint256 LPTamt, uint256 minTokenAmount) public whenNotPaused {
-        uint256 LPTValueInDai = lockLPTBody(LPTamt);
-        
-        // transfer LPT to the address
-        transferLPT(LPTamt);
-
-        // map locked tokens to user address
-        _tokensLocked[msg.sender] = _tokensLocked[msg.sender].add(LPTamt);
-
-        // Call Valuing Contract
-        valuingContract.unboundCreate(LPTValueInDai, msg.sender, minTokenAmount);
-
-        // emit lockLPT event
-        emit LockLPT(LPTamt, msg.sender);
-    }
-
-    // Acquires total value of liquidity pool (in baseAsset) and normalizes decimals to 18.
-    function getValue() internal returns (uint256 _totalUSD) {
-        
-
-        // obtain amounts of tokens in both reserves.
-        (uint112 _token0_, uint112 _token1_, ) = LPTContract.getReserves();
-        
-
-        uint256 _baseAsset; 
-        uint256 _otherAsset; 
-
-        if (_position == 0) {
-            _baseAsset = uint256(_token0_);
-            _otherAsset = uint256(_token1_);
-        } else {
-            _baseAsset = uint256(_token1_);
-            _otherAsset = uint256(_token0_);
-        }
-
-        // uint256 _baseAssetDecimal;
-        // uint256 otherAssetDecimal;
-        // uint256 reservePrice;
-
-        // get latest price from oracle
-        uint256 baseAssetOraclePrice = OracleLibrary.checkBaseAssetPrices(
-            triangulateBaseAsset,
-            maxPercentDiffBaseAsset,
-            baseAssets,
-            allowedPriceDelay
-        );
-
-        uint256 otherAssetOraclePrice = OracleLibrary.getPriceFeeds(triangulatePriceFeed, tokenFeeds, allowedPriceDelay);
-
-        _baseAsset = _baseAsset.mul(baseAssetOraclePrice).div(Math.BONE);
-        _otherAsset = _otherAsset.mul(otherAssetOraclePrice).div(Math.BONE);
-
-        if (!checkPriceDifference(_baseAsset, _otherAsset)) {
-            uint256 geometricMean = getWeightedGeometricMean(_baseAsset, _otherAsset);
-            uint256 LPTokens = LPTContract.totalSupply();
-            _totalUSD = geometricMean.mul(LPTokens).div(Math.BONE);
-        } else {
-            _totalUSD = _baseAsset.add(_otherAsset);
-        }
-        // obtain total USD value
-        // if (_position == 0) {
-
-        //     reservePrice = _token0.mul(Math.BONE).div(_token1);
-            
-        //     _baseAssetDecimal = uint256(IERC20_2(baseAssetAddr).decimals());
-        //     if (_baseAssetDecimal < 18) {
-        //         uint256 normalization = uint256(18).sub(_baseAssetDecimal);
-        //         _token0 = _token0.mul(10 ** normalization);
-        //     } else if (_baseAssetDecimal > 18) {
-        //         uint256 normalization = _baseAssetDecimal.sub(18);
-        //         _token0 = _token0.div(10 ** normalization);
-        //     }
-
-        //     otherAssetDecimal = uint256(IERC20_2(otherAssetAddr).decimals());
-        //     if (otherAssetDecimal < 18) {
-        //         uint256 normalization = uint256(18).sub(otherAssetDecimal);
-        //         _token1 = _token1.mul(10 ** normalization);
-        //     } else if (otherAssetDecimal > 18) {
-        //         uint256 normalization = otherAssetDecimal.sub(18);
-        //         _token1 = _token1.div(10 ** normalization);
-        //     }
-
-        //     _totalUSD = _token0.mul(2);
-
-        //     if (!checkPriceDifference(oraclePrice, reservePrice)) {
-        //         uint256 geometricMean = getWeightedGeometricMean(_token1);
-        //         uint256 LPTokens = LPTContract.totalSupply();
-        //         _totalUSD = geometricMean.mul(LPTokens).div(Math.BONE);
-        //     }
-            
-        // } else {
-
-        //     reservePrice = _token1.mul(Math.BONE).div(_token0);
-            
-        //     _baseAssetDecimal = uint256(IERC20_2(baseAssetAddr).decimals());
-        //     if (_baseAssetDecimal < 18) {
-        //         // here
-        //        uint256 normalization = uint256(18).sub(_baseAssetDecimal);
-        //         _token1 = _token1.mul(10 ** normalization); 
-        //     } else if (_baseAssetDecimal > 18) {
-        //         uint256 normalization = _baseAssetDecimal.sub(18);
-        //         _token1 = _token1.div(10 ** normalization);
-        //     }
-
-        //     otherAssetDecimal = uint256(IERC20_2(otherAssetAddr).decimals());
-        //     if (otherAssetDecimal < 18) {
-        //         uint256 normalization = uint256(18).sub(otherAssetDecimal);
-        //         _token0 = _token0.mul(10 ** normalization);
-        //     } else if (otherAssetDecimal > 18) {
-        //         uint256 normalization = otherAssetDecimal.sub(18);
-        //         _token0 = _token0.div(10 ** normalization);
-        //     }
-
-        //     _totalUSD = _token1.mul(2);
-
-        //     // if uniswap price disagrees with chainlink, calculate _totalUSD using geometric mean
-        //     if (!checkPriceDifference(oraclePrice, reservePrice)) {
-        //         uint256 geometricMean = getWeightedGeometricMean(_token1);
-        //         uint256 LPTokens = LPTContract.totalSupply();
-        //         _totalUSD = geometricMean.mul(LPTokens).div(Math.BONE);
-        //     }
-            
-        // }
-
-    }
-
-    function checkPriceDifference(uint256 _baseAssetUSD, uint256 _otherAssetUSD) internal returns (bool result) {
-        uint256 ratio = _baseAssetUSD.mul(100).div(_otherAssetUSD);
-
-        if (ratio >= 95 && ratio <= 105) {
-            return true;
-        } else {
-            return false;
-        }
-        
-        // uint256 percentDiff;
-        // if (_oraclePrice > _reservePrice) {
-        //     percentDiff = (100 * _oraclePrice.sub(_reservePrice)).div(_reservePrice);
-        // } else {
-        //     percentDiff = (100 * _reservePrice.sub(_oraclePrice)).div(_oraclePrice);
-        // }
-        // test = percentDiff;
-        // percentDiff < maxPercentDiff ? result = true : result = false;
-        // require(percentDiff < maxPercentDiff, "LLC: Manipulation Evident");
-    }
-    
-    function getWeightedGeometricMean(uint256 totalBaseAsset, uint256 totalBaseAsset0)
-        internal
-        view
-        returns (uint256)
-    {
-        uint256 square = Math.bsqrt(Math.bmul(totalBaseAsset, totalBaseAsset0), true);
-        return
-            Math.bdiv(
-                Math.bmul(Math.TWO_BONES, square),
-                getTotalSupplyAtWithdrawal()
-            );
-    }
-
-    /**
-     * Returns Uniswap V2 pair total supply at the time of withdrawal.
-     */
-    function getTotalSupplyAtWithdrawal()
-        private
-        view
-        returns (uint256 totalSupply)
-    {
-        totalSupply = LPTContract.totalSupply();
-        address feeTo =
-            IUniswapV2Factory(LPTContract.factory()).feeTo();
-        bool feeOn = feeTo != address(0);
-        if (feeOn) {
-            uint256 kLast = LPTContract.kLast();
-            if (kLast != 0) {
-                (uint112 reserve_0, uint112 reserve_1, ) = LPTContract.getReserves();
-                uint256 rootK =
-                    Math.bsqrt(uint256(reserve_0).mul(reserve_1), false);
-                uint256 rootKLast = Math.bsqrt(kLast, false);
-                if (rootK > rootKLast) {
-                    uint256 numerator = totalSupply.mul(rootK.sub(rootKLast));
-                    uint256 denominator = rootK.mul(5).add(rootKLast);
-                    uint256 liquidity = numerator / denominator;
-                    totalSupply = totalSupply.add(liquidity);
-                }
-            }
-        }
     }
 
     // calls transfer only, for use with non-permit lock function
@@ -452,6 +142,46 @@ contract LiquidityLockContract is Pausable {
     ) internal {
         LPTContract.permit(user, address(this), amount, deadline, v, r, s);
         require(LPTContract.transferFrom(msg.sender, address(this), amount), "LLC: Transfer From failed");
+    }
+
+    function lockLPTWithPermit(
+        uint256 _LPTAmt,
+        uint256 _deadline,
+        uint8 _v,
+        bytes32 _r,
+        bytes32 _s,
+        uint256 _minTokenAmount
+    ) public whenNotPaused {
+        uint256 LPTValueInDai = _LPTAmt.mul(uint256(oracle.latestAnswer()));
+
+        // call Permit and Transfer
+        transferLPTPermit(msg.sender, _LPTAmt, _deadline, _v, _r, _s);
+
+        // map locked tokens to user address
+        _tokensLocked[msg.sender] = _tokensLocked[msg.sender].add(_LPTAmt);
+
+        // Call Valuing Contract
+        valuingContract.unboundCreate(LPTValueInDai, msg.sender, _minTokenAmount); // Hardcode "0" for AAA rating
+
+        // emit lockLPT event
+        emit LockLPT(_LPTAmt, msg.sender);
+    }
+
+    // Requires approval first (permit excluded for simplicity)
+    function lockLPT(uint256 LPTAmt, uint256 minTokenAmount) public whenNotPaused {
+        uint256 LPTValueInDai = LPTAmt.mul(uint256(oracle.latestAnswer()));
+
+        // transfer LPT to the address
+        transferLPT(LPTAmt);
+
+        // map locked tokens to user address
+        _tokensLocked[msg.sender] = _tokensLocked[msg.sender].add(LPTAmt);
+
+        // Call Valuing Contract
+        valuingContract.unboundCreate(LPTValueInDai, msg.sender, minTokenAmount);
+
+        // emit lockLPT event
+        emit LockLPT(LPTAmt, msg.sender);
     }
 
     // Burn Path
@@ -492,157 +222,30 @@ contract LiquidityLockContract is Pausable {
         emit UnlockLPT(LPTokenToReturn, msg.sender);
     }
 
-    function getLPTokensToReturn(uint256 _currentLoan, uint256 _uTokenAmt)
-        internal
-        returns (uint256 _LPTokenToReturn)
-    {
-        // check if baseAsset value is stable
-        OracleLibrary.checkBaseAssetPrices(
-            triangulateBaseAsset,
-            maxPercentDiffBaseAsset,
-            baseAssets,
-            allowedPriceDelay
-        );
-
-        // Acquire Pool Values
-        
-        (uint112 _token0_, uint112 _token1_, ) = LPTContract.getReserves();
-
-        uint256 _baseAsset; 
-        uint256 _otherAsset; 
-        uint256 poolValue;
-
-        if (_position == 0) {
-            _baseAsset = uint256(_token0_);
-            _otherAsset = uint256(_token1_);
-        } else {
-            _baseAsset = uint256(_token1_);
-            _otherAsset = uint256(_token0_);
-        }
-
-        // get latest price from oracle
-        uint256 baseAssetOraclePrice = OracleLibrary.checkBaseAssetPrices(
-            triangulateBaseAsset,
-            maxPercentDiffBaseAsset,
-            baseAssets,
-            allowedPriceDelay
-        );
-
-        uint256 otherAssetOraclePrice = OracleLibrary.getPriceFeeds(triangulatePriceFeed, tokenFeeds, allowedPriceDelay);
-
-        _baseAsset = _baseAsset.mul(baseAssetOraclePrice).div(Math.BONE);
-        _otherAsset = _otherAsset.mul(otherAssetOraclePrice).div(Math.BONE);
-
-        if (!checkPriceDifference(_baseAsset, _otherAsset)) {
-            uint256 geometricMean = getWeightedGeometricMean(_baseAsset, _otherAsset);
-            uint256 LPTokens = LPTContract.totalSupply();
-            poolValue = geometricMean.mul(LPTokens).div(Math.BONE);
-        } else {
-            poolValue = _baseAsset.add(_otherAsset);
-        }
-        // uint256 _token0 = uint256(_token0_);
-        // uint256 _token1 = uint256(_token1_);
-
-        // // obtain total USD values
-        // uint256 oraclePrice = OracleLibrary.getPriceFeeds(triangulatePriceFeed, tokenFeeds, allowedPriceDelay);
-        // uint256 poolValue;
-
-        // uint256 _baseAssetDecimal;
-        // uint256 otherAssetDecimal;
-        // uint256 reservePrice;
-        // // uint256 oracleValue;
-        // if (_position == 0) {
-
-        //     reservePrice = _token0.mul(Math.BONE).div(_token1);
-
-        //     _baseAssetDecimal = uint256(IERC20_2(baseAssetAddr).decimals());
-        //     if (_baseAssetDecimal < 18) {
-        //         uint256 normalization = uint256(18).sub(_baseAssetDecimal);
-        //         _token0 = _token0.mul(10 ** normalization);
-        //     } else if (_baseAssetDecimal > 18) {
-        //         uint256 normalization = _baseAssetDecimal.sub(18);
-        //         _token0 = _token0.div(10 ** normalization);
-        //     }
-
-        //     otherAssetDecimal = uint256(IERC20_2(otherAssetAddr).decimals());
-        //     if (otherAssetDecimal < 18) {
-        //         uint256 normalization = uint256(18).sub(otherAssetDecimal);
-        //         _token1 = _token1.mul(10 ** normalization);
-        //     } else if (otherAssetDecimal > 18) {
-        //         uint256 normalization = otherAssetDecimal.sub(18);
-        //         _token1 = _token1.div(10 ** normalization);
-        //     }
-
-        //     poolValue = _token0.mul(2);
-
-        //     // if uniswap price disagrees with chainlink, calculate poolValue using geometric mean
-        //     if (!checkPriceDifference(oraclePrice, reservePrice)) {
-        //         uint256 geometricMean = getWeightedGeometricMean(_token1);
-        //         uint256 LPTokens = LPTContract.totalSupply();
-        //         poolValue = geometricMean.mul(LPTokens).div(Math.BONE);
-        //     }
-
-        // } else {
-
-        //     reservePrice = _token1.mul(Math.BONE).div(_token0);
-
-        //     _baseAssetDecimal = uint256(IERC20_2(baseAssetAddr).decimals());
-        //     if (_baseAssetDecimal < 18) {
-        //        uint256 normalization = uint256(18).sub(_baseAssetDecimal);
-        //         _token1 = _token1.mul(10 ** normalization); 
-        //     } else if (_baseAssetDecimal > 18) {
-        //         uint256 normalization = _baseAssetDecimal.sub(18);
-        //         _token1 = _token1.div(10 ** normalization);
-        //     }
-
-        //     otherAssetDecimal = uint256(IERC20_2(otherAssetAddr).decimals());
-        //     if (otherAssetDecimal < 18) {
-        //         uint256 normalization = uint256(18).sub(otherAssetDecimal);
-        //         _token0 = _token0.mul(10 ** normalization);
-        //     } else if (otherAssetDecimal > 18) {
-        //         uint256 normalization = otherAssetDecimal.sub(18);
-        //         _token0 = _token0.div(10 ** normalization);
-        //     }
-
-        //     poolValue = _token1.mul(2);
-
-        //     // if uniswap price disagrees with chainlink, calculate poolValue using geometric mean
-        //     if (!checkPriceDifference(oraclePrice, reservePrice)) {
-        //         uint256 geometricMean = getWeightedGeometricMean(_token1);
-        //         uint256 LPTokens = LPTContract.totalSupply();
-        //         poolValue = geometricMean.mul(LPTokens).div(Math.BONE);
-        //     }
-             
-        // }
-
-        _LPTokenToReturn = LPReturnFormulas(poolValue, _currentLoan, _uTokenAmt);
-
-    }
-
-    function LPReturnFormulas(uint256 _poolValue, uint256 _currentLoan_, uint256 _uTokenAmt_) internal view returns(uint256 _LPTokenToReturn_){
-        uint256 totalLP = LPTContract.totalSupply();
-        uint256 valueOfSingleLPT = _poolValue.mul(Math.BONE).div(totalLP);
+    function getLPTokensToReturn(uint256 _currentLoan, uint256 _uTokenAmt) internal returns (uint256 _LPTokenToReturn) {
+        uint256 valueOfSingleLPT = uint256(oracle.latestAnswer());
 
         // get current CR Ratio
-        uint256 CRNow = (valueOfSingleLPT.mul(_tokensLocked[msg.sender])).mul(1000).div(_currentLoan_);
-
+        uint256 CRNow = (valueOfSingleLPT.mul(_tokensLocked[msg.sender])).mul(1000).div(_currentLoan);
+        
+        uint256 _LPTokenToReturn;
         // multiply by 21 (adding 3 to 18), to account for the multiplication by 1000 above.
         if (CREnd.mul(10**21).div(CRNorm) <= CRNow) {
             // LPT to send back. This number should have 18 decimals
-            _LPTokenToReturn_ = (_tokensLocked[msg.sender].mul(_uTokenAmt_)).div(_currentLoan_);
+            _LPTokenToReturn = (_tokensLocked[msg.sender].mul(_uTokenAmt)).div(_currentLoan);
         } else {
             // value of users locked LP before paying loan
             uint256 valueStart = valueOfSingleLPT.mul(_tokensLocked[msg.sender]);
 
-            uint256 loanAfter = _currentLoan_.sub(_uTokenAmt_);
+            uint256 loanAfter = _currentLoan.sub(_uTokenAmt);
 
             // Value After - Collateralization Ratio times LoanAfter (divided by CRNorm, then normalized with valueOfSingleLPT)
             uint256 valueAfter = CREnd.mul(loanAfter).div(CRNorm).mul(10**18);
 
             // LPT to send back. This number should have 18 decimals
-            _LPTokenToReturn_ = valueStart.sub(valueAfter).div(valueOfSingleLPT);
+            _LPTokenToReturn = valueStart.sub(valueAfter).div(valueOfSingleLPT);
         }
-    }  
+    }
 
     function tokensLocked(address account) public view returns (uint256) {
         return _tokensLocked[account];
@@ -675,18 +278,18 @@ contract LiquidityLockContract is Pausable {
         emit CREndChange(ratio);
     }
 
-    // change allowedPriceDelay
-    function setAllowedPriceDelay(uint256 allowedDelay) public onlyOwner {
-        require(allowedDelay > 0, "cannot set zero delay");
-        allowedPriceDelay = allowedDelay;
-    }
+    // // change allowedPriceDelay
+    // function setAllowedPriceDelay(uint256 allowedDelay) public onlyOwner {
+    //     require(allowedDelay > 0, "cannot set zero delay");
+    //     allowedPriceDelay = allowedDelay;
+    // }
 
-    // set Max Percent Difference
-    function setMaxPercentDifference(uint8 amount) public onlyOwner {
-        require(amount <= 100, "Max percentage difference cannot be greater than 100");
-        maxPercentDiff = amount;
-        emit NewPercentDiff(amount);
-    }
+    // // set Max Percent Difference
+    // function setMaxPercentDifference(uint8 amount) public onlyOwner {
+    //     require(amount <= 100, "Max percentage difference cannot be greater than 100");
+    //     maxPercentDiff = amount;
+    //     emit NewPercentDiff(amount);
+    // }
 
     // Claim - remove any airdropped tokens
     // currently sends all tokens to "to" address (in param)

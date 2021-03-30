@@ -11,8 +11,6 @@ contract LLC_BatDai is LiquidityLockContract {
         address valuingAddress,
         address LPTaddress,
         address stableCoin,
-        address[] memory priceFeedAddress,
-        address[] memory baseAssetFeed,
-        address UNDAddr
-    ) LiquidityLockContract(valuingAddress, LPTaddress, stableCoin, priceFeedAddress, baseAssetFeed, UNDAddr) {}
+        UniswapV2PriceProvider oracle
+    ) LiquidityLockContract(valuingAddress, LPTaddress, stableCoin, oracle) {}
 }
