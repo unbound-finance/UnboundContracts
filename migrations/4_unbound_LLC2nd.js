@@ -8,8 +8,11 @@ const testLink = artifacts.require("TestLink");
 const testAggregatorLinkUsd = artifacts.require("TestAggregatorProxyLinkUsd");
 const testAggregatorDaiUsd = artifacts.require("TestAggregatorProxyDaiUsd");
 
+<<<<<<< HEAD
 const uniPool = artifacts.require("UniswapV2Pair");
 const mainOracle = artifacts.require('UniswapV2PriceProvider');
+=======
+>>>>>>> origin/new/oracle
 
 const loanRate = 600000;
 const feeRate = 4000;

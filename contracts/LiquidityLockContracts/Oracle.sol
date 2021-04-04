@@ -194,7 +194,7 @@ contract UniswapV2PriceProvider is IUniswapV2PriceProvider {
         uint256 reserveInStablecoin_0 = getReserveValue(0, reserve_0);
         test = reserveInStablecoin_0;
         uint256 reserveInStablecoin_1 = getReserveValue(1, reserve_1);
-        test2 = reserveInStablecoin_1;
+        
         
         if (hasPriceDifference(reserveInStablecoin_0, reserveInStablecoin_1)) {
             //Calculate the weighted geometric mean

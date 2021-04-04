@@ -20,28 +20,21 @@ const weth8 = artifacts.require("WETH9");
 
 const LPTAddresses = [
   {
-    LPAddress: "",
-    chainLinkFeeds: [],
-    baseAssetFeeds: []
+    LPAddress: "0x54870f44414e69af7eb2f3e1e144ebb7c79325b7",
+    isPeggedToUSD: ["false", "true"],
+    decimals: [18, 18],
   },
-  {
-    LPAddress: "",
-    chainLinkFeeds: [],
-    baseAssetFeeds: []
-  }
 ]; // enter LP addresses here
-
-
 
 // const baseAssetFeed = "!!!!ENTER Base Asset Feed ADDRESS HERE!!!!";
 
 // const valueAddress = "!!!!ENTER VALUING ADDRESS HERE!!!!";
 
-const loanRate = "ENTER DESIRED LOAN RATE";
+const loanRate = "500000";
 
-const feeRate = "ENTER DESIRED FEE RATE"
+const feeRate = "600000";
 
-// Deploys UND and 
+// Deploys UND and
 module.exports = async (deployer, network, accounts) => {
   const safuAddr = accounts[1];
   const devFundAddr = accounts[1];
@@ -54,13 +47,27 @@ module.exports = async (deployer, network, accounts) => {
 
   await UND.changeValuator(valueContract.address);
 
-  for (let i = 0; i <LPTAddresses.length; i++) {
-    await deployer.deploy(LLC, valueAddress, LPTAddresses[i].LPAddress, LPTAddresses[i].chainLinkFeeds, LPTAddresses[i].baseAssetFeeds, UND.address);
-    const lockContract = await LLC.deployed();
-    await valueContract.addLLC.sendTransaction(
-      lockContract.address,
-      loanRate,
-      feeRate
+  for (let i = 0; i < LPTAddresses.length; i++) {
+
+    const oracle = await deployer.deploy(
+      Oracle,
+      LPTAddresses[i].LPAddress,
+      LPTAddresses[i].iePeggedToUSD,
+      LPTAddresses[i].decimals,
+      testAggregatorEthUsd.address,
+      "500000000000000000",
+      500
     );
+
+    await deployer.deploy(
+      LLC,
+      valueContract.address,
+      LPTAddresses[i].LPAddress,
+      UND.address,
+      oracle.address
+      // enter oracle address here
+    );
+    const lockContract = await LLC.deployed();
+    await valueContract.addLLC.sendTransaction(lockContract.address, loanRate, feeRate);
   }
 };

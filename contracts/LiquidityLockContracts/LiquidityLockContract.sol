@@ -247,8 +247,8 @@ contract LiquidityLockContract is Pausable {
             uint256 loanAfter = _currentLoan.sub(_uTokenAmt);
             
             // Value After - Collateralization Ratio times LoanAfter (divided by CRNorm, then normalized with valueOfSingleLPT)
-            uint256 valueAfter = CREnd.mul(loanAfter).div(CRNorm).mul(10**18);
-            
+            uint256 valueAfter = CREnd.mul(loanAfter).div(CRNorm);
+
             // LPT to send back. This number should have 18 decimals
             // !!!!!!!Error Here!!!!!!!
             _LPTokenToReturn = valueStart.sub(valueAfter).div(valueOfSingleLPT);
