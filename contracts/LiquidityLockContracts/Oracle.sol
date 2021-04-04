@@ -9,53 +9,80 @@ import "../Interfaces/IUniswapV2Pair.sol";
 
 import "../Interfaces/chainlinkOracleInterface.sol";
 
-import "../utils/Math.sol";
-
 contract UniswapV2PriceProvider {
     using SafeMath for uint256;
-    IUniswapV2Pair public immutable pair;
+    IUniswapV2Pair public pair;
     address[] public tokens;
     bool[] public isPeggedToUSD;
     uint8[] public decimals;
     uint8[] public feedDecimals;
     uint256 public maxPercentDiff;
     uint256 public allowedDelay;
-    AggregatorV3Interface priceOracle;
+    AggregatorV3Interface public priceOracle;
+
+    uint256 base = 1000000000000000000; // decimals base, 10 ^^ 18
 
     /**
      * UniswapV2PriceProvider constructor.
      * @param _pair Uniswap V2 pair address.
-     * @param _isPeggedToUSD For each token, true if it is pegged to USD.
      * @param _decimals Number of decimals for each token.
      * @param _priceOracle Chainlink Price Oracle
      * @param _maxPercentDiff Threshold of spot prices deviation: 10ˆ16 represents a 1% deviation.
      * @param _allowedDelay Allowed delay between the last updated Chainlink price, in seconds
+     * @param _stablecoin Stablecoin addresss
      */
     constructor(
         IUniswapV2Pair _pair,
-        bool[] memory _isPeggedToUSD,
         uint8[] memory _decimals,
-        // TODO: Replace this with Chainlink
         AggregatorV3Interface _priceOracle,
         uint256 _maxPercentDiff,
-        uint256 _allowedDelay
+        uint256 _allowedDelay,
+        address _stablecoin
     ) public {
-        require(_isPeggedToUSD.length == 2, "ERR_INVALID_PEGGED_LENGTH");
+        // require(_isPeggedToUSD.length == 2, "ERR_INVALID_PEGGED_LENGTH");
         require(_decimals.length == 2, "ERR_INVALID_DECIMALS_LENGTH");
-        require(_decimals[0] <= 18 && _decimals[1] <= 18, "ERR_INVALID_DECIMALS");
+        // require(_decimals[0] <= 18 && _decimals[1] <= 18, "ERR_INVALID_DECIMALS");
         require(address(_priceOracle) != address(0), "ERR_INVALID_PRICE_PROVIDER");
-        require(_maxPercentDiff < Math.BONE, "ERR_INVALID_PRICE_DEVIATION");
+        require(_maxPercentDiff < base, "ERR_INVALID_PRICE_DEVIATION");
 
         pair = _pair;
         //Get tokens
-        tokens.push(_pair.token0());
-        tokens.push(_pair.token1());
-        isPeggedToUSD = _isPeggedToUSD;
+        tokens.push(pair.token0());
+        tokens.push(pair.token1());
+
         decimals = _decimals;
         // TODO: add logic for triangulation here
         priceOracle = _priceOracle;
         maxPercentDiff = _maxPercentDiff;
         allowedDelay = _allowedDelay;
+
+        bool isPeggedToUSD0;
+        bool isPeggedToUSD1;
+
+        // check which one is stablecoin
+        if (pair.token0() == _stablecoin) {
+            isPeggedToUSD0 = true;
+            isPeggedToUSD1 = false;
+        } else {
+            isPeggedToUSD0 = false;
+            isPeggedToUSD1 = true;
+        }
+
+        isPeggedToUSD.push(isPeggedToUSD0); 
+        isPeggedToUSD.push(isPeggedToUSD1);
+    }
+
+    function sqrt(uint256 y) internal pure returns (uint256 z) {
+        if (y > 3) {
+            z = y;
+            uint256 x = y / 2 + 1;
+            while (x < z) {
+                z = x;
+                x = (y / x + x) / 2;
+            }
+        } else if (y != 0) {
+            z = 1;
+        }
     }
 
     /**
@@ -64,12 +91,13 @@ contract UniswapV2PriceProvider {
      * @param _reserveInStablecoin_1 reserves of second asset
      */
     function getWeightedGeometricMean(uint256 _reserveInStablecoin_0, uint256 _reserveInStablecoin_1)
-        internal
+        public
         view
         returns (uint256)
     {
-        uint256 square = Math.bsqrt(Math.bmul(_reserveInStablecoin_0, _reserveInStablecoin_1), true);
-        return Math.bdiv(Math.bmul(Math.TWO_BONES, square), getTotalSupplyAtWithdrawal());
+        uint256 input = _reserveInStablecoin_0.mul(_reserveInStablecoin_1);
+        uint256 sqrt = sqrt(input);
+        return sqrt.mul(2).div(getTotalSupplyAtWithdrawal());
     }
 
     /**
@@ -82,14 +110,14 @@ contract UniswapV2PriceProvider {
         view
         returns (uint256)
     {
-        uint256 totalEth = _reserveInStablecoin_0 + _reserveInStablecoin_1;
-        return Math.bdiv(totalEth, getTotalSupplyAtWithdrawal());
+        uint256 totalUSD = _reserveInStablecoin_0 + _reserveInStablecoin_1;
+        return totalUSD.div(getTotalSupplyAtWithdrawal());
     }
 
     /**
      * Returns Uniswap V2 pair total supply at the time of withdrawal.
      */
-    function getTotalSupplyAtWithdrawal() private view returns (uint256 totalSupply) {
+    function getTotalSupplyAtWithdrawal() public view returns (uint256 totalSupply) {
         totalSupply = pair.totalSupply();
         address feeTo = IUniswapV2Factory(IUniswapV2Pair(pair).factory()).feeTo();
         bool feeOn = feeTo != address(0);
@@ -97,8 +125,8 @@ contract UniswapV2PriceProvider {
             uint256 kLast = IUniswapV2Pair(pair).kLast();
             if (kLast != 0) {
                 (uint112 reserve_0, uint112 reserve_1, ) = pair.getReserves();
-                uint256 rootK = Math.bsqrt(uint256(reserve_0).mul(reserve_1), false);
-                uint256 rootKLast = Math.bsqrt(kLast, false);
+                uint256 rootK = sqrt(uint256(reserve_0).mul(reserve_1));
+                uint256 rootKLast = sqrt(kLast);
                 if (rootK > rootKLast) {
                     uint256 numerator = totalSupply.mul(rootK.sub(rootKLast));
                     uint256 denominator = rootK.mul(5).add(rootKLast);
@@ -110,28 +138,29 @@ contract UniswapV2PriceProvider {
     }
 
     /**
-     * Returns decimals of Chainlink feed
+     * Returns normalised value in 18 digits
+     * @param _value Value which we want to normalise
+     * @param _decimals Number of decimals from which we want to normalise 
      */
-    function getDecimals(address query) internal view returns (uint256) {
-        return uint256(AggregatorV3Interface(query).decimals());
+    function normalise(uint256 _value, uint256 _decimals) internal view returns (uint256) {
+        uint256 normalised;
+        if (_decimals <= 18) {
+            uint256 missingDecimals = uint256(18).sub(_decimals);
+            normalised = uint256(_value).mul(10**(missingDecimals));
+        } else if (_decimals > 18) {
+            uint256 extraDecimals = _decimals.sub(uint256(18));
+            normalised = uint256(_value).div(10**(extraDecimals));
+        }
+        return normalised;
     }
 
     /**
      * Returns latest price from the Chainlink reserves
-     * @param _asset Token index.
      */
-    function getLatestPrice(address _asset) internal view returns (uint256) {
-        (, int256 _price, , uint256 updatedAt, ) = AggregatorV3Interface(_asset).latestRoundData();
-        require(updatedAt >= block.timestamp.sub(allowedDelay), "price oracle data is too old. Wait for update.");
-        uint256 price = uint256(_price);
-        uint256 _decimal = getDecimals(_asset);
-        if (_decimal < 18) {
-            uint256 missingDecimals = uint256(18).sub(_decimal);
-            price = price.mul(10**missingDecimals);
-        } else if (_decimal > 18) {
-            uint256 extraDecimals = _decimal.sub(18);
-            price = price.div(10**extraDecimals);
-        }
+    function getLatestPrice() public view returns (uint256) {
+        (, int256 _price, , uint256 _updatedAt, ) = priceOracle.latestRoundData();
+        require(_updatedAt >= block.timestamp.sub(allowedDelay), "price oracle data is too old. Wait for update.");
+        uint256 price = normalise(uint256(_price), priceOracle.decimals());
         return price;
     }
 
@@ -140,18 +169,18 @@ contract UniswapV2PriceProvider {
      * @param index Token index.
      * @param reserve Token reserves.
      */
-    function getReserveValue(uint256 index, uint112 reserve) internal view returns (uint256) {
-        uint256 pi = isPeggedToUSD[index] ? Math.BONE : uint256(getLatestPrice((tokens[index])));
-        require(pi > 0, "ERR_NO_ORACLE_PRICE");
-        uint256 bi;
-        if (decimals[index] <= 18) {
-            uint256 missingDecimals = uint256(18).sub(decimals[index]);
-            bi = uint256(reserve).mul(10**(missingDecimals));
-        } else if (decimals[index] > 18) {
-            uint256 extraDecimals = uint256(18).sub(decimals[index]);
-            bi = uint256(reserve).div(10**(extraDecimals));
+    function getReserveValue(uint256 index, uint112 reserve) public view returns (uint256) {
+        uint256 chainlinkPrice;
+        if (isPeggedToUSD[index]) {
+            chainlinkPrice = base;
+        } else {
+            chainlinkPrice = uint256(getLatestPrice());
         }
-        return Math.bmul(bi, pi);
+        require(chainlinkPrice > 0, "ERR_NO_ORACLE_PRICE");
+
+        uint256 reservePrice = normalise(reserve, decimals[index]);
+
+        return uint256(reservePrice).mul(chainlinkPrice);
     }
 
     /**
@@ -161,16 +190,16 @@ contract UniswapV2PriceProvider {
      */
     function hasPriceDifference(uint256 _reserveInStablecoin_0, uint256 _reserveInStablecoin_1)
         internal
-        view 
+        view
         returns (bool result)
     {
-        //Check for a price deviation
-        uint256 price_deviation = Math.bdiv(_reserveInStablecoin_0, _reserveInStablecoin_1);
-        if (price_deviation > (Math.BONE.add(maxPercentDiff)) || price_deviation < (Math.BONE.sub(maxPercentDiff))) {
+        // check for
+        uint256 price_diff = _reserveInStablecoin_0.mul(base).div(_reserveInStablecoin_1);
+        if (price_diff > (base.add(maxPercentDiff)) || price_diff < (base.sub(maxPercentDiff))) {
             return true;
         }
-        price_deviation = Math.bdiv(_reserveInStablecoin_1, _reserveInStablecoin_0);
-        if (price_deviation > (Math.BONE.add(maxPercentDiff)) || price_deviation < (Math.BONE.sub(maxPercentDiff))) {
+        price_diff = _reserveInStablecoin_1.mul(base).div(_reserveInStablecoin_0);
+        if (price_diff > (base.add(maxPercentDiff)) || price_diff < (base.sub(maxPercentDiff))) {
             return true;
         }
         return false;
@@ -187,7 +216,7 @@ contract UniswapV2PriceProvider {
         (uint112 reserve_0, uint112 reserve_1, ) = pair.getReserves();
         uint256 reserveInStablecoin_0 = getReserveValue(0, reserve_0);
         uint256 reserveInStablecoin_1 = getReserveValue(1, reserve_1);
-
+        // return sqrt(reserveInStablecoin_0, reserveInStablecoin_1).div();
         if (hasPriceDifference(reserveInStablecoin_0, reserveInStablecoin_1)) {
             //Calculate the weighted geometric mean
             return int256(getWeightedGeometricMean(reserveInStablecoin_0, reserveInStablecoin_1));

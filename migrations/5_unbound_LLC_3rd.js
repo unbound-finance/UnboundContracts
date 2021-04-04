@@ -21,34 +21,34 @@ let priceFeedAddress2 = "";
 let baseAssetFeed = "";
 
 module.exports = async (deployer, network, accounts) => {
-  if (LPTAddress === "") {
-    const factory = await uniFactory.deployed();
-    const pair = await factory.createPair.sendTransaction(testDai.address, testBat.address);
-    LPTAddress = pair.logs[0].args.pair;
-  }
-  if (priceFeedAddress1 === "") {
-    await deployer.deploy(testAggregatorBatEth);
-    priceFeedAddress1 = testAggregatorBatEth.address;
-  }
-  if (priceFeedAddress2 === "") {
-    priceFeedAddress2 = testAggregatorEthUsd.address;
-  }
+  // if (LPTAddress === "") {
+  //   const factory = await uniFactory.deployed();
+  //   const pair = await factory.createPair.sendTransaction(testDai.address, testBat.address);
+  //   LPTAddress = pair.logs[0].args.pair;
+  // }
+  // if (priceFeedAddress1 === "") {
+  //   await deployer.deploy(testAggregatorBatEth);
+  //   priceFeedAddress1 = testAggregatorBatEth.address;
+  // }
+  // if (priceFeedAddress2 === "") {
+  //   priceFeedAddress2 = testAggregatorEthUsd.address;
+  // }
 
-  stablecoinAddress = stablecoinAddress || testDai.address;
-  const undContract = UndAddress === "" ? await uDai.deployed() : await uDai.at(UndAddress);
-  const valueContract = valuerAddress === "" ? await valuer.deployed() : await valuer.at(valuerAddress);
-  baseAssetFeed = baseAssetFeed || testAggregatorDaiUsd.address;
+  // stablecoinAddress = stablecoinAddress || testDai.address;
+  // const undContract = UndAddress === "" ? await uDai.deployed() : await uDai.at(UndAddress);
+  // const valueContract = valuerAddress === "" ? await valuer.deployed() : await valuer.at(valuerAddress);
+  // baseAssetFeed = baseAssetFeed || testAggregatorDaiUsd.address;
 
-  await deployer.deploy(
-    LLC,
-    valueContract.address,
-    LPTAddress,
-    stablecoinAddress,
-    [priceFeedAddress1, priceFeedAddress2],
-    [baseAssetFeed],
-    undContract.address
-  );
+  // await deployer.deploy(
+  //   LLC,
+  //   valueContract.address,
+  //   LPTAddress,
+  //   stablecoinAddress,
+  //   [priceFeedAddress1, priceFeedAddress2],
+  //   [baseAssetFeed],
+  //   undContract.address
+  // );
 
-  await valueContract.addLLC.sendTransaction(LLC.address, undContract.address, loanRate, feeRate);
-  await undContract.changeValuator.sendTransaction(valueContract.address);
+  // await valueContract.addLLC.sendTransaction(LLC.address, undContract.address, loanRate, feeRate);
+  // await undContract.changeValuator.sendTransaction(valueContract.address);
 };
