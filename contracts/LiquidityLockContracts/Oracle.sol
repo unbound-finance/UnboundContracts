@@ -91,7 +91,7 @@ contract UniswapV2PriceProvider {
      * @param _reserveInStablecoin_1 reserves of second asset
      */
     function getWeightedGeometricMean(uint256 _reserveInStablecoin_0, uint256 _reserveInStablecoin_1)
-        public
+        internal
         view
         returns (uint256)
     {
@@ -117,7 +117,7 @@ contract UniswapV2PriceProvider {
     /**
      * Returns Uniswap V2 pair total supply at the time of withdrawal.
      */
-    function getTotalSupplyAtWithdrawal() public view returns (uint256 totalSupply) {
+    function getTotalSupplyAtWithdrawal() internal view returns (uint256 totalSupply) {
         totalSupply = pair.totalSupply();
         address feeTo = IUniswapV2Factory(IUniswapV2Pair(pair).factory()).feeTo();
         bool feeOn = feeTo != address(0);
@@ -157,7 +157,7 @@ contract UniswapV2PriceProvider {
     /**
      * Returns latest price from the Chainlink reserves
      */
-    function getLatestPrice() public view returns (uint256) {
+    function getLatestPrice() internal view returns (uint256) {
         (, int256 _price, , uint256 _updatedAt, ) = priceOracle.latestRoundData();
         require(_updatedAt >= block.timestamp.sub(allowedDelay), "price oracle data is too old. Wait for update.");
         uint256 price = normalise(uint256(_price), priceOracle.decimals());
@@ -169,7 +169,7 @@ contract UniswapV2PriceProvider {
      * @param index Token index.
      * @param reserve Token reserves.
      */
-    function getReserveValue(uint256 index, uint112 reserve) public view returns (uint256) {
+    function getReserveValue(uint256 index, uint112 reserve) internal view returns (uint256) {
         uint256 chainlinkPrice;
         if (isPeggedToUSD[index]) {
             chainlinkPrice = base;

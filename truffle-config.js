@@ -31,7 +31,7 @@ const PrivateKeyProvider = require("truffle-privatekey-provider");
 
 // const mnemonic =
 //   "gallery cinnamon equal inform lend perfect kitchen grab today width eager thank";
-const privateKey = "1dcd88d8dee9babcb9e220697d28942f630848331bcd8bf81b3b30cab54166fc"
+const privateKey = ""
 module.exports = {
   /**
    * Networks define how you connect to your ethereum client and let you set the
