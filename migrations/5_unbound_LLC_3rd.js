@@ -10,6 +10,9 @@ const testAggregatorBatEth = artifacts.require("TestAggregatorProxyBatEth");
 const testAggregatorEthUsd = artifacts.require("TestAggregatorProxyEthUsd");
 const testAggregatorDaiUsd = artifacts.require("TestAggregatorProxyDaiUsd");
 
+const uniPool = artifacts.require("UniswapV2Pair");
+const mainOracle = artifacts.require('UniswapV2PriceProvider');
+
 const loanRate = 500000;
 const feeRate = 5000;
 let stablecoinAddress = ""; // Stablecoin-ADDRESS
@@ -39,14 +42,41 @@ module.exports = async (deployer, network, accounts) => {
   const valueContract = valuerAddress === "" ? await valuer.deployed() : await valuer.at(valuerAddress);
   baseAssetFeed = baseAssetFeed || testAggregatorDaiUsd.address;
 
+  const daiTest = await testDai.deployed();
+  const ethTest = await testBat.deployed();
+  const pool = await uniPool.at(LPTAddress);
+  const pool0 = await pool.token0();
+  const pool1 = await pool.token1();
+
+  let isPegged0;
+  let isPegged1;
+
+  if (pool0 === daiTest.address) {
+    isPegged0 = "true";
+    isPegged1 = "false";
+  } else {
+    isPegged1 = "true";
+    isPegged0 = "false";
+  }
+
+  await deployer.deploy(
+    mainOracle, 
+    LPTAddress, 
+    [isPegged0, isPegged1], 
+    [18, 18],
+    priceFeedAddress1,
+    5,
+    200
+  )
+
+  const Oracle = await mainOracle.deployed();
+
   await deployer.deploy(
     LLC,
     valueContract.address,
     LPTAddress,
-    stablecoinAddress,
-    [priceFeedAddress1, priceFeedAddress2],
-    [baseAssetFeed],
-    undContract.address
+    undContract.address,
+    Oracle.address
   );
 
   await valueContract.addLLC.sendTransaction(LLC.address, undContract.address, loanRate, feeRate);

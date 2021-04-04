@@ -22,6 +22,7 @@ const weth9 = artifacts.require("WETH9");
 const router = artifacts.require("UniswapV2Router02");
 const testAggregatorEth = artifacts.require("TestAggregatorProxyEthUsd");
 const testAggregatorDai = artifacts.require("TestAggregatorProxyDaiUsd");
+const mainOracle = artifacts.require("UniswapV2PriceProvider");
 
 contract("Scenario", function (_accounts) {
   // Initial settings
@@ -54,6 +55,7 @@ contract("Scenario", function (_accounts) {
   let route;
   let storedFeeTotal = 0;
   let stakePair;
+  let oracle;
 
   //=================
   // Default Functionality
@@ -75,6 +77,9 @@ contract("Scenario", function (_accounts) {
       await priceFeedDai.setPrice(daiPrice);
 
       pair = await uniPair.at(await lockContract.pair());
+
+      // oracle = await deployer.deploy(mainOracle, pair.address, [true], [18, 18], priceFeedEth.address, )
+
       await tDai.approve(route.address, daiAmount);
       await tEth.approve(route.address, ethAmount);
       let d = new Date();
@@ -128,6 +133,13 @@ contract("Scenario", function (_accounts) {
       await pair.approve(lockContract.address, LPtokens);
       const receipt = await lockContract.lockLPT(LPtokens, loanAmount - feeAmount);
     
+      const oracleAddress = await lockContract.getOracleAddr();
+      const Oracle = await mainOracle.at(oracleAddress);
+      const test1 = await Oracle.test();
+      const test2 = await Oracle.test2();
+      console.log(test1.toString());
+      console.log(test2.toString());
+
       const initialLPLocked = await pair.balanceOf(lockContract.address);
       
       const ownerBal = await und.balanceOf(owner);

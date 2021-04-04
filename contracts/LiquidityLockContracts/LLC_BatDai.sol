@@ -2,6 +2,7 @@
 pragma solidity 0.7.5;
 
 import "./LiquidityLockContract.sol";
+import "../Interfaces/IOracle.sol";
 
 // For testing
 contract LLC_BatDai is LiquidityLockContract {
@@ -11,6 +12,6 @@ contract LLC_BatDai is LiquidityLockContract {
         address valuingAddress,
         address LPTaddress,
         address stableCoin,
-        UniswapV2PriceProvider oracle
+        IUniswapV2PriceProvider oracle
     ) LiquidityLockContract(valuingAddress, LPTaddress, stableCoin, oracle) {}
 }

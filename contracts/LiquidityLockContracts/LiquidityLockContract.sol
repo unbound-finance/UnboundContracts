@@ -13,7 +13,7 @@ import "../Interfaces/IValuing_01.sol";
 import "../Interfaces/IUnboundToken.sol";
 import "../Interfaces/IERC20.sol";
 
-import "./Oracle.sol";
+import "../Interfaces/IOracle.sol";
 
 // ---------------------------------------------------------------------------------------
 //                                Liquidity Lock Contract V1
@@ -89,12 +89,16 @@ contract LiquidityLockContract is Pausable {
     address public baseAssetAddr;
     address public otherAssetAddr;
 
-    UniswapV2PriceProvider oracle;
+    IUniswapV2PriceProvider oracle;
 
     // Modifiers
     modifier onlyOwner() {
         require(isOwner(), "Ownable: caller is not the owner");
         _;
+    }
+
+    function getOracleAddr() external view returns(address) {
+        return address(oracle);
     }
 
     // Constructor - must provide valuing contract address, the associated Liquidity pool address (i.e. eth/dai uniswap pool token address),
@@ -103,7 +107,7 @@ contract LiquidityLockContract is Pausable {
         address valuingAddress,
         address LPTaddress,
         address uTokenAddr,
-        UniswapV2PriceProvider oracleAddress
+        IUniswapV2PriceProvider oracleAddress
     ) {
         _owner = msg.sender;
 
@@ -169,8 +173,9 @@ contract LiquidityLockContract is Pausable {
 
     // Requires approval first (permit excluded for simplicity)
     function lockLPT(uint256 LPTAmt, uint256 minTokenAmount) public whenNotPaused {
+        
         uint256 LPTValueInDai = LPTAmt.mul(uint256(oracle.latestAnswer()));
-
+        
         // transfer LPT to the address
         transferLPT(LPTAmt);
 
@@ -193,21 +198,22 @@ contract LiquidityLockContract is Pausable {
 
         // sets nextBlock
         nextBlock[msg.sender] = block.number.add(blockLimit);
-
+        
         // get current amount of uToken Loan
         uint256 currentLoan = unboundContract.checkLoan(msg.sender, address(this));
-
+        
         // Make sure uToken to pay back is less than or equal to total owed.
         require(currentLoan >= uTokenAmt, "Insufficient liquidity locked");
 
         // check if repayment is partial or full
         uint256 LPTokenToReturn;
+        
         if (currentLoan == uTokenAmt) {
             LPTokenToReturn = _tokensLocked[msg.sender];
         } else {
             LPTokenToReturn = getLPTokensToReturn(currentLoan, uTokenAmt);
         }
-
+        
         // Burning of uToken will happen first
         valuingContract.unboundRemove(uTokenAmt, msg.sender);
 
@@ -223,8 +229,9 @@ contract LiquidityLockContract is Pausable {
     }
 
     function getLPTokensToReturn(uint256 _currentLoan, uint256 _uTokenAmt) internal returns (uint256 _LPTokenToReturn) {
+        
         uint256 valueOfSingleLPT = uint256(oracle.latestAnswer());
-
+        
         // get current CR Ratio
         uint256 CRNow = (valueOfSingleLPT.mul(_tokensLocked[msg.sender])).mul(1000).div(_currentLoan);
         
@@ -236,14 +243,16 @@ contract LiquidityLockContract is Pausable {
         } else {
             // value of users locked LP before paying loan
             uint256 valueStart = valueOfSingleLPT.mul(_tokensLocked[msg.sender]);
-
+            
             uint256 loanAfter = _currentLoan.sub(_uTokenAmt);
-
+            
             // Value After - Collateralization Ratio times LoanAfter (divided by CRNorm, then normalized with valueOfSingleLPT)
             uint256 valueAfter = CREnd.mul(loanAfter).div(CRNorm).mul(10**18);
-
+            
             // LPT to send back. This number should have 18 decimals
+            // !!!!!!!Error Here!!!!!!!
             _LPTokenToReturn = valueStart.sub(valueAfter).div(valueOfSingleLPT);
+            
         }
     }
 

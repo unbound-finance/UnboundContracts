@@ -8,10 +8,11 @@ import "@openzeppelin/contracts/utils/Address.sol";
 import "../Interfaces/IUniswapV2Pair.sol";
 
 import "../Interfaces/chainlinkOracleInterface.sol";
+import "../Interfaces/IOracle.sol";
 
 import "../utils/Math.sol";
 
-contract UniswapV2PriceProvider {
+contract UniswapV2PriceProvider is IUniswapV2PriceProvider {
     using SafeMath for uint256;
     IUniswapV2Pair public immutable pair;
     address[] public tokens;
@@ -21,6 +22,9 @@ contract UniswapV2PriceProvider {
     uint256 public maxPercentDiff;
     uint256 public allowedDelay;
     AggregatorV3Interface priceOracle;
+
+    uint256 public test;
+    uint256 public test2;
 
     /**
      * UniswapV2PriceProvider constructor.
@@ -182,17 +186,22 @@ contract UniswapV2PriceProvider {
      *   If there is a price deviation, instead of the reserves, it uses a weighted geometric mean with constant invariant K.
      * @return int256 price
      */
-    function latestAnswer() external view returns (int256) {
+    function latestAnswer() external override  returns (int256) {
         //Get token reserves in ethers
+        
         (uint112 reserve_0, uint112 reserve_1, ) = pair.getReserves();
+        
         uint256 reserveInStablecoin_0 = getReserveValue(0, reserve_0);
+        test = reserveInStablecoin_0;
         uint256 reserveInStablecoin_1 = getReserveValue(1, reserve_1);
-
+        test2 = reserveInStablecoin_1;
+        
         if (hasPriceDifference(reserveInStablecoin_0, reserveInStablecoin_1)) {
             //Calculate the weighted geometric mean
             return int256(getWeightedGeometricMean(reserveInStablecoin_0, reserveInStablecoin_1));
         } else {
             //Calculate the arithmetic mean
+           
             return int256(getArithmeticMean(reserveInStablecoin_0, reserveInStablecoin_1));
         }
     }
