@@ -26,7 +26,7 @@
 
 const HDWalletProvider = require("@truffle/hdwallet-provider");
 const infuraKey = "a4dcdfe968254cd4a2a30381e3558541";
-const PrivateKeyProvider = require("truffle-privatekey-provider");
+// const PrivateKeyProvider = require("truffle-privatekey-provider");
 
 
 // const mnemonic =
@@ -72,11 +72,11 @@ module.exports = {
     // Useful for deploying to a public network.
     // NB: It's important to wrap the provider as a function.
     kovan: {
-      provider: () =>
-        new PrivateKeyProvider(
-          privateKey,
-          `https://kovan.infura.io/v3/${infuraKey}`
-        ),
+      // provider: () =>
+      //   new PrivateKeyProvider(
+      //     privateKey,
+      //     `https://kovan.infura.io/v3/${infuraKey}`
+      //   ),
       network_id: 42, // Ropsten's id
       gas: 5500000, // Ropsten has a lower block limit than mainnet
       confirmations: 2, // # of confs to wait between deployments. (default: 0)
