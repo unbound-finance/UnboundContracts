@@ -32,8 +32,8 @@ contract("Scenario", function (_accounts) {
   const safu = _accounts[1];
   const devFund = _accounts[2];
   const user = _accounts[3];
-  const daiAmount = new BN("1000000000000000000");
-  const ethAmount = new BN("500000000000000000");
+  const daiAmount = new BN("417166318236368850830845965");
+  const ethAmount = new BN("947426466386121827304746");
   const rateBalance = 10 ** 6;
   const loanRate = 500000;
   const feeRate = 5000;
@@ -43,7 +43,7 @@ contract("Scenario", function (_accounts) {
   const CRNorm = 10000;
   const blockLimit = 10;
   const ethPrice = "200000000000"; // this should trigger GM. Expected price is 1000. This is 850
-  const daiPrice = "1000000000000000000";
+  const daiPrice = "5000000000000000000";
 
   let und;
   let valueContract;
@@ -60,7 +60,7 @@ contract("Scenario", function (_accounts) {
   //=================
   // Default Functionality
   //=================
-  describe("Lock and burn LPT scenario", () => {
+  describe("Lock and burn LPT scenario", (accounts) => {
     before(async () => {
       tEth = await testEth.deployed();
       tDai = await testDai.deployed();
@@ -137,22 +137,22 @@ contract("Scenario", function (_accounts) {
       console.log((await priceFeedEth.latestRoundData()).answer.toString());
 
       const priceOfEthPrice = await priceFeedEth.latestRoundData();
-      const contractFeed = await oracle.priceOracle();
+      // const contractFeed = await oracle.priceOracle();
 
-      const latestPrice = await oracle.getLatestPrice();
+      // const latestPrice = await oracle.getLatestPrice();
 
-      console.log("Latest Price", latestPrice.toString());
+      // console.log("Latest Price", latestPrice.toString());
 
       // const latestPrice0 = await oracle.getLatestPrice(tEth.address);
       // const latestPrice1 = await oracle.getLatestPrice(tDai.address);
 
-      console.log({
-        price: priceOfEthPrice.answer.toString(),
-        originalOracle: priceFeedEth.address,
-        contractFeed: contractFeed,
-        // latestPrice: latestPrice0,
-        // latestPrice1: latestPrice1
-      });
+      // console.log({
+      //   price: priceOfEthPrice.answer.toString(),
+      //   originalOracle: priceFeedEth.address,
+      //   contractFeed: contractFeed,
+      //   // latestPrice: latestPrice0,
+      //   // latestPrice1: latestPrice1
+      // });
 
       await pair.approve(lockContract.address, LPtokens);
       const receipt = await lockContract.lockLPT(LPtokens, loanAmount - feeAmount);
@@ -165,18 +165,18 @@ contract("Scenario", function (_accounts) {
 
       const oraclePrice = await oracle.latestAnswer();
 
-      const reserveValue1 = await oracle.getReserveValue(0, "1000000000000000000");
-      const reserveValue2 = await oracle.getReserveValue(1, "500000000000000000");
+      // const reserveValue1 = await oracle.getReserveValue(0, "1000000000000000000");
+      // const reserveValue2 = await oracle.getReserveValue(1, "500000000000000000");
 
-      const isPegged0 = await oracle.isPeggedToUSD(0);
-      const isPegged1 = await oracle.isPeggedToUSD(1);
+      // const isPegged0 = await oracle.isPeggedToUSD(0);
+      // const isPegged1 = await oracle.isPeggedToUSD(1);
 
-      console.log({
-        reserveValue1: reserveValue1.toString(),
-        reserveValue2: reserveValue2.toString(),
-        isPegged0: isPegged0,
-        isPegged1: isPegged1,
-      });
+      // console.log({
+      //   reserveValue1: reserveValue1.toString(),
+      //   reserveValue2: reserveValue2.toString(),
+      //   isPegged0: isPegged0,
+      //   isPegged1: isPegged1,
+      // });
 
       console.log("OraclePrice", oraclePrice.toString());
 
@@ -184,12 +184,12 @@ contract("Scenario", function (_accounts) {
 
       // console.log("Latest Price", latestPrice.toString())
 
-      const getGeometricMean = await oracle.getWeightedGeometricMean("1000000000000000000", "2000000000000000000");
+      // const getGeometricMean = await oracle.getWeightedGeometricMean("1000000000000000000", "2000000000000000000");
       // const checkDiff = await oracle.checkDiff("200000000000000", "2000000000000000000")
 
       // console.log("Check Diff",checkDiff.toString())
 
-      console.log("Geometric Mean", getGeometricMean.toString());
+      // console.log("Geometric Mean", getGeometricMean.toString());
       // // console.log(reserves)
 
       console.log({
@@ -197,8 +197,8 @@ contract("Scenario", function (_accounts) {
         reserve1: reserves._reserve1.toString(),
       });
 
-      const totalSupply = await oracle.getTotalSupplyAtWithdrawal();
-      console.log("totalSupply", totalSupply.toString());
+      // const totalSupply = await oracle.getTotalSupplyAtWithdrawal();
+      // console.log("totalSupply", totalSupply.toString());
       console.log("LP totalSupply", totalLPTokens);
       console.log(`LP Tokens Locked: ${parseInt(initialLPLocked.div(decimal18)) / 1000}`);
       console.log(`UND Minted: ${parseInt(ownerBal.div(decimal18)) / 1000} `);
@@ -207,10 +207,10 @@ contract("Scenario", function (_accounts) {
       // const beingUnlocked = parseFloat(toUnlock.div(decimal18));
       await lockContract.unlockLPT("30464662718675330000")
 
-      const LPTBal = await pair.balanceOf(account)
-      console.log()
+      // const LPTBal = await pair.balanceOf(accounts[0])
+      // console.log(LPTBal.toString())
       // //   const stakingBal = parseInt(await und.balanceOf(stakePair.address));
-      // const loanedAmount = await und.checkLoan(owner, lockContract.address);
+      // const loanedAmount = await und.checkLoan(owner, l m,. ≤   ockContract.address);
       // console.log(`Amount Owed: ${parseInt(loanedAmount.div(decimal18)) / 1000}`);
       // let remaining = parseFloat(ownerBal.div(decimal18));
       // let run = 1;

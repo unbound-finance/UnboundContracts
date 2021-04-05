@@ -3,10 +3,8 @@ pragma solidity 0.7.5;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
-// TODO: Should we remove it or not
-import "@openzeppelin/contracts/utils/Address.sol";
-import "../Interfaces/IUniswapV2Pair.sol";
 
+import "../Interfaces/IUniswapV2Pair.sol";
 import "../Interfaces/chainlinkOracleInterface.sol";
 
 contract UniswapV2PriceProvider {
@@ -18,15 +16,22 @@ contract UniswapV2PriceProvider {
     uint8[] public feedDecimals;
     uint256 public maxPercentDiff;
     uint256 public allowedDelay;
-    AggregatorV3Interface public priceOracle;
+    address[] public feeds;
+    address private owner;
 
     uint256 base = 1000000000000000000; // decimals base, 10 ^^ 18
+
+    // Modifiers
+    modifier onlyOwner() {
+        require(isOwner(), "Ownable: caller is not the owner");
+        _;
+    }
 
     /**
      * UniswapV2PriceProvider constructor.
      * @param _pair Uniswap V2 pair address.
      * @param _decimals Number of decimals for each token.
-     * @param _priceOracle Chainlink Price Oracle
+     * @param _feeds Chainlink Price Oracle
      * @param _maxPercentDiff Threshold of spot prices deviation: 10ˆ16 represents a 1% deviation.
      * @param _allowedDelay Allowed delay between the last updated Chainlink price, in seconds
      * @param _stablecoin Stablecoin addresss
@@ -34,7 +39,7 @@ contract UniswapV2PriceProvider {
     constructor(
         IUniswapV2Pair _pair,
         uint8[] memory _decimals,
-        AggregatorV3Interface _priceOracle,
+        address[] memory _feeds,
         uint256 _maxPercentDiff,
         uint256 _allowedDelay,
         address _stablecoin
@@ -42,8 +47,7 @@ contract UniswapV2PriceProvider {
         // require(_isPeggedToUSD.length == 2, "ERR_INVALID_PEGGED_LENGTH");
         require(_decimals.length == 2, "ERR_INVALID_DECIMALS_LENGTH");
         // require(_decimals[0] <= 18 && _decimals[1] <= 18, "ERR_INVALID_DECIMALS");
-        require(address(_priceOracle) != address(0), "ERR_INVALID_PRICE_PROVIDER");
-        require(_maxPercentDiff < base, "ERR_INVALID_PRICE_DEVIATION");
+        // require(_maxPercentDiff < base, "ERR_INVALID_PRICE_DEVIATION");
 
         pair = _pair;
         //Get tokens
@@ -51,8 +55,7 @@ contract UniswapV2PriceProvider {
         tokens.push(pair.token1());
 
         decimals = _decimals;
-        // TODO: add logic for triangulation here
-        priceOracle = _priceOracle;
+        feeds = _feeds;
         maxPercentDiff = _maxPercentDiff;
         allowedDelay = _allowedDelay;
 
@@ -68,10 +71,13 @@ contract UniswapV2PriceProvider {
             isPeggedToUSD1 = true;
         }
 
-        isPeggedToUSD.push(isPeggedToUSD0); 
+        isPeggedToUSD.push(isPeggedToUSD0);
         isPeggedToUSD.push(isPeggedToUSD1);
+
+        owner = msg.sender;
     }
 
+    // Returns square root using Babylon method
     function sqrt(uint256 y) internal pure returns (uint256 z) {
         if (y > 3) {
             z = y;
@@ -96,8 +102,10 @@ contract UniswapV2PriceProvider {
         returns (uint256)
     {
         uint256 input = _reserveInStablecoin_0.mul(_reserveInStablecoin_1);
-        uint256 sqrt = sqrt(input);
-        return sqrt.mul(2).div(getTotalSupplyAtWithdrawal());
+        // uint256 sqrt =
+        // return sqrt.mul(2 * base).div(getTotalSupplyAtWithdrawal());
+        return sqrt(input).mul((uint256(2).mul(base))).div(getTotalSupplyAtWithdrawal());
+        // return uint256(1000000000000000000);
     }
 
     /**
@@ -140,7 +148,7 @@ contract UniswapV2PriceProvider {
     /**
      * Returns normalised value in 18 digits
      * @param _value Value which we want to normalise
-     * @param _decimals Number of decimals from which we want to normalise 
+     * @param _decimals Number of decimals from which we want to normalise
      */
     function normalise(uint256 _value, uint256 _decimals) internal view returns (uint256) {
         uint256 normalised;
@@ -155,12 +163,29 @@ contract UniswapV2PriceProvider {
     }
 
     /**
-     * Returns latest price from the Chainlink reserves
+     * Returns price from Chainlink feed
+     * @param _feed Chainlink feed address
+     */
+    function getChainlinkPrice(address _feed) internal view returns (uint256) {
+        (, int256 _price, , uint256 _updatedAt, ) = AggregatorV3Interface(_feed).latestRoundData();
+        // check if the oracle is expired
+        require(_updatedAt >= block.timestamp.sub(allowedDelay), "price oracle data is too old. Wait for update.");
+        uint256 price = normalise(uint256(_price), AggregatorV3Interface(_feed).decimals());
+        return uint256(price);
+    }
+
+    /**
+     * Returns latest price of the token
      */
     function getLatestPrice() internal view returns (uint256) {
-        (, int256 _price, , uint256 _updatedAt, ) = priceOracle.latestRoundData();
-        require(_updatedAt >= block.timestamp.sub(allowedDelay), "price oracle data is too old. Wait for update.");
-        uint256 price = normalise(uint256(_price), priceOracle.decimals());
+        uint256 price;
+        if (feeds.length == 2) {
+            uint256 price0 = getChainlinkPrice(feeds[0]);
+            uint256 price1 = getChainlinkPrice(feeds[1]);
+            price = price0 * price1;
+        } else {
+            price = getChainlinkPrice(feeds[0]);
+        }
         return price;
     }
 
@@ -179,8 +204,7 @@ contract UniswapV2PriceProvider {
         require(chainlinkPrice > 0, "ERR_NO_ORACLE_PRICE");
 
         uint256 reservePrice = normalise(reserve, decimals[index]);
-
-        return uint256(reservePrice).mul(chainlinkPrice);
+        return uint256(reservePrice).mul(chainlinkPrice).div(base);
     }
 
     /**
@@ -206,7 +230,7 @@ contract UniswapV2PriceProvider {
     }
 
     /**
-     * @dev Returns the pair's token price.
+     * @dev Returns the pair's price.
      *   It calculates the price using Chainlink as an external price source and the pair's tokens reserves using the arithmetic mean formula.
      *   If there is a price deviation, instead of the reserves, it uses a weighted geometric mean with constant invariant K.
      * @return int256 price
@@ -216,13 +240,36 @@ contract UniswapV2PriceProvider {
         (uint112 reserve_0, uint112 reserve_1, ) = pair.getReserves();
         uint256 reserveInStablecoin_0 = getReserveValue(0, reserve_0);
         uint256 reserveInStablecoin_1 = getReserveValue(1, reserve_1);
+        // return int256(100000000000000);
         // return sqrt(reserveInStablecoin_0, reserveInStablecoin_1).div();
+        // return int256(reserveInStablecoin_1);
         if (hasPriceDifference(reserveInStablecoin_0, reserveInStablecoin_1)) {
             //Calculate the weighted geometric mean
+            // require(0 != 0, "Geometric Mean");
+            // return int256(getArithmeticMean(reserveInStablecoin_0, reserveInStablecoin_1));
             return int256(getWeightedGeometricMean(reserveInStablecoin_0, reserveInStablecoin_1));
         } else {
             //Calculate the arithmetic mean
             return int256(getArithmeticMean(reserveInStablecoin_0, reserveInStablecoin_1));
         }
+    }
+
+    /**
+     * Check if msg.sender is owner
+     */
+    function isOwner() public view returns (bool) {
+        return msg.sender == owner;
+    }
+
+    // change allowedPriceDelay
+    function setAllowedPriceDelay(uint256 _allowedDelay) public onlyOwner {
+        require(_allowedDelay > 0, "cannot set zero delay");
+        allowedDelay = _allowedDelay;
+    }
+
+    // set Max Percent Difference
+    function setMaxPercentDifference(uint256 amount) public onlyOwner {
+        require(amount <= 100, "Max percentage difference cannot be greater than 100");
+        maxPercentDiff = amount;
     }
 }

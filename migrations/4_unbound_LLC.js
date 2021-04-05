@@ -29,23 +29,23 @@ module.exports = async (deployer, network, accounts) => {
     LPTAddress = pair.logs[0].args.pair;
   }
 
-  v2pair = await uniPair.at(LPTAddress);
+  // // v2pair = await uniPair.at(LPTAddress);
 
 
-  let isPegged0;
-  let isPegged1;
+  // let isPegged0;
+  // let isPegged1;
 
-  const pool0 = await v2pair.token0();
-  const pool1 = await v2pair.token1();
+  // const pool0 = await v2pair.token0();
+  // const pool1 = await v2pair.token1();
 
-  if(pool0 == testDai.address) {
-    isPegged0 = "true";
-    isPegged1 = "false"
-  }
-  else {
-    isPegged0 = "false";
-    isPegged1 = "true"
-  }
+  // if(pool0 == testDai.address) {
+  //   isPegged0 = "true";
+  //   isPegged1 = "false"
+  // }
+  // else {
+  //   isPegged0 = "false";
+  //   isPegged1 = "true"
+  // }
 
   // if()
 
@@ -67,9 +67,9 @@ module.exports = async (deployer, network, accounts) => {
     LPTAddress,
     // [true, false],
     [18, 18],
-    testAggregatorEthUsd.address,
-    "100000000000000000", //10%
-    500,
+    [testAggregatorEthUsd.address],
+    "900000000000000000", //10%
+    5000,
     testDai.address
   );
 

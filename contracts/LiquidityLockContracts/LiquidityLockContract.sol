@@ -4,7 +4,6 @@ pragma solidity 0.7.5;
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
-import "../utils/Math.sol";
 
 // Interfaces
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
@@ -91,6 +90,8 @@ contract LiquidityLockContract is Pausable {
 
     UniswapV2PriceProvider oracle;
 
+    uint256 base = 1000000000000000000;
+
     // Modifiers
     modifier onlyOwner() {
         require(isOwner(), "Ownable: caller is not the owner");
@@ -161,7 +162,7 @@ contract LiquidityLockContract is Pausable {
         _tokensLocked[msg.sender] = _tokensLocked[msg.sender].add(_LPTAmt);
 
         // Call Valuing Contract
-        valuingContract.unboundCreate(LPTValueInDai, msg.sender, _minTokenAmount); // Hardcode "0" for AAA rating
+        valuingContract.unboundCreate(LPTValueInDai.div(base), msg.sender, _minTokenAmount); // Hardcode "0" for AAA rating
 
         // emit lockLPT event
         emit LockLPT(_LPTAmt, msg.sender);
@@ -178,7 +179,7 @@ contract LiquidityLockContract is Pausable {
         _tokensLocked[msg.sender] = _tokensLocked[msg.sender].add(LPTAmt);
 
         // Call Valuing Contract
-        valuingContract.unboundCreate(LPTValueInDai, msg.sender, minTokenAmount);
+        valuingContract.unboundCreate(LPTValueInDai.div(base), msg.sender, minTokenAmount);
 
         // emit lockLPT event
         emit LockLPT(LPTAmt, msg.sender);
@@ -217,8 +218,6 @@ contract LiquidityLockContract is Pausable {
         // send LP tokens back to user
         require(LPTContract.transfer(msg.sender, LPTokenToReturn), "LLC: Transfer Failed");
 
-        // emit unlockLPT event
-        // emit UnlockLPT(_tokensLocked[msg.sender], msg.sender);
         emit UnlockLPT(LPTokenToReturn, msg.sender);
     }
 
@@ -226,7 +225,7 @@ contract LiquidityLockContract is Pausable {
         uint256 valueOfSingleLPT = uint256(oracle.latestAnswer());
 
         // get current CR Ratio
-        uint256 CRNow = (valueOfSingleLPT.mul(_tokensLocked[msg.sender])).mul(1000).div(_currentLoan);
+        uint256 CRNow = (valueOfSingleLPT.mul(_tokensLocked[msg.sender])).mul(1000).div(_currentLoan).div(base);
         
         uint256 _LPTokenToReturn;
         // multiply by 21 (adding 3 to 18), to account for the multiplication by 1000 above.

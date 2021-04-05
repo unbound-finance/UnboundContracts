@@ -26,12 +26,12 @@
 
 const HDWalletProvider = require("@truffle/hdwallet-provider");
 const infuraKey = "a4dcdfe968254cd4a2a30381e3558541";
-const PrivateKeyProvider = require("truffle-privatekey-provider");
+// const PrivateKeyProvider = require("truffle-privatekey-provider");
 
 
-// const mnemonic =
-//   "gallery cinnamon equal inform lend perfect kitchen grab today width eager thank";
-const privateKey = ""
+const mnemonic =
+  "comic bomb maximum census jaguar sad nerve document divide cherry double labor";
+const privateKey = "1dcd88d8dee9babcb9e220697d28942f630848331bcd8bf81b3b30cab54166fc"
 module.exports = {
   /**
    * Networks define how you connect to your ethereum client and let you set the
@@ -73,8 +73,8 @@ module.exports = {
     // NB: It's important to wrap the provider as a function.
     kovan: {
       provider: () =>
-        new PrivateKeyProvider(
-          privateKey,
+        new HDWalletProvider(
+          mnemonic,
           `https://kovan.infura.io/v3/${infuraKey}`
         ),
       network_id: 42, // Ropsten's id
