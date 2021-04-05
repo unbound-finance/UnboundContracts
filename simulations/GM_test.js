@@ -32,8 +32,8 @@ contract("Scenario", function (_accounts) {
   const safu = _accounts[1];
   const devFund = _accounts[2];
   const user = _accounts[3];
-  const daiAmount = new BN("417166318236368850830845965");
-  const ethAmount = new BN("947426466386121827304746");
+  const daiAmount = new BN("8851260182363688508308459");
+  const ethAmount = new BN("447465622521628002325336");
   const rateBalance = 10 ** 6;
   const loanRate = 500000;
   const feeRate = 5000;
@@ -205,7 +205,7 @@ contract("Scenario", function (_accounts) {
 
       // const toUnlock = (await und.balanceOf(owner)).div(new BN("20"));
       // const beingUnlocked = parseFloat(toUnlock.div(decimal18));
-      await lockContract.unlockLPT("30464662718675330000")
+      await lockContract.unlockLPT("1000000000000000000")
 
       // const LPTBal = await pair.balanceOf(accounts[0])
       // console.log(LPTBal.toString())
