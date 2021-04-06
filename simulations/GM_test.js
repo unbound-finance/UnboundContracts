@@ -32,7 +32,7 @@ contract("Scenario", function (_accounts) {
   const safu = _accounts[1];
   const devFund = _accounts[2];
   const user = _accounts[3];
-  const daiAmount = new BN("8851260182363688508308459");
+  const daiAmount = new BN("885126018236368850830845965");
   const ethAmount = new BN("447465622521628002325336");
   const rateBalance = 10 ** 6;
   const loanRate = 500000;
@@ -155,7 +155,7 @@ contract("Scenario", function (_accounts) {
       // });
 
       await pair.approve(lockContract.address, LPtokens);
-      const receipt = await lockContract.lockLPT(LPtokens, loanAmount - feeAmount);
+      const receipt = await lockContract.lockLPT("100000000000000000000", "1000000000000000000");
 
       const initialLPLocked = await pair.balanceOf(lockContract.address);
 
@@ -197,15 +197,34 @@ contract("Scenario", function (_accounts) {
         reserve1: reserves._reserve1.toString(),
       });
 
+      const user = "0x5789F0ED5094cf6260c26aBBAE03E455f41deF8a";
+
+      const middleLp = await pair.balanceOf("0x5789F0ED5094cf6260c26aBBAE03E455f41deF8a");
+      console.log(`LP Tokens Locked Middle: ${parseInt(middleLp.div(decimal18)) / 1000}`)
+
       // const totalSupply = await oracle.getTotalSupplyAtWithdrawal();
       // console.log("totalSupply", totalSupply.toString());
       console.log("LP totalSupply", totalLPTokens);
       console.log(`LP Tokens Locked: ${parseInt(initialLPLocked.div(decimal18)) / 1000}`);
-      console.log(`UND Minted: ${parseInt(ownerBal.div(decimal18)) / 1000} `);
+      console.log(`UND Minted: ${ownerBal.toString()}`);
 
-      // const toUnlock = (await und.balanceOf(owner)).div(new BN("20"));
-      // const beingUnlocked = parseFloat(toUnlock.div(decimal18));
-      await lockContract.unlockLPT("1000000000000000000")
+      const toUnlock = (await und.balanceOf(owner)).div(new BN("20"));
+      const beingUnlocked = parseFloat(toUnlock.div(decimal18));
+      await lockContract.unlockLPT("4427750000000000000000")
+
+      const finalLPLocked = await pair.balanceOf("0x5789F0ED5094cf6260c26aBBAE03E455f41deF8a");
+      console.log(`LP Tokens Locked Final: ${parseInt(finalLPLocked.div(decimal18)) / 1000}`)
+
+      const UNDBal = await und.balanceOf("0x5789F0ED5094cf6260c26aBBAE03E455f41deF8a")
+      console.log(UNDBal.toString())
+
+      const currentLoan = await und.checkLoan(user, lockContract.address)
+
+      console.log("Current Loan", currentLoan.toString());
+
+      // const lpToReturn = await lockContract.getLPTokensToReturn(currentLoan, "4427750000000000000000");
+
+      // console.log("LP Tokens to Return", lpToReturn.toString())
 
       // const LPTBal = await pair.balanceOf(accounts[0])
       // console.log(LPTBal.toString())

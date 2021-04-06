@@ -162,7 +162,7 @@ contract LiquidityLockContract is Pausable {
         _tokensLocked[msg.sender] = _tokensLocked[msg.sender].add(_LPTAmt);
 
         // Call Valuing Contract
-        valuingContract.unboundCreate(LPTValueInDai.div(base), msg.sender, _minTokenAmount); // Hardcode "0" for AAA rating
+        valuingContract.unboundCreate(LPTValueInDai, msg.sender, _minTokenAmount); // Hardcode "0" for AAA rating
 
         // emit lockLPT event
         emit LockLPT(_LPTAmt, msg.sender);
@@ -179,7 +179,7 @@ contract LiquidityLockContract is Pausable {
         _tokensLocked[msg.sender] = _tokensLocked[msg.sender].add(LPTAmt);
 
         // Call Valuing Contract
-        valuingContract.unboundCreate(LPTValueInDai.div(base), msg.sender, minTokenAmount);
+        valuingContract.unboundCreate(LPTValueInDai, msg.sender, minTokenAmount);
 
         // emit lockLPT event
         emit LockLPT(LPTAmt, msg.sender);
@@ -207,6 +207,7 @@ contract LiquidityLockContract is Pausable {
             LPTokenToReturn = _tokensLocked[msg.sender];
         } else {
             LPTokenToReturn = getLPTokensToReturn(currentLoan, uTokenAmt);
+            // LPTokenToReturn = uint256(10000000000000000000)
         }
 
         // Burning of uToken will happen first
@@ -221,11 +222,10 @@ contract LiquidityLockContract is Pausable {
         emit UnlockLPT(LPTokenToReturn, msg.sender);
     }
 
-    function getLPTokensToReturn(uint256 _currentLoan, uint256 _uTokenAmt) internal returns (uint256 _LPTokenToReturn) {
+    function getLPTokensToReturn(uint256 _currentLoan, uint256 _uTokenAmt) public view returns (uint256 _LPTokenToReturn) {
         uint256 valueOfSingleLPT = uint256(oracle.latestAnswer());
-
-        // get current CR Ratio
-        uint256 CRNow = (valueOfSingleLPT.mul(_tokensLocked[msg.sender])).mul(1000).div(_currentLoan).div(base);
+        // // get current CR Ratio
+        uint256 CRNow = (valueOfSingleLPT.mul(_tokensLocked[msg.sender])).mul(1000).div(_currentLoan);
         
         uint256 _LPTokenToReturn;
         // multiply by 21 (adding 3 to 18), to account for the multiplication by 1000 above.
@@ -237,12 +237,14 @@ contract LiquidityLockContract is Pausable {
             uint256 valueStart = valueOfSingleLPT.mul(_tokensLocked[msg.sender]);
 
             uint256 loanAfter = _currentLoan.sub(_uTokenAmt);
+            // _LPTokenToReturn = valueStart.sub(valueAfter).div(valueOfSingleLPT);
 
             // Value After - Collateralization Ratio times LoanAfter (divided by CRNorm, then normalized with valueOfSingleLPT)
             uint256 valueAfter = CREnd.mul(loanAfter).div(CRNorm);
 
             // LPT to send back. This number should have 18 decimals
             _LPTokenToReturn = valueStart.sub(valueAfter).div(valueOfSingleLPT);
+            return _LPTokenToReturn;
         }
     }
 
