@@ -153,7 +153,7 @@ contract LiquidityLockContract is Pausable {
         bytes32 _s,
         uint256 _minTokenAmount
     ) public whenNotPaused {
-        uint256 LPTValueInDai = _LPTAmt.mul(uint256(oracle.latestAnswer()));
+        uint256 LPTValueInDai = _LPTAmt.mul(uint256(oracle.latestAnswer())).div(base);
 
         // call Permit and Transfer
         transferLPTPermit(msg.sender, _LPTAmt, _deadline, _v, _r, _s);
@@ -170,7 +170,7 @@ contract LiquidityLockContract is Pausable {
 
     // Requires approval first (permit excluded for simplicity)
     function lockLPT(uint256 LPTAmt, uint256 minTokenAmount) public whenNotPaused {
-        uint256 LPTValueInDai = LPTAmt.mul(uint256(oracle.latestAnswer()));
+        uint256 LPTValueInDai = LPTAmt.mul(uint256(oracle.latestAnswer())).div(base);
 
         // transfer LPT to the address
         transferLPT(LPTAmt);
@@ -223,7 +223,7 @@ contract LiquidityLockContract is Pausable {
     }
 
     function getLPTokensToReturn(uint256 _currentLoan, uint256 _uTokenAmt) public view returns (uint256 _LPTokenToReturn) {
-        uint256 valueOfSingleLPT = uint256(oracle.latestAnswer());
+        uint256 valueOfSingleLPT = uint256(oracle.latestAnswer()).div(base);
         // // get current CR Ratio
         uint256 CRNow = (valueOfSingleLPT.mul(_tokensLocked[msg.sender])).mul(1000).div(_currentLoan);
         
@@ -244,6 +244,7 @@ contract LiquidityLockContract is Pausable {
 
             // LPT to send back. This number should have 18 decimals
             _LPTokenToReturn = valueStart.sub(valueAfter).div(valueOfSingleLPT);
+
             return _LPTokenToReturn;
         }
     }

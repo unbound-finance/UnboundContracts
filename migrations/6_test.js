@@ -76,18 +76,18 @@ module.exports = async (deployer, network, accounts) => {
   // }
 
 
-  const llcAddr = "0x25c68b8f752140B98F562e017e3497C68B89Df82"
+  // const llcAddr = "0x25c68b8f752140B98F562e017e3497C68B89Df82"
 
-  const llc = await LLC.at(llcAddr);
-  const lpt = await uniPair.at("0x54870f44414e69af7eb2f3e1e144ebb7c79325b7")
-  // await llc.lockLPTWithPermit(
-  //   "1000000000000000000",
-  //   "1617608411657",
-  //   "27",
-  //   "0x5030e1e9884a8268497d78fe9b54019a5c6b619df02cfdb76862e400169b56ac",
-  //   "0x6daa9bd66445bebb7eea4f15308ed6804d6a0f403db2e8329771be0cd02922c9",
-  //   "10442285132446294000"
-  // )
-  await lpt.approve(llcAddr, "100000000000000000000");
-  await llc.lockLPT("100000000000000000000", "10000000000000000");
+  // const llc = await LLC.at(llcAddr);
+  // const lpt = await uniPair.at("0x54870f44414e69af7eb2f3e1e144ebb7c79325b7")
+  // // await llc.lockLPTWithPermit(
+  // //   "1000000000000000000",
+  // //   "1617608411657",
+  // //   "27",
+  // //   "0x5030e1e9884a8268497d78fe9b54019a5c6b619df02cfdb76862e400169b56ac",
+  // //   "0x6daa9bd66445bebb7eea4f15308ed6804d6a0f403db2e8329771be0cd02922c9",
+  // //   "10442285132446294000"
+  // // )
+  // await lpt.approve(llcAddr, "100000000000000000000");
+  // await llc.lockLPT("100000000000000000000", "10000000000000000");
 };

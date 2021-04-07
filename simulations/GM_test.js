@@ -32,8 +32,8 @@ contract("Scenario", function (_accounts) {
   const safu = _accounts[1];
   const devFund = _accounts[2];
   const user = _accounts[3];
-  const daiAmount = new BN("885126018236368850830845965");
-  const ethAmount = new BN("447465622521628002325336");
+  const daiAmount = new BN("1000000000000000000");
+  const ethAmount = new BN("1000000000000000000");
   const rateBalance = 10 ** 6;
   const loanRate = 500000;
   const feeRate = 5000;
@@ -42,7 +42,7 @@ contract("Scenario", function (_accounts) {
   const CREnd = 20000;
   const CRNorm = 10000;
   const blockLimit = 10;
-  const ethPrice = "200000000000"; // this should trigger GM. Expected price is 1000. This is 850
+  const ethPrice = "100000000"; // this should trigger GM. Expected price is 1000. This is 850
   const daiPrice = "5000000000000000000";
 
   let und;
@@ -154,8 +154,23 @@ contract("Scenario", function (_accounts) {
       //   // latestPrice1: latestPrice1
       // });
 
+      const user = "0x5789F0ED5094cf6260c26aBBAE03E455f41deF8a";
+
+
+      const oraclePrice = await oracle.latestAnswer();
+      console.log("OraclePrice", oraclePrice.toString());
+
+      const chainLinkPrice = await oracle.getLatestPrice();
+      console.log("ChainLinkPrice", chainLinkPrice.toString());
+
+      const ownerLPTBal = await pair.balanceOf(user)
+      console.log("Owner LPT Balance", ownerLPTBal.toString());
+
+      // const priceFromLLC = await lockContract.test("1000000000000000000");
+      // console.log("Price From LLC", priceFromLLC.toString());
+
       await pair.approve(lockContract.address, LPtokens);
-      const receipt = await lockContract.lockLPT("100000000000000000000", "1000000000000000000");
+      const receipt = await lockContract.lockLPT("999999999999999000", "9999999999999990");
 
       const initialLPLocked = await pair.balanceOf(lockContract.address);
 
@@ -163,7 +178,7 @@ contract("Scenario", function (_accounts) {
 
       const reserves = await pair.getReserves();
 
-      const oraclePrice = await oracle.latestAnswer();
+      // const oraclePrice = await oracle.latestAnswer();
 
       // const reserveValue1 = await oracle.getReserveValue(0, "1000000000000000000");
       // const reserveValue2 = await oracle.getReserveValue(1, "500000000000000000");
@@ -177,8 +192,6 @@ contract("Scenario", function (_accounts) {
       //   isPegged0: isPegged0,
       //   isPegged1: isPegged1,
       // });
-
-      console.log("OraclePrice", oraclePrice.toString());
 
       // const latestPrice = await oracle.getLatestPrice()
 
@@ -197,10 +210,9 @@ contract("Scenario", function (_accounts) {
         reserve1: reserves._reserve1.toString(),
       });
 
-      const user = "0x5789F0ED5094cf6260c26aBBAE03E455f41deF8a";
 
       const middleLp = await pair.balanceOf("0x5789F0ED5094cf6260c26aBBAE03E455f41deF8a");
-      console.log(`LP Tokens Locked Middle: ${parseInt(middleLp.div(decimal18)) / 1000}`)
+      console.log(`LP Tokens Locked Middle: ${parseInt(middleLp.div(decimal18)) / 1000}`);
 
       // const totalSupply = await oracle.getTotalSupplyAtWithdrawal();
       // console.log("totalSupply", totalSupply.toString());
@@ -210,15 +222,15 @@ contract("Scenario", function (_accounts) {
 
       const toUnlock = (await und.balanceOf(owner)).div(new BN("20"));
       const beingUnlocked = parseFloat(toUnlock.div(decimal18));
-      await lockContract.unlockLPT("4427750000000000000000")
+      // await lockContract.unlockLPT("4427750000000000000000")
 
       const finalLPLocked = await pair.balanceOf("0x5789F0ED5094cf6260c26aBBAE03E455f41deF8a");
-      console.log(`LP Tokens Locked Final: ${parseInt(finalLPLocked.div(decimal18)) / 1000}`)
+      console.log(`LP Tokens Locked Final: ${parseInt(finalLPLocked.div(decimal18)) / 1000}`);
 
-      const UNDBal = await und.balanceOf("0x5789F0ED5094cf6260c26aBBAE03E455f41deF8a")
-      console.log(UNDBal.toString())
+      const UNDBal = await und.balanceOf("0x5789F0ED5094cf6260c26aBBAE03E455f41deF8a");
+      console.log(UNDBal.toString());
 
-      const currentLoan = await und.checkLoan(user, lockContract.address)
+      const currentLoan = await und.checkLoan(user, lockContract.address);
 
       console.log("Current Loan", currentLoan.toString());
 

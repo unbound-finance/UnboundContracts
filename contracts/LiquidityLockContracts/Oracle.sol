@@ -104,7 +104,7 @@ contract UniswapV2PriceProvider {
         uint256 input = _reserveInStablecoin_0.mul(_reserveInStablecoin_1);
         // uint256 sqrt =
         // return sqrt.mul(2 * base).div(getTotalSupplyAtWithdrawal());
-        return sqrt(input).mul((uint256(2).mul(base))).div(getTotalSupplyAtWithdrawal());
+        return sqrt(input).mul(uint256(2)).div(getTotalSupplyAtWithdrawal());
         // return uint256(1000000000000000000);
     }
 
@@ -177,7 +177,7 @@ contract UniswapV2PriceProvider {
     /**
      * Returns latest price of the token
      */
-    function getLatestPrice() internal view returns (uint256) {
+    function getLatestPrice() public view returns (uint256) {
         uint256 price;
         if (feeds.length == 2) {
             uint256 price0 = getChainlinkPrice(feeds[0]);
@@ -204,7 +204,7 @@ contract UniswapV2PriceProvider {
         require(chainlinkPrice > 0, "ERR_NO_ORACLE_PRICE");
 
         uint256 reservePrice = normalise(reserve, decimals[index]);
-        return uint256(reservePrice).mul(chainlinkPrice).div(base);
+        return uint256(reservePrice).mul(chainlinkPrice);
     }
 
     /**
@@ -240,13 +240,9 @@ contract UniswapV2PriceProvider {
         (uint112 reserve_0, uint112 reserve_1, ) = pair.getReserves();
         uint256 reserveInStablecoin_0 = getReserveValue(0, reserve_0);
         uint256 reserveInStablecoin_1 = getReserveValue(1, reserve_1);
-        // return int256(100000000000000);
-        // return sqrt(reserveInStablecoin_0, reserveInStablecoin_1).div();
-        // return int256(reserveInStablecoin_1);
         if (hasPriceDifference(reserveInStablecoin_0, reserveInStablecoin_1)) {
             //Calculate the weighted geometric mean
-            // require(0 != 0, "Geometric Mean");
-            // return int256(getArithmeticMean(reserveInStablecoin_0, reserveInStablecoin_1));
+            require(0 != 0, "Geometric Mean");
             return int256(getWeightedGeometricMean(reserveInStablecoin_0, reserveInStablecoin_1));
         } else {
             //Calculate the arithmetic mean
