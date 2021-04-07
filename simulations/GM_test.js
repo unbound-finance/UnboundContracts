@@ -42,7 +42,7 @@ contract("Scenario", function (_accounts) {
   const CREnd = 20000;
   const CRNorm = 10000;
   const blockLimit = 10;
-  const ethPrice = "100000000"; // this should trigger GM. Expected price is 1000. This is 850
+  const ethPrice = "100000000000"; // this should trigger GM. Expected price is 1000. This is 850
   const daiPrice = "5000000000000000000";
 
   let und;
@@ -170,8 +170,11 @@ contract("Scenario", function (_accounts) {
       // console.log("Price From LLC", priceFromLLC.toString());
 
       await pair.approve(lockContract.address, LPtokens);
-      const receipt = await lockContract.lockLPT("999999999999999000", "9999999999999990");
-
+      const receipt = await lockContract.lockLPT(LPtokens, 1);
+      // const testValue = await oracle.getTest();
+      // const testValue2 = await oracle.getTest2();
+      // console.log("Test: ", testValue.toString());
+      // console.log("Test2: ", testValue2.toString());
       const initialLPLocked = await pair.balanceOf(lockContract.address);
 
       const ownerBal = await und.balanceOf(owner);
@@ -218,7 +221,7 @@ contract("Scenario", function (_accounts) {
       // console.log("totalSupply", totalSupply.toString());
       console.log("LP totalSupply", totalLPTokens);
       console.log(`LP Tokens Locked: ${parseInt(initialLPLocked.div(decimal18)) / 1000}`);
-      console.log(`UND Minted: ${ownerBal.toString()}`);
+      console.log(`UND Minted: ${parseInt(ownerBal.div(decimal18)) / 1000}`);
 
       const toUnlock = (await und.balanceOf(owner)).div(new BN("20"));
       const beingUnlocked = parseFloat(toUnlock.div(decimal18));

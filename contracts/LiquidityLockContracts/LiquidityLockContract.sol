@@ -170,7 +170,7 @@ contract LiquidityLockContract is Pausable {
 
     // Requires approval first (permit excluded for simplicity)
     function lockLPT(uint256 LPTAmt, uint256 minTokenAmount) public whenNotPaused {
-        uint256 LPTValueInDai = LPTAmt.mul(uint256(oracle.latestAnswer())).div(base);
+        uint256 LPTValueInDai = LPTAmt.mul(uint256(oracle.latestAnswer()));
 
         // transfer LPT to the address
         transferLPT(LPTAmt);
@@ -222,8 +222,11 @@ contract LiquidityLockContract is Pausable {
         emit UnlockLPT(LPTokenToReturn, msg.sender);
     }
 
-    function getLPTokensToReturn(uint256 _currentLoan, uint256 _uTokenAmt) public view returns (uint256 _LPTokenToReturn) {
+    
+
+    function getLPTokensToReturn(uint256 _currentLoan, uint256 _uTokenAmt) public  returns (uint256 _LPTokenToReturn) {
         uint256 valueOfSingleLPT = uint256(oracle.latestAnswer()).div(base);
+        
         // // get current CR Ratio
         uint256 CRNow = (valueOfSingleLPT.mul(_tokensLocked[msg.sender])).mul(1000).div(_currentLoan);
         

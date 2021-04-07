@@ -77,6 +77,15 @@ contract UniswapV2PriceProvider {
         owner = msg.sender;
     }
 
+    // uint256 test;
+    // uint256 test2;
+    // function getTest() external view returns(uint256) {
+    //     return test;
+    // }
+    // function getTest2() external view returns(uint256) {
+    //     return test2;
+    // }
+
     // Returns square root using Babylon method
     function sqrt(uint256 y) internal pure returns (uint256 z) {
         if (y > 3) {
@@ -104,6 +113,7 @@ contract UniswapV2PriceProvider {
         uint256 input = _reserveInStablecoin_0.mul(_reserveInStablecoin_1);
         // uint256 sqrt =
         // return sqrt.mul(2 * base).div(getTotalSupplyAtWithdrawal());
+        // test = sqrt(input).mul(uint256(2)).div(getTotalSupplyAtWithdrawal());
         return sqrt(input).mul(uint256(2)).div(getTotalSupplyAtWithdrawal());
         // return uint256(1000000000000000000);
     }
@@ -118,7 +128,7 @@ contract UniswapV2PriceProvider {
         view
         returns (uint256)
     {
-        uint256 totalUSD = _reserveInStablecoin_0 + _reserveInStablecoin_1;
+        uint256 totalUSD = _reserveInStablecoin_0.add(_reserveInStablecoin_1);
         return totalUSD.div(getTotalSupplyAtWithdrawal());
     }
 
@@ -151,8 +161,8 @@ contract UniswapV2PriceProvider {
      * @param _decimals Number of decimals from which we want to normalise
      */
     function normalise(uint256 _value, uint256 _decimals) internal view returns (uint256) {
-        uint256 normalised;
-        if (_decimals <= 18) {
+        uint256 normalised = _value;
+        if (_decimals < 18) {
             uint256 missingDecimals = uint256(18).sub(_decimals);
             normalised = uint256(_value).mul(10**(missingDecimals));
         } else if (_decimals > 18) {
@@ -204,7 +214,7 @@ contract UniswapV2PriceProvider {
         require(chainlinkPrice > 0, "ERR_NO_ORACLE_PRICE");
 
         uint256 reservePrice = normalise(reserve, decimals[index]);
-        return uint256(reservePrice).mul(chainlinkPrice);
+        return uint256(reservePrice).mul(chainlinkPrice).div(base);
     }
 
     /**
@@ -245,8 +255,8 @@ contract UniswapV2PriceProvider {
             return int256(getWeightedGeometricMean(reserveInStablecoin_0, reserveInStablecoin_1));
         } else {
             //Calculate the arithmetic mean
-            // return int256(getArithmeticMean(reserveInStablecoin_0, reserveInStablecoin_1));
-            return int256(getWeightedGeometricMean(reserveInStablecoin_0, reserveInStablecoin_1));
+            return int256(getArithmeticMean(reserveInStablecoin_0, reserveInStablecoin_1));
+            // return int256(getWeightedGeometricMean(reserveInStablecoin_0, reserveInStablecoin_1));
         }
     }
 
