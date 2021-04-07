@@ -170,7 +170,7 @@ contract LiquidityLockContract is Pausable {
 
     // Requires approval first (permit excluded for simplicity)
     function lockLPT(uint256 LPTAmt, uint256 minTokenAmount) public whenNotPaused {
-        uint256 LPTValueInDai = LPTAmt.mul(uint256(oracle.latestAnswer()));
+        uint256 LPTValueInDai = LPTAmt.mul(uint256(oracle.latestAnswer())).div(base);
 
         // transfer LPT to the address
         transferLPT(LPTAmt);

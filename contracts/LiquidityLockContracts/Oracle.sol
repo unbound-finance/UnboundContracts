@@ -114,7 +114,7 @@ contract UniswapV2PriceProvider {
         // uint256 sqrt =
         // return sqrt.mul(2 * base).div(getTotalSupplyAtWithdrawal());
         // test = sqrt(input).mul(uint256(2)).div(getTotalSupplyAtWithdrawal());
-        return sqrt(input).mul(uint256(2)).div(getTotalSupplyAtWithdrawal());
+        return sqrt(input).mul(uint256(2)).mul(base).div(getTotalSupplyAtWithdrawal());
         // return uint256(1000000000000000000);
     }
 
@@ -129,7 +129,7 @@ contract UniswapV2PriceProvider {
         returns (uint256)
     {
         uint256 totalUSD = _reserveInStablecoin_0.add(_reserveInStablecoin_1);
-        return totalUSD.div(getTotalSupplyAtWithdrawal());
+        return totalUSD.mul(base).div(getTotalSupplyAtWithdrawal());
     }
 
     /**
