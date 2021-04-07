@@ -242,11 +242,11 @@ contract UniswapV2PriceProvider {
         uint256 reserveInStablecoin_1 = getReserveValue(1, reserve_1);
         if (hasPriceDifference(reserveInStablecoin_0, reserveInStablecoin_1)) {
             //Calculate the weighted geometric mean
-            require(0 != 0, "Geometric Mean");
             return int256(getWeightedGeometricMean(reserveInStablecoin_0, reserveInStablecoin_1));
         } else {
             //Calculate the arithmetic mean
-            return int256(getArithmeticMean(reserveInStablecoin_0, reserveInStablecoin_1));
+            // return int256(getArithmeticMean(reserveInStablecoin_0, reserveInStablecoin_1));
+            return int256(getWeightedGeometricMean(reserveInStablecoin_0, reserveInStablecoin_1));
         }
     }
 

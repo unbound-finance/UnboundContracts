@@ -32,7 +32,7 @@ contract("Scenario", function (_accounts) {
   const safu = _accounts[1];
   const devFund = _accounts[2];
   const user = _accounts[3];
-  const daiAmount = new BN("1000000000000000000");
+  const daiAmount = new BN("2000000000000000000000");
   const ethAmount = new BN("1000000000000000000");
   const rateBalance = 10 ** 6;
   const loanRate = 500000;
