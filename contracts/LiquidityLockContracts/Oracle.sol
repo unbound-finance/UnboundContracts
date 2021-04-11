@@ -192,7 +192,9 @@ contract UniswapV2PriceProvider {
         if (feeds.length == 2) {
             uint256 price0 = getChainlinkPrice(feeds[0]);
             uint256 price1 = getChainlinkPrice(feeds[1]);
+            
             price = price0.mul(price1).div(base);
+            
         } else {
             price = getChainlinkPrice(feeds[0]);
         }

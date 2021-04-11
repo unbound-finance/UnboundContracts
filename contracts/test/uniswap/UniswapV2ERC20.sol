@@ -14,6 +14,15 @@ abstract contract UniswapV2ERC20 is IUniswapV2ERC20 {
     mapping(address => uint) public override balanceOf;
     mapping(address => mapping(address => uint)) public override allowance;
 
+    // uint256 test;
+    // uint256 test2;
+    // function getTest() external view returns (uint256) {
+    //     return test;
+    // }
+    // function getTest2() external view returns (uint256) {
+    //     return test2;
+    // }
+
     // bytes32 public override DOMAIN_SEPARATOR;
     // // keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
     // bytes32 public override constant PERMIT_TYPEHASH = 0x6e71edae12b1b97f4d1f60370fef10105fa2faae0126114a169c64845d6126c9;
@@ -76,6 +85,7 @@ abstract contract UniswapV2ERC20 is IUniswapV2ERC20 {
             allowance[from][msg.sender] = allowance[from][msg.sender].sub(value);
         }
         _transfer(from, to, value);
+        
         return true;
     }
 
