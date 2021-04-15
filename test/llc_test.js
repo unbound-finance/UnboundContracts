@@ -102,7 +102,7 @@ contract("LLC", function (_accounts) {
     });
 
     it("cannot lock by block limit", async () => {
-      await expectRevert(lockContract.lockLPT2(10, 1), "LLC: user must wait");
+      await expectRevert(lockContract.lockLPT(10, 1), "LLC: user must wait");
     });
 
     it("cannot unlock by block limit", async () => {

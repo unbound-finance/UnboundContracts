@@ -120,11 +120,9 @@ contract("Scenario(multi price feed)", function (_accounts) {
       const LPtokens = parseInt(LPTbal / 4); // Amount of token to be lock
 
       const reserves = await pair.getReserves();
-      
-
+    
       const ethPriceNormalized = (new BN(ethPrice.toString())).mul(new BN("10000000000"));
       const priceOfBat = ethPriceNormalized.mul(new BN(batPrice.toString())).div(base);
-      
       
       let batReserve;
       let batValue;
@@ -136,9 +134,6 @@ contract("Scenario(multi price feed)", function (_accounts) {
         batReserve = new BN(reserves._reserve0.toString());
         batValue = batReserve.mul(priceOfBat).div(base);
       }
-
-      // console.log("batValue: ", batValue.toString());
-      // console.log("daiValue: ", daiAmount);
 
       const totalUSD = (new BN(daiAmount.toString())).add(batValue);
       const totalLPTokens = await pair.totalSupply(); // Total token amount of Liq pool
@@ -300,27 +295,55 @@ contract("Scenario(multi price feed)", function (_accounts) {
       const test2 = await lockContract.getTest2();
       const test3 = await lockContract.getTest3();
 
-      console.log(test.toString());
-      console.log(test2.toString());
-      console.log(test3.toString());
+      // console.log(test.toString());
+      // console.log(test2.toString());
+      // console.log(test3.toString());
       // await expectRevert(lockContract.unlockLPT(dummyNumber), "stableCoin not stable");
       await priceFeedDai.setPrice(daiPrice);
     });
 
     it("Unlock LPT", async () => {
-      const totalSupply = await pair.totalSupply();
-      const priceLPT = (daiAmount * 2) / parseInt(totalSupply);
+      const reserves = await pair.getReserves();
+    
+      const ethPriceNormalized = (new BN(ethPrice.toString())).mul(new BN("10000000000"));
+      const priceOfBat = ethPriceNormalized.mul(new BN(batPrice.toString())).div(base);
+      
+      let batReserve;
+      let batValue;
+
+      console.log(reserves._reserve0.toString());
+      console.log(reserves._reserve1.toString());
+
+      if (reserves._reserve0.toString() === daiAmount.toString()) {
+        batReserve = new BN(reserves._reserve1.toString());
+        batValue = batReserve.mul(priceOfBat).div(base);
+        
+      } else {
+        batReserve = new BN(reserves._reserve0.toString());
+        batValue = batReserve.mul(priceOfBat).div(base);
+      }
+
+      // console.log("batValue: ", batValue.toString());
+      // console.log("daiValue: ", daiAmount);
+
+      const totalUSD = (new BN(daiAmount.toString())).add(batValue);
+      const totalLPTokens = await pair.totalSupply(); // Total token amount of Liq pool
+      const priceOfLp = totalUSD.mul(base).div(totalLPTokens)
+      
+
       const lockedLPT = parseInt(await lockContract.tokensLocked(owner));
       const mintedUND = parseInt(await und.checkLoan(owner, lockContract.address));
+
+      
       const LPtokens = parseInt(await pair.balanceOf(owner));
       const tokenBalBefore = await und.balanceOf(owner);
       const burnAmountUND = parseInt(mintedUND * 0.4);
 
-      // const unlockAmountLPT = parseInt(lockedLPT - ((mintedUND - burnAmountUND) * CREnd) / CRNorm / priceLPT);
-
       const unlockAmountLPT = parseInt((lockedLPT * burnAmountUND) / mintedUND);
       // burn
+      await helper.advanceBlockNumber(blockLimit);
       const receipt = await lockContract.unlockLPT(burnAmountUND);
+
       expectEvent(receipt, "UnlockLPT", {
         LPTAmt: unlockAmountLPT.toString(),
         user: owner,
@@ -349,21 +372,63 @@ contract("Scenario(multi price feed)", function (_accounts) {
       await lockContract.lockLPT(LPtokens, 0);
       const blockTemp = await web3.eth.getBlock("latest");
       lastBlock = blockTemp.number;
-      const beforeBalance = parseInt(await pair.balanceOf(owner));
+      const beforeBalance = await pair.balanceOf(owner);
+
+      // addition
+      const reserves = await pair.getReserves();
+    
+      const ethPriceNormalized = (new BN(ethPrice.toString())).mul(new BN("10000000000"));
+      const priceOfBat = ethPriceNormalized.mul(new BN(batPrice.toString())).div(base);
+      
+      let batReserve;
+      let batValue;
+
+      if (reserves._reserve0.toString() === daiAmount.toString()) {
+        batReserve = new BN(reserves._reserve1.toString());
+        batValue = batReserve.mul(priceOfBat).div(base);
+        
+      } else {
+        batReserve = new BN(reserves._reserve0.toString());
+        batValue = batReserve.mul(priceOfBat).div(base);
+      }
+
+      // console.log("batValue: ", batValue.toString());
+      // console.log("daiValue: ", daiAmount);
+
+      const totalUSD = (new BN(daiAmount.toString())).add(batValue);
+      const totalLPTokens = await pair.totalSupply(); // Total token amount of Liq pool
+      const priceOfLp = totalUSD.mul(base).div(totalLPTokens)
+
+      // console.log("price of LP: ", priceOfLp.toString());
+      // end Addition
+
       // Unlock
 
-      const totalSupply = await pair.totalSupply();
-      const priceLPT = (daiAmount * 2) / parseInt(totalSupply);
-      const lockedLPT = parseInt(await lockContract.tokensLocked(owner));
-      const mintedUND = parseInt(await und.checkLoan(owner, lockContract.address));
+      const lockedLPT = await lockContract.tokensLocked(owner);
+      const valueStart = priceOfLp.mul(lockedLPT);
+
+      const mintedUND = await und.checkLoan(owner, lockContract.address);
+      const burnAmountUND = mintedUND.div(new BN("5")).mul(new BN("2"));
+      const loanAfter = mintedUND.sub(burnAmountUND);
+      
+      const CREndBN = new BN(CREnd.toString());
+      const CRNormBN = new BN(CRNorm.toString());
+      const valueAfter = CREndBN.mul(loanAfter).div(CRNormBN);
+
+      const unlockAmountLPT = valueStart.sub(valueAfter).div(priceOfLp);
+      
       const tokenBalBefore = await und.balanceOf(owner);
-      const burnAmountUND = parseInt(mintedUND * 0.4);
+      
       // const unlockAmountLPT = parseInt((lockedLPT * burnAmountUND) / mintedUND);
-      const unlockAmountLPT = parseInt(lockedLPT - ((mintedUND - burnAmountUND) * CREnd) / CRNorm / priceLPT);
+      // const unlockAmountLPT = parseInt(lockedLPT - ((mintedUND - burnAmountUND) * CREnd) / CRNorm / priceOfLp);
 
       // burn
       await helper.advanceBlockNumber(blockLimit);
       const receipt = await lockContract.unlockLPT(burnAmountUND);
+
+      const test1 = await lockContract.getTest();
+      // console.log("Test: ", test1.toString());
+
       expectEvent(receipt, "UnlockLPT", {
         LPTAmt: unlockAmountLPT.toString(),
         user: owner,
@@ -374,10 +439,10 @@ contract("Scenario(multi price feed)", function (_accounts) {
       });
 
       const tokenBal = parseInt(await und.balanceOf(owner));
-      const balance = parseInt(await pair.balanceOf(owner));
+      const balance = await pair.balanceOf(owner);
 
       assert.equal(tokenBal, tokenBalBefore - burnAmountUND, "token amount incorrect");
-      assert.equal(balance, beforeBalance + unlockAmountLPT, "valuing incorrect");
+      assert.equal(balance.toString(), beforeBalance.add(unlockAmountLPT).toString(), "valuing incorrect");
     });
   });
 });

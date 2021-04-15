@@ -27,6 +27,20 @@ contract UniswapV2PriceProvider {
         _;
     }
 
+    uint256 test;
+    uint256 test2;
+    uint256 test3;
+    function getTest() external view returns (uint256) {
+        return test;
+    }
+    function getTest2() external view returns (uint256) {
+        return test2;
+    }
+    function getTest3() external view returns (uint256) {
+        return test3;
+    }
+
+
     /**
      * UniswapV2PriceProvider constructor.
      * @param _pair Uniswap V2 pair address.
@@ -206,7 +220,20 @@ contract UniswapV2PriceProvider {
      * @param index Token index.
      * @param reserve Token reserves.
      */
-    function getReserveValue(uint256 index, uint112 reserve) internal view returns (uint256) {
+    function getReserveValue(uint256 index, uint112 reserve) internal  view returns (uint256) {
+        uint256 chainlinkPrice;
+        if (isPeggedToUSD[index]) {
+            chainlinkPrice = base;
+        } else {
+            chainlinkPrice = uint256(getLatestPrice());
+        }
+        require(chainlinkPrice > 0, "ERR_NO_ORACLE_PRICE");
+        uint256 reservePrice = normalise(reserve, decimals[index]);
+        
+        return uint256(reservePrice).mul(chainlinkPrice).div(base);
+    }
+
+    function getReserveValue2(uint256 index, uint112 reserve) internal view returns (uint256) {
         uint256 chainlinkPrice;
         if (isPeggedToUSD[index]) {
             chainlinkPrice = base;
@@ -216,6 +243,7 @@ contract UniswapV2PriceProvider {
         require(chainlinkPrice > 0, "ERR_NO_ORACLE_PRICE");
 
         uint256 reservePrice = normalise(reserve, decimals[index]);
+        
         return uint256(reservePrice).mul(chainlinkPrice).div(base);
     }
 
@@ -251,7 +279,9 @@ contract UniswapV2PriceProvider {
         //Get token reserves in ethers
         (uint112 reserve_0, uint112 reserve_1, ) = pair.getReserves();
         uint256 reserveInStablecoin_0 = getReserveValue(0, reserve_0);
-        uint256 reserveInStablecoin_1 = getReserveValue(1, reserve_1);
+        uint256 reserveInStablecoin_1 = getReserveValue2(1, reserve_1);
+        
+        
         if (hasPriceDifference(reserveInStablecoin_0, reserveInStablecoin_1)) {
             //Calculate the weighted geometric mean
             return int256(getWeightedGeometricMean(reserveInStablecoin_0, reserveInStablecoin_1));
