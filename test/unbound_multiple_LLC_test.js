@@ -25,8 +25,6 @@ const testAggregatorEth = artifacts.require("TestAggregatorProxyEthUsd");
 const testAggregatorLink = artifacts.require("TestAggregatorProxyLinkUsd");
 const testAggregatorDai = artifacts.require("TestAggregatorProxyDaiUsd");
 
-const Oracle = artifacts.require("UniswapV2PriceProvider");
-
 contract("unboundSystem multiple LLC", function (_accounts) {
   // Initial settings
   const totalSupply = 0;
@@ -260,62 +258,13 @@ contract("unboundSystem multiple LLC", function (_accounts) {
     });
 
     it("UND burn - LinkDai", async () => {
-      const oracleAddr = await lockContractLink.getOracle();
-      const oracle = await Oracle.at(oracleAddr);
-
-      const reserves = await pairLinkDai.getReserves();
-    
-      const ethPriceNormalized = (new BN(linkPrice.toString())).mul(new BN("10000000000"));
-      
-      
-      let batReserve;
-      let batValue;
-
-      if (reserves._reserve0.toString() === daiAmount.toString()) {
-        batReserve = new BN(reserves._reserve1.toString());
-        batValue = batReserve.mul(ethPriceNormalized).div(base);
-        
-      } else {
-        batReserve = new BN(reserves._reserve0.toString());
-        batValue = batReserve.mul(ethPriceNormalized).div(base);
-      }
-
-      // console.log("batValue: ", batValue.toString());
-      // console.log("daiValue: ", daiAmount);
-
-      const totalUSD = (new BN(daiAmount.toString())).add(batValue);
-      const totalLPTokens = await pairLinkDai.totalSupply(); // Total token amount of Liq pool
-      const priceOfLp = totalUSD.mul(base).div(totalLPTokens)
-
-      // console.log("price of LP: ", priceOfLp.toString());
-      // end Addition
-
-      // Unlock
-
-      const lockedLPT = await lockContractLink.tokensLocked(owner);
-      const valueStart = priceOfLp.mul(lockedLPT);
-
-      const mintedUND = await und.checkLoan(owner, lockContractLink.address);
-      const burnAmountUND = mintedUND.div(new BN("2"));
-      const loanAfter = mintedUND.sub(burnAmountUND);
-      
-      const CREndBN = new BN(CREnd.toString());
-      const CRNormBN = new BN(CRNorm.toString());
-      const valueAfter = CREndBN.mul(loanAfter).div(CRNormBN);
-
-      const unlockAmountLPT = valueStart.sub(valueAfter).div(priceOfLp);
-      
-      const tokenBalBefore = await und.balanceOf(owner);
-
       const lptBalanceBefore = parseInt(await pairLinkDai.balanceOf(owner));
       const lockedTokenAmount = parseInt(await lockContractLink.tokensLocked(owner));
-      // const undBalanceBefore = parseInt(await und.balanceOf(owner));
-      // const mintedUND = parseInt(await und.checkLoan(owner, lockContractLink.address));
-      // const burnAmountUND = mintedUND / 2;
-      // const priceLPT = parseInt(await oracle.latestAnswer());
-      // console.log(priceLPT);
+      const undBalanceBefore = parseInt(await und.balanceOf(owner));
+      const mintedUND = parseInt(await und.checkLoan(owner, lockContractLink.address));
+      const burnAmountUND = mintedUND / 2;
       // const unlockAmountLPT = lockedTokenAmount - ((mintedUND - burnAmountUND) * CREnd) / CRNorm / priceLPT;
-      // const unlockAmountLPT = parseInt((lockedTokenAmount * burnAmountUND) / mintedUND);
+      const unlockAmountLPT = parseInt((lockedTokenAmount * burnAmountUND) / mintedUND);
 
       // burn
       await helper.advanceBlockNumber(blockLimit);
@@ -328,9 +277,9 @@ contract("unboundSystem multiple LLC", function (_accounts) {
       const lockedTokenAmountAfter = parseInt(await lockContractLink.tokensLocked(owner));
       const undBalanceAfter = parseInt(await und.balanceOf(owner));
 
-      assert.equal(lptBalanceAfter, lptBalanceBefore + parseInt(unlockAmountLPT), "pool balance incorrect");
-      assert.equal(lockedTokenAmountAfter, lockedTokenAmount - parseInt(unlockAmountLPT), "locked token incorrect");
-      assert.equal(undBalanceAfter, parseInt(tokenBalBefore) - parseInt(burnAmountUND), "owner balance incorrect");
+      assert.equal(lptBalanceAfter, lptBalanceBefore + unlockAmountLPT, "pool balance incorrect");
+      assert.equal(lockedTokenAmountAfter, lockedTokenAmount - unlockAmountLPT, "locked token incorrect");
+      assert.equal(undBalanceAfter, undBalanceBefore - burnAmountUND, "owner balance incorrect");
 
       console.log(`LLC-Eth.locked: ${await pairEthDai.balanceOf(lockContractEth.address)}`);
       console.log(`LLC-Link.locked: ${await pairLinkDai.balanceOf(lockContractLink.address)}`);

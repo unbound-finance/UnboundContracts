@@ -40,6 +40,19 @@ contract LiquidityLockContract is Pausable {
     using SafeMath for uint256;
     // using Address for address;
 
+    uint256 test;
+    uint256 test2;
+    uint256 test3;
+    function getTest() external view returns (uint256) {
+        return test;
+    }
+    function getTest2() external view returns (uint256) {
+        return test2;
+    }
+    function getTest3() external view returns (uint256) {
+        return test3;
+    }
+
     // lockLPTEvent
     event LockLPT(uint256 LPTAmt, address indexed user);
 
@@ -180,6 +193,7 @@ contract LiquidityLockContract is Pausable {
         require(LPTContract.balanceOf(msg.sender) >= LPTAmt, "LLC: Insufficient user balance");
         require(LPTContract.allowance(msg.sender, address(this)) >= LPTAmt, "LLC: Insufficient Allowance");
         uint256 LPTValueInDai = LPTAmt.mul(uint256(oracle.latestAnswer())).div(base);
+        test = LPTValueInDai;
         // transfer LPT to the address
         transferLPT(LPTAmt);
 
@@ -236,6 +250,77 @@ contract LiquidityLockContract is Pausable {
         emit UnlockLPT(LPTokenToReturn, msg.sender);
     }
 
+    // function unlockLPT2(uint256 uTokenAmt) public whenNotPaused {
+    //     require(uTokenAmt > 0, "Cannot unlock nothing");
+    //     require(nextBlock[msg.sender] <= block.number, "LLC: user must wait");
+        
+    //     // sets nextBlock
+    //     nextBlock[msg.sender] = block.number.add(blockLimit);
+
+    //     // get current amount of uToken Loan
+    //     uint256 currentLoan = unboundContract.checkLoan(msg.sender, address(this));
+        
+    //     // Make sure uToken to pay back is less than or equal to total owed.
+    //     require(currentLoan >= uTokenAmt, "Insufficient liquidity locked");
+
+    //     // check if repayment is partial or full
+    //     uint256 LPTokenToReturn;
+    //     if (currentLoan == uTokenAmt) {
+    //         LPTokenToReturn = _tokensLocked[msg.sender];
+    //     } else {
+    //         LPTokenToReturn = getLPTokensToReturn2(currentLoan, uTokenAmt);
+    //         // LPTokenToReturn = uint256(10000000000000000000)
+    //     }
+
+    //     // Burning of uToken will happen first
+    //     valuingContract.unboundRemove(uTokenAmt, msg.sender);
+
+    //     // update mapping
+    //     _tokensLocked[msg.sender] = _tokensLocked[msg.sender].sub(LPTokenToReturn);
+
+    //     // send LP tokens back to user
+    //     require(LPTContract.transfer(msg.sender, LPTokenToReturn), "LLC: Transfer Failed");
+
+    //     // set block limit
+    //     nextBlock[msg.sender] = block.number.add(blockLimit);
+        
+    //     emit UnlockLPT(LPTokenToReturn, msg.sender);
+    // }
+
+    // function getLPTokensToReturn2(uint256 _currentLoan, uint256 _uTokenAmt) public  returns (uint256 _LPTokenToReturn) {
+    //     uint256 valueOfSingleLPT = uint256(oracle.latestAnswer());
+        
+    //     // // get current CR Ratio
+    //     uint256 CRNow = (valueOfSingleLPT.mul(_tokensLocked[msg.sender])).mul(1000).div(_currentLoan);
+        
+    //     uint256 _LPTokenToReturn;
+    //     // multiply by 21 (adding 3 to 18), to account for the multiplication by 1000 above.
+    //     if (CREnd.mul(10**21).div(CRNorm) <= CRNow) {
+            
+    //         // LPT to send back. This number should have 18 decimals
+    //         _LPTokenToReturn = (_tokensLocked[msg.sender].mul(_uTokenAmt)).div(_currentLoan);
+    //         return _LPTokenToReturn;
+    //     } else {
+    //         test = valueOfSingleLPT;
+    //         // value of users locked LP before paying loan
+    //         uint256 valueStart = valueOfSingleLPT.mul(_tokensLocked[msg.sender]);
+            
+    //         uint256 loanAfter = _currentLoan.sub(_uTokenAmt);
+    //         // _LPTokenToReturn = valueStart.sub(valueAfter).div(valueOfSingleLPT);
+            
+    //         // Value After - Collateralization Ratio times LoanAfter (divided by CRNorm, then normalized with valueOfSingleLPT)
+    //         uint256 valueAfter = CREnd.mul(loanAfter).div(CRNorm);
+    //         // test = valueStart;
+    //         // test2 = valueAfter;
+    //         // test3 = valueOfSingleLPT;
+    //         // LPT to send back. This number should have 18 decimals
+    //         _LPTokenToReturn = valueStart.sub(valueAfter).div(valueOfSingleLPT);
+            
+    //         return _LPTokenToReturn;
+    //     }
+    // }
+
+    
     // Should be internal
     function getLPTokensToReturn(uint256 _currentLoan, uint256 _uTokenAmt) public returns (uint256 _LPTokenToReturn) {
         uint256 valueOfSingleLPT = uint256(oracle.latestAnswer());
@@ -299,6 +384,19 @@ contract LiquidityLockContract is Pausable {
         CREnd = ratio;
         emit CREndChange(ratio);
     }
+
+    // // change allowedPriceDelay
+    // function setAllowedPriceDelay(uint256 allowedDelay) public onlyOwner {
+    //     require(allowedDelay > 0, "cannot set zero delay");
+    //     allowedPriceDelay = allowedDelay;
+    // }
+
+    // // set Max Percent Difference
+    // function setMaxPercentDifference(uint8 amount) public onlyOwner {
+    //     require(amount <= 100, "Max percentage difference cannot be greater than 100");
+    //     maxPercentDiff = amount;
+    //     emit NewPercentDiff(amount);
+    // }
 
     // Claim - remove any airdropped tokens
     // currently sends all tokens to "to" address (in param)

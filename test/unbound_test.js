@@ -39,8 +39,6 @@ contract("UND", function (_accounts) {
   const ethPrice = 128093000000;
   const daiPrice = 100275167;
 
-  const base = new BN("1000000000000000000");
-
   let und;
   let valueContract;
   let lockContract;
@@ -201,7 +199,7 @@ contract("UND", function (_accounts) {
         lockContract.lockLPT(lockAmount, anyNumber, {
           from: user,
         }),
-        "LLC: Insufficient user balance"
+        "LLC: Insufficient LPTs"
       );
     });
 
@@ -214,49 +212,16 @@ contract("UND", function (_accounts) {
     });
 
     it("fails to lockLPT() with minTokenAmount which is more than minting amount", async () => {
-      const LPTbal = await pair.balanceOf(owner);
-      const LPtokens = LPTbal.div(new BN("4")); // Amount of token to be lock
-
-      const reserves = await pair.getReserves();
-    
-      const ethPriceNormalized = (new BN(ethPrice.toString())).mul(new BN("10000000000"));
-      
-      let ethReserve;
-      let ethValue;
-      if (reserves._reserve0.toString() === daiAmount.toString()) {
-        ethReserve = new BN(reserves._reserve1.toString());
-        ethValue = ethReserve.mul(ethPriceNormalized).div(base);
-        
-      } else {
-        ethReserve = new BN(reserves._reserve0.toString());
-        ethValue = ethReserve.mul(ethPriceNormalized).div(base);
-      }
-      
-
-      const totalUSD = (new BN((daiAmount * 100000).toString())).add(ethValue);
-      
-
-      const totalLPTokens = await pair.totalSupply.call(); // Total token amount of Liq pool
-      const priceOfLp = totalUSD.mul(base).div(totalLPTokens)
-
-      // const oraclePrice = await oracle.latestAnswer();
-      // const LPTValueInDai = LPtokens.mul(oraclePrice).div(base);
-      const LPTValueInDai = (priceOfLp.mul(LPtokens)).div(base);
-
-      const loanRateBN = new BN(loanRate.toString());
-      const feeRateBN = new BN(feeRate.toString());
-      const rateBalanceBN = new BN(rateBalance.toString());
-      const loanAmount = LPTValueInDai.mul(loanRateBN).div(rateBalanceBN); // Loan amount that user can get
-      
-      const feeAmount = (loanAmount.mul(feeRateBN).div(rateBalanceBN));
-      // const totalUSD = daiAmount * 2; // Total value in Liquidity pool
-      // const totalLPTokens = parseInt(await pair.totalSupply()); // Total token amount of Liq pool
-      // const LPTValueInDai = parseInt((totalUSD * LPtokens) / totalLPTokens); //% value of Liq pool in Dai
-      // const loanAmount = parseInt((LPTValueInDai * loanRate) / rateBalance); // Loan amount that user can get
-      // const feeAmount = parseInt((loanAmount * feeRate) / rateBalance); // Amount of fee
+      const LPTbal = parseInt(await pair.balanceOf(owner));
+      const LPtokens = parseInt(LPTbal / 4); // Amount of token to be lock
+      const totalUSD = daiAmount * 2; // Total value in Liquidity pool
+      const totalLPTokens = parseInt(await pair.totalSupply()); // Total token amount of Liq pool
+      const LPTValueInDai = parseInt((totalUSD * LPtokens) / totalLPTokens); //% value of Liq pool in Dai
+      const loanAmount = parseInt((LPTValueInDai * loanRate) / rateBalance); // Loan amount that user can get
+      const feeAmount = parseInt((loanAmount * feeRate) / rateBalance); // Amount of fee
 
       await pair.approve(lockContract.address, LPtokens);
-      await expectRevert(lockContract.lockLPT(LPtokens, loanAmount.sub(feeAmount).add(new BN("1"))), "Valuing: minting less tokens than minimum amount");
+      await expectRevert(lockContract.lockLPT(LPtokens, loanAmount - feeAmount + 1), "Valuing: minting less tokens than minimum amount");
     });
 
     it("fails to mint zero address", async () => {
