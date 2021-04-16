@@ -203,13 +203,6 @@ contract("unboundSystem decimals13", function (_accounts) {
       await pair.approve(lockContract.address, LPtokens);
       await lockContract.lockLPT(LPtokens, 0); // loanAmount - feeAmount
       
-      const test = await lockContract.getTest();
-      // const test2 = await oracle.getTest2();
-      // console.log("test1: ", test.toString());
-      console.log("test: ", test.toString());
-
-      // console.log("reserve0: ", reserves._reserve0.toString());
-      // console.log("reserve1: ", reserves._reserve1.toString())
 
       const ownerBal = await unboundDai.balanceOf.call(owner);
       const stakingBal = parseInt(await unboundDai.balanceOf.call(stakePair.address));
@@ -464,8 +457,6 @@ contract("unboundSystem decimals13", function (_accounts) {
       console.log(LPtokens);
       await pair.approve(lockContract.address, LPtokens);
       await lockContract.lockLPT(LPtokens, 0); // loanAmount - feeAmount
-      const test = await lockContract.getTest();
-      console.log(test.toString());
     })
   });
 });

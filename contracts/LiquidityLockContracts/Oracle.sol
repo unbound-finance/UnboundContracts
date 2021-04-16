@@ -27,20 +27,6 @@ contract UniswapV2PriceProvider {
         _;
     }
 
-    uint256 test;
-    uint256 test2;
-    uint256 test3;
-    function getTest() external view returns (uint256) {
-        return test;
-    }
-    function getTest2() external view returns (uint256) {
-        return test2;
-    }
-    function getTest3() external view returns (uint256) {
-        return test3;
-    }
-
-
     /**
      * UniswapV2PriceProvider constructor.
      * @param _pair Uniswap V2 pair address.
@@ -91,15 +77,6 @@ contract UniswapV2PriceProvider {
         owner = msg.sender;
     }
 
-    // uint256 test;
-    // uint256 test2;
-    // function getTest() external view returns(uint256) {
-    //     return test;
-    // }
-    // function getTest2() external view returns(uint256) {
-    //     return test2;
-    // }
-
     // Returns square root using Babylon method
     function sqrt(uint256 y) internal pure returns (uint256 z) {
         if (y > 3) {
@@ -125,11 +102,9 @@ contract UniswapV2PriceProvider {
         returns (uint256)
     {
         uint256 input = _reserveInStablecoin_0.mul(_reserveInStablecoin_1);
-        // uint256 sqrt =
-        // return sqrt.mul(2 * base).div(getTotalSupplyAtWithdrawal());
-        // test = sqrt(input).mul(uint256(2)).div(getTotalSupplyAtWithdrawal());
+        
         return sqrt(input).mul(uint256(2)).mul(base).div(getTotalSupplyAtWithdrawal());
-        // return uint256(1000000000000000000);
+       
     }
 
     /**
@@ -233,19 +208,6 @@ contract UniswapV2PriceProvider {
         return uint256(reservePrice).mul(chainlinkPrice).div(base);
     }
 
-    function getReserveValue2(uint256 index, uint112 reserve) internal view returns (uint256) {
-        uint256 chainlinkPrice;
-        if (isPeggedToUSD[index]) {
-            chainlinkPrice = base;
-        } else {
-            chainlinkPrice = uint256(getLatestPrice());
-        }
-        require(chainlinkPrice > 0, "ERR_NO_ORACLE_PRICE");
-
-        uint256 reservePrice = normalise(reserve, decimals[index]);
-        
-        return uint256(reservePrice).mul(chainlinkPrice).div(base);
-    }
 
     /**
      * Returns true if there is price difference
@@ -279,8 +241,7 @@ contract UniswapV2PriceProvider {
         //Get token reserves in ethers
         (uint112 reserve_0, uint112 reserve_1, ) = pair.getReserves();
         uint256 reserveInStablecoin_0 = getReserveValue(0, reserve_0);
-        uint256 reserveInStablecoin_1 = getReserveValue2(1, reserve_1);
-        
+        uint256 reserveInStablecoin_1 = getReserveValue(1, reserve_1);
         
         if (hasPriceDifference(reserveInStablecoin_0, reserveInStablecoin_1)) {
             //Calculate the weighted geometric mean

@@ -291,13 +291,9 @@ contract("Scenario(multi price feed)", function (_accounts) {
       await helper.advanceBlockNumber(blockLimit);
       await lockContract.unlockLPT(dummyNumber);
 
-      const test = await lockContract.getTest();
-      const test2 = await lockContract.getTest2();
-      const test3 = await lockContract.getTest3();
+      
 
-      // console.log(test.toString());
-      // console.log(test2.toString());
-      // console.log(test3.toString());
+      
       // await expectRevert(lockContract.unlockLPT(dummyNumber), "stableCoin not stable");
       await priceFeedDai.setPrice(daiPrice);
     });
@@ -425,9 +421,6 @@ contract("Scenario(multi price feed)", function (_accounts) {
       // burn
       await helper.advanceBlockNumber(blockLimit);
       const receipt = await lockContract.unlockLPT(burnAmountUND);
-
-      const test1 = await lockContract.getTest();
-      // console.log("Test: ", test1.toString());
 
       expectEvent(receipt, "UnlockLPT", {
         LPTAmt: unlockAmountLPT.toString(),
