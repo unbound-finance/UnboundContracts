@@ -127,6 +127,7 @@ contract("Scenario", function (_accounts) {
       });
       expectEvent.inTransaction(receipt.tx, und, "Mint", {
         user: owner,
+        LLCAddr: lockContract.address,
         newMint: loanAmount.toString(),
       });
 
@@ -160,6 +161,7 @@ contract("Scenario", function (_accounts) {
       const receipt = await lockContract.lockLPT(LPtokens, loanAmount - feeAmount);
       expectEvent.inTransaction(receipt.tx, und, "Mint", {
         user: owner,
+        LLCAddr: lockContract.address,
         newMint: loanAmount.toString(),
       });
 
@@ -249,6 +251,7 @@ contract("Scenario", function (_accounts) {
       });
       expectEvent.inTransaction(receipt.tx, und, "Burn", {
         user: owner,
+        LLCAddr: lockContract.address,
         burned: burnAmountUND.toString(),
       });
 
@@ -291,6 +294,7 @@ contract("Scenario", function (_accounts) {
       });
       expectEvent.inTransaction(receipt.tx, und, "Burn", {
         user: owner,
+        LLCAddr: lockContract.address,
         burned: burnAmountUND.toString(),
       });
 

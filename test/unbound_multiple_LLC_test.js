@@ -135,6 +135,7 @@ contract("unboundSystem multiple LLC", function (_accounts) {
       const receipt = await lockContractEth.lockLPT(LPtokens, loanAmount - feeAmount);
       expectEvent.inTransaction(receipt.tx, und, "Mint", {
         user: owner,
+        LLCAddr: lockContractEth.address,
         newMint: loanAmount.toString(),
       });
 
@@ -168,6 +169,7 @@ contract("unboundSystem multiple LLC", function (_accounts) {
       const receipt = await lockContractLink.lockLPT(LPtokens, loanAmount - feeAmount);
       expectEvent.inTransaction(receipt.tx, und, "Mint", {
         user: owner,
+        LLCAddr: lockContractLink.address,
         newMint: loanAmount.toString(),
       });
 
@@ -210,6 +212,7 @@ contract("unboundSystem multiple LLC", function (_accounts) {
       const receipt = await lockContractEth.unlockLPT(mintedUND);
       expectEvent.inTransaction(receipt.tx, und, "Burn", {
         user: owner,
+        LLCAddr: lockContractEth.address,
         burned: mintedUND.toString(),
       });
 
@@ -248,6 +251,7 @@ contract("unboundSystem multiple LLC", function (_accounts) {
       const receipt = await lockContractLink.unlockLPT(burnAmountUND);
       expectEvent.inTransaction(receipt.tx, und, "Burn", {
         user: owner,
+        LLCAddr: lockContractLink.address,
         burned: burnAmountUND.toString(),
       });
       const lptBalanceAfter = parseInt(await pairLinkDai.balanceOf(owner));
