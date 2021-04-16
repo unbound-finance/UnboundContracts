@@ -221,6 +221,9 @@ contract("unboundSystem decimals13", function (_accounts) {
       console.log("fee: ", feeAmount.toString())
       console.log("storedFee", storedFee);
 
+      const beforeStoredFee = parseInt(await unboundDai.storedFee.call());
+      assert.equal(beforeStoredFee, storedFee, "incorrect before stored fee");
+
       let tokenBal0 = await unboundDai.checkLoan.call(owner, lockContract.address);
 
       assert.equal(tokenBal0.toString(), loanAmount.toString(), "loan amount incorrect");
@@ -230,22 +233,58 @@ contract("unboundSystem decimals13", function (_accounts) {
       let LPTbal = await pair.balanceOf.call(owner);
       let LPtokens = parseInt(LPTbal.words[0] / 3);
 
-      const totalUSD = daiAmount * 2; // Total value in Liquidity pool
-      const totalLPTokens = parseInt(await pair.totalSupply.call()); // Total token amount of Liq pool
-      const LPTValueInDai = parseInt(((totalUSD * LPtokens) / totalLPTokens) * (decimal / stablecoinDecimal)); //% value of Liq pool in Dai
-      const loanAmount = parseInt((LPTValueInDai * loanRate) / rateBalance); // Loan amount that user can get
-      const feeAmount = parseInt((loanAmount * feeRate) / rateBalance); // Amount of fee
+      const reserves = await pair.getReserves();
+    
+      const ethPriceNormalized = (new BN(ethPrice.toString())).mul(new BN("10000000000"));
+      
+      let ethReserve;
+      let ethValue;
+      if (reserves._reserve0.toString() === daiAmount.toString()) {
+        ethReserve = new BN(reserves._reserve1.toString());
+        ethValue = ethReserve.mul(ethPriceNormalized).div(base);
+        
+      } else {
+        ethReserve = new BN(reserves._reserve0.toString());
+        ethValue = ethReserve.mul(ethPriceNormalized).div(base);
+      }
+      
+
+      const totalUSD = (new BN((daiAmount * 100000).toString())).add(ethValue);
+      
+
+      const totalLPTokens = await pair.totalSupply.call(); // Total token amount of Liq pool
+      const priceOfLp = totalUSD.mul(base).div(totalLPTokens)
+
+      // const oraclePrice = await oracle.latestAnswer();
+      // const LPTValueInDai = LPtokens.mul(oraclePrice).div(base);
+      const LPTValueInDai = (priceOfLp.mul(new BN(LPtokens.toString()))).div(base);
+
+      const loanRateBN = new BN(loanRate.toString());
+      const feeRateBN = new BN(feeRate.toString());
+      const rateBalanceBN = new BN(rateBalance.toString());
+      const loanAmount = LPTValueInDai.mul(loanRateBN).div(rateBalanceBN); // Loan amount that user can get
+      
+      const feeAmount = (loanAmount.mul(feeRateBN).div(rateBalanceBN)); // Amount of fee
+
+      // this is old calculation which still seems to work. Will keep for now, but feeAmount is not correct.
+      // const totalUSD = daiAmount * 2; // Total value in Liquidity pool
+      // const totalLPTokens = parseInt(await pair.totalSupply.call()); // Total token amount of Liq pool
+      // const LPTValueInDai = parseInt(((totalUSD * LPtokens) / totalLPTokens) * (decimal / stablecoinDecimal)); //% value of Liq pool in Dai
+      // const loanAmount = parseInt((LPTValueInDai * loanRate) / rateBalance); // Loan amount that user can get
+      // const feeAmount = parseInt((loanAmount * feeRate) / rateBalance); // Amount of fee
       const stakingAmount = 0;
 
       // second mint
       await helper.advanceBlockNumber(blockLimit);
       await pair.approve(lockContract.address, LPtokens);
-      await lockContract.lockLPT(LPtokens, loanAmount - feeAmount);
+      await lockContract.lockLPT(LPtokens.toString(), loanAmount.sub(feeAmount).toString());
       let newBal = await pair.balanceOf.call(owner);
 
-      assert.equal(newBal, LPTbal - LPtokens, "valuing incorrect");
+      assert.equal(newBal.toString(), LPTbal.sub(new BN(LPtokens.toString())).toString(), "valuing incorrect");
       console.log(`staking: ${stakingAmount}`);
-      storedFee += feeAmount - stakingAmount;
+
+      storedFee += parseInt(feeAmount) - stakingAmount;
+    
     });
 
     it("UND burn", async () => {
@@ -315,6 +354,7 @@ contract("unboundSystem decimals13", function (_accounts) {
     it("UND can distribute the fee to safu and devFund", async () => {
       const beforeStoredFee = parseInt(await unboundDai.storedFee.call());
       assert.equal(beforeStoredFee, storedFee, "incorrect before stored fee");
+      // storedFee = beforeStoredFee;
 
       const beforeSafuBal = parseInt(await unboundDai.balanceOf.call(safu));
       const beforeDevFundBal = parseInt(await unboundDai.balanceOf.call(devFund));

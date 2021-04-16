@@ -47,6 +47,7 @@ contract("unboundSystem multiple LLC", function (_accounts) {
   const ethPrice = 128093000000;
   const daiPrice = 100275167;
   const linkPrice = 2311033776;
+  const base = new BN("1000000000000000000");
 
   let und;
   let valueContract;
@@ -123,13 +124,13 @@ contract("unboundSystem multiple LLC", function (_accounts) {
   //=================
   describe("Check default functionality", () => {
     it("UND mint - EthDai first", async () => {
-      const lptBalanceBefore = parseInt(await pairEthDai.balanceOf(owner));
-      const LPtokens = parseInt(lptBalanceBefore / 4); // Amount of token to be lock
+      const lptBalanceBefore = await pairEthDai.balanceOf(owner);
+      const LPtokens = lptBalanceBefore.div(new BN("4")); // Amount of token to be lock
       const lockedTokenBefore = parseInt(await lockContractEth.tokensLocked(owner));
       const undBalanceBefore = parseInt(await und.balanceOf(owner));
       const stakingBalanceBefore = parseInt(await und.balanceOf(stakePair.address));
       const LPTbal = parseInt(await pairEthDai.balanceOf(owner));
-      const { loanAmount, feeAmount, stakingAmount } = await getAmounts(daiAmount, pairEthDai, LPtokens, rates.eth);
+      const { loanAmount, feeAmount, stakingAmount } = await getAmounts(daiAmount, pairEthDai, LPtokens, rates.eth, ethPrice);
 
       await pairEthDai.approve(lockContractEth.address, LPtokens);
       const receipt = await lockContractEth.lockLPT(LPtokens, loanAmount - feeAmount);
@@ -148,7 +149,7 @@ contract("unboundSystem multiple LLC", function (_accounts) {
       assert.equal(lockedTokenAfter, lockedTokenBefore + LPtokens, "locked token incorrect");
       assert.equal(undBalanceAfter, undBalanceBefore + loanAmount - feeAmount, "owner balance incorrect");
       assert.equal(stakingBalanceAfter, stakingBalanceBefore + stakingAmount, "staking balance incorrect");
-      assert.equal(loanedAmount, loanAmount, "loaned amount incorrect");
+      assert.equal(loanedAmount.toString(), loanAmount.toString(), "loaned amount incorrect");
       storedFee += feeAmount - stakingAmount;
 
       console.log(`LLC-Eth.locked: ${await pairEthDai.balanceOf(lockContractEth.address)}`);
@@ -157,15 +158,15 @@ contract("unboundSystem multiple LLC", function (_accounts) {
     });
 
     it("UND mint - LinkDai first", async () => {
-      const lptBalanceBefore = parseInt(await pairLinkDai.balanceOf(owner));
-      const LPtokens = parseInt(lptBalanceBefore / 4); // Amount of token to be lock
+      const lptBalanceBefore = await pairLinkDai.balanceOf(owner);
+      const LPtokens = lptBalanceBefore.div(new BN("4")); // Amount of token to be lock
       const lockedTokenBefore = parseInt(await lockContractLink.tokensLocked(owner));
-      const undBalanceBefore = parseInt(await und.balanceOf(owner));
+      const undBalanceBefore = await und.balanceOf(owner);
       const stakingBalanceBefore = parseInt(await und.balanceOf(stakePair.address));
-      const { loanAmount, feeAmount, stakingAmount } = await getAmounts(daiAmount, pairLinkDai, LPtokens, rates.link);
+      const { loanAmount, feeAmount, stakingAmount } = await getAmounts(daiAmount, pairLinkDai, LPtokens, rates.link, linkPrice);
 
       await pairLinkDai.approve(lockContractLink.address, LPtokens);
-      const receipt = await lockContractLink.lockLPT(LPtokens, loanAmount - feeAmount);
+      const receipt = await lockContractLink.lockLPT(LPtokens, loanAmount.sub(feeAmount));
       expectEvent.inTransaction(receipt.tx, und, "Mint", {
         user: owner,
         newMint: loanAmount.toString(),
@@ -179,9 +180,9 @@ contract("unboundSystem multiple LLC", function (_accounts) {
 
       assert.equal(lptBalanceAfter, lptBalanceBefore - LPtokens, "pool balance incorrect");
       assert.equal(lockedTokenAfter, lockedTokenBefore + LPtokens, "locked token incorrect");
-      assert.equal(undBalanceAfter, undBalanceBefore + loanAmount - feeAmount, "owner balance incorrect");
+      assert.equal(undBalanceAfter.toString(), undBalanceBefore.add(loanAmount).sub(feeAmount).toString(), "owner balance incorrect");
       assert.equal(stakingBalanceAfter, stakingBalanceBefore + stakingAmount, "staking balance incorrect");
-      assert.equal(loanedAmount, loanAmount, "loaned amount incorrect");
+      assert.equal(loanedAmount.toString(), loanAmount.toString(), "loaned amount incorrect");
       storedFee += feeAmount - stakingAmount;
 
       console.log(`LLC-Eth.locked: ${await pairEthDai.balanceOf(lockContractEth.address)}`);
@@ -189,12 +190,34 @@ contract("unboundSystem multiple LLC", function (_accounts) {
       console.log(`UND.balance: ${undBalanceAfter}`);
     });
 
-    async function getAmounts(daiAmount, pair, LPtokens, rates) {
-      const totalUSD = daiAmount * 2; // Total value in Liquidity pool
-      const totalLPTokens = parseInt(await pair.totalSupply()); // Total token amount of Liq pool
-      const LPTValueInDai = parseInt((totalUSD * LPtokens) / totalLPTokens); //% value of Liq pool in Dai
-      const loanAmount = parseInt((LPTValueInDai * rates.loanRate) / rateBalance); // Loan amount that user can get
-      const feeAmount = parseInt((loanAmount * rates.feeRate) / rateBalance); // Amount of fee
+    async function getAmounts(daiAmount, pair, LPtokens, rates, _price) {
+      const reserves = await pair.getReserves();
+    
+      const ethPriceNormalized = (new BN(_price.toString())).mul(new BN("10000000000"));
+      
+      let ethReserve;
+      let ethValue;
+      if (reserves._reserve0.toString() === daiAmount.toString()) {
+        ethReserve = new BN(reserves._reserve1.toString());
+        ethValue = ethReserve.mul(ethPriceNormalized).div(base);
+        
+      } else {
+        ethReserve = new BN(reserves._reserve0.toString());
+        ethValue = ethReserve.mul(ethPriceNormalized).div(base);
+      }
+      
+
+      const totalUSD = (new BN(daiAmount.toString())).add(ethValue); // Total value in Liquidity pool
+      const totalLPTokens = await pair.totalSupply.call(); // Total token amount of Liq pool
+      const priceOfLp = totalUSD.mul(base).div(totalLPTokens)
+
+      const LPTValueInDai = (priceOfLp.mul(LPtokens)).div(base); //% value of Liq pool in Dai
+      const loanRateBN = new BN(rates.loanRate.toString());
+      const feeRateBN = new BN(rates.feeRate.toString());
+      const rateBalanceBN = new BN(rateBalance.toString());
+      const loanAmount = LPTValueInDai.mul(loanRateBN).div(rateBalanceBN); // Loan amount that user can get
+      
+      const feeAmount = (loanAmount.mul(feeRateBN).div(rateBalanceBN)); // Amount of fee
       const stakingAmount = 0;
       return { loanAmount, feeAmount, stakingAmount };
     }
