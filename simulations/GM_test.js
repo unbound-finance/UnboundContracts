@@ -42,7 +42,7 @@ contract("Scenario", function (_accounts) {
   const CREnd = 20000;
   const CRNorm = 10000;
   const blockLimit = 10;
-  const ethPrice = "100000000000"; // this should trigger GM. Expected price is 1000. This is 850
+  const ethPrice = "200000000000"; // this should trigger GM. Expected price is 1000. This is 850
   const daiPrice = "5000000000000000000";
 
   let und;
@@ -156,9 +156,9 @@ contract("Scenario", function (_accounts) {
 
       const user = "0x5789F0ED5094cf6260c26aBBAE03E455f41deF8a";
 
-
-      const oraclePrice = await oracle.latestAnswer();
-      console.log("OraclePrice", oraclePrice.toString());
+      // we need to get address from contract for this to work
+      // const oraclePrice = await oracle.latestAnswer();
+      // console.log("OraclePrice", oraclePrice.toString());
 
       const chainLinkPrice = await oracle.getLatestPrice();
       console.log("ChainLinkPrice", chainLinkPrice.toString());

@@ -23,6 +23,8 @@ const router = artifacts.require("UniswapV2Router02");
 const testAggregatorEth = artifacts.require("TestAggregatorProxyEthUsd");
 const testAggregatorDai = artifacts.require("TestAggregatorProxyDaiUsd");
 
+const Oracle = artifacts.require("UniswapV2PriceProvider");
+
 contract("unboundSystem decimals19", function (_accounts) {
   // Initial settings
   const totalSupply = 0;
@@ -44,6 +46,7 @@ contract("unboundSystem decimals19", function (_accounts) {
   const blockLimit = 10;
   const ethPrice = 128093000000;
   const daiPrice = 100275167;
+  const base = new BN("1000000000000000000");
 
   let unboundDai;
   let valueContract;
@@ -81,18 +84,40 @@ contract("unboundSystem decimals19", function (_accounts) {
 
       const pairAddr = await factory.createPair(tDai.address, tEth.address);
       pair = await uniPair.at(pairAddr.logs[0].args.pair);
+
+      const pool0 = await pair.token0();
+      const pool1 = await pair.token1();
+      let decimalList = []
+
+      if (pool0.toUpperCase() === tDai.address.toUpperCase()) {
+        decimalList = [19, 18]
+      } else if (pool1.toUpperCase() === tDai.address.toUpperCase()) {
+        decimalList = [18, 19]
+      } else {
+        console.log("PROBLEM!!!")
+      }
+
+      oracle = await Oracle.new(
+        pair.address,
+        // [true, false],
+        decimalList,
+        [priceFeedEth.address],
+        "900000000000000000", //10%
+        5000,
+        tDai.address
+      );      
+
       lockContract = await LLC.new(
         valueContract.address,
         pairAddr.logs[0].args.pair,
-        tDai.address,
-        [priceFeedEth.address],
-        [priceFeedDai.address],
-        unboundDai.address
+        unboundDai.address,
+        oracle.address
       );
+
       const permissionLLC = await valueContract.addLLC(lockContract.address, unboundDai.address, loanRate, feeRate);
       const newValuator = await unboundDai.changeValuator(valueContract.address);
       await tDai.approve(route.address, daiAmount);
-      await tEth.approve(route.address, parseInt((daiAmount * daiPrice) / ethPrice));
+      await tEth.approve(route.address, parseInt(((daiAmount / 10) * daiPrice) / ethPrice));
 
       const d = new Date();
       const time = d.getTime();
@@ -100,7 +125,7 @@ contract("unboundSystem decimals19", function (_accounts) {
         tDai.address,
         tEth.address,
         daiAmount,
-        parseInt((daiAmount * daiPrice) / ethPrice),
+        parseInt(((daiAmount / 10) * daiPrice) / ethPrice),
         3000,
         10,
         owner,
@@ -113,60 +138,114 @@ contract("unboundSystem decimals19", function (_accounts) {
       await unboundDai.changeStaking(stakePair.address);
     });
 
-    it("cannot lockLPT() small amount", async () => {
-      const lockAmount = 1;
-      const anyNumber = 123;
+    // it("cannot lockLPT() small amount", async () => {
+    //   const lockAmount = 1;
+    //   const anyNumber = 123;
 
-      await pair.approve(lockContract.address, lockAmount);
-      await expectRevert(lockContract.lockLPT(lockAmount, anyNumber), "Too small loan value to pay the fee");
-    });
+    //   await pair.approve(lockContract.address, lockAmount);
+    //   await expectRevert(lockContract.lockLPT(lockAmount, anyNumber), "Too small loan value to pay the fee");
+    // });
 
     it("UND mint - first", async () => {
-      const LPTbal = parseInt(await pair.balanceOf(owner));
-      const LPtokens = parseInt(LPTbal / 4); // Amount of token to be lock
+      const LPTbal = await pair.balanceOf(owner);
+      const LPtokens = LPTbal.div(new BN("4")); // Amount of token to be lock
       lockedTokens = LPtokens;
-      const totalUSD = daiAmount * 2; // Total value in Liquidity pool
 
-      const totalLPTokens = parseInt(await pair.totalSupply()); // Total token amount of Liq pool
-      const LPTValueInDai = parseInt(((totalUSD * LPtokens) / totalLPTokens) * (decimal / stablecoinDecimal)); //% value of Liq pool in Dai
-      const loanAmount = parseInt((LPTValueInDai * loanRate) / rateBalance); // Loan amount that user can get
-      const feeAmount = parseInt((loanAmount * feeRate) / rateBalance); // Amount of fee
+      const reserves = await pair.getReserves();
+    
+      const ethPriceNormalized = (new BN(ethPrice.toString())).mul(new BN("10000000000"));
+      
+      let ethReserve;
+      let ethValue;
+      if (reserves._reserve0.toString() === daiAmount.toString()) {
+        ethReserve = new BN(reserves._reserve1.toString());
+        ethValue = ethReserve.mul(ethPriceNormalized).div(base);
+        
+      } else {
+        ethReserve = new BN(reserves._reserve0.toString());
+        ethValue = ethReserve.mul(ethPriceNormalized).div(base);
+      }
+      
+
+      const totalUSD = (new BN((daiAmount / 10).toString())).add(ethValue);
+      
+
+      const totalLPTokens = await pair.totalSupply.call(); // Total token amount of Liq pool
+      const priceOfLp = totalUSD.mul(base).div(totalLPTokens)
+
+      // const oraclePrice = await oracle.latestAnswer();
+      // const LPTValueInDai = LPtokens.mul(oraclePrice).div(base);
+      const LPTValueInDai = (priceOfLp.mul(LPtokens)).div(base);
+
+      const loanRateBN = new BN(loanRate.toString());
+      const feeRateBN = new BN(feeRate.toString());
+      const rateBalanceBN = new BN(rateBalance.toString());
+      const loanAmount = LPTValueInDai.mul(loanRateBN).div(rateBalanceBN); // Loan amount that user can get
+      
+      const feeAmount = (loanAmount.mul(feeRateBN).div(rateBalanceBN)); // Amount of fee
       const stakingAmount = 0;
 
       await helper.advanceBlockNumber(blockLimit);
       await pair.approve(lockContract.address, LPtokens);
-      await lockContract.lockLPT(LPtokens, loanAmount - feeAmount);
+      await lockContract.lockLPT(LPtokens, loanAmount.sub(feeAmount).sub(new BN("100")));
       const ownerBal = parseInt(await unboundDai.balanceOf(owner));
       const stakingBal = parseInt(await unboundDai.balanceOf(stakePair.address));
 
-      assert.equal(ownerBal, loanAmount - feeAmount, "owner balance incorrect");
+      assert.equal(ownerBal.toString(), loanAmount.sub(feeAmount).toString(), "owner balance incorrect");
       assert.equal(stakingBal, stakingAmount, "staking balance incorrect");
       console.log(`staking: ${stakingAmount}`);
-      storedFee += feeAmount - stakingAmount;
+      storedFee += parseInt(feeAmount) - stakingAmount;
 
       const tokenBal0 = parseInt(await unboundDai.checkLoan(owner, lockContract.address));
 
-      assert.equal(tokenBal0, loanAmount, "loan amount incorrect");
+      assert.equal(tokenBal0.toString(), loanAmount.toString(), "loan amount incorrect");
     });
 
     it("UND mint - second", async () => {
       const LPTbal = await pair.balanceOf(owner);
       const LPtokens = parseInt(LPTbal.words[0] / 3);
 
-      const totalUSD = daiAmount * 2; // Total value in Liquidity pool
-      const totalLPTokens = parseInt(await pair.totalSupply()); // Total token amount of Liq pool
-      const LPTValueInDai = parseInt(((totalUSD * LPtokens) / totalLPTokens) * (decimal / stablecoinDecimal)); //% value of Liq pool in Dai
-      const loanAmount = parseInt((LPTValueInDai * loanRate) / rateBalance); // Loan amount that user can get
-      const feeAmount = parseInt((loanAmount * feeRate) / rateBalance); // Amount of fee
+      const reserves = await pair.getReserves();
+    
+      const ethPriceNormalized = (new BN(ethPrice.toString())).mul(new BN("10000000000"));
+      
+      let ethReserve;
+      let ethValue;
+      if (reserves._reserve0.toString() === daiAmount.toString()) {
+        ethReserve = new BN(reserves._reserve1.toString());
+        ethValue = ethReserve.mul(ethPriceNormalized).div(base);
+        
+      } else {
+        ethReserve = new BN(reserves._reserve0.toString());
+        ethValue = ethReserve.mul(ethPriceNormalized).div(base);
+      }
+      
+
+      const totalUSD = (new BN((daiAmount / 10).toString())).add(ethValue);
+      
+
+      const totalLPTokens = await pair.totalSupply.call(); // Total token amount of Liq pool
+      const priceOfLp = totalUSD.mul(base).div(totalLPTokens)
+
+      // const oraclePrice = await oracle.latestAnswer();
+      // const LPTValueInDai = LPtokens.mul(oraclePrice).div(base);
+      const LPTValueInDai = (priceOfLp.mul(new BN(LPtokens.toString()))).div(base);
+
+      const loanRateBN = new BN(loanRate.toString());
+      const feeRateBN = new BN(feeRate.toString());
+      const rateBalanceBN = new BN(rateBalance.toString());
+      const loanAmount = LPTValueInDai.mul(loanRateBN).div(rateBalanceBN); // Loan amount that user can get
+      
+      const feeAmount = (loanAmount.mul(feeRateBN).div(rateBalanceBN)); // Amount of fee
       const stakingAmount = 0;
 
       // second mint
       await helper.advanceBlockNumber(blockLimit);
       await pair.approve(lockContract.address, LPtokens);
-      await lockContract.lockLPT(LPtokens, loanAmount - feeAmount);
+      await lockContract.lockLPT(LPtokens.toString(), loanAmount.sub(feeAmount).toString());
       const newBal = await pair.balanceOf(owner);
 
-      assert.equal(newBal, LPTbal - LPtokens, "valuing incorrect");
+      assert.equal(newBal.toString(), LPTbal.sub(new BN(LPtokens.toString())).toString(), "valuing incorrect");
       console.log(`staking: ${stakingAmount}`);
       storedFee += feeAmount - stakingAmount;
     });
@@ -174,13 +253,33 @@ contract("unboundSystem decimals19", function (_accounts) {
     it("UND burn", async () => {
       const totalSupply = await pair.totalSupply();
       const priceLPT = (daiAmount * 2) / parseInt(totalSupply);
+      const ethPriceNormalized = (new BN(ethPrice.toString())).mul(new BN("10000000000"));
+      const reserves = await pair.getReserves();
+      let ethReserve;
+      let ethValue;
+      if (reserves._reserve0.toString() === daiAmount.toString()) {
+        ethReserve = new BN(reserves._reserve1.toString());
+        ethValue = ethReserve.mul(ethPriceNormalized).div(base);
+        
+      } else {
+        ethReserve = new BN(reserves._reserve0.toString());
+        ethValue = ethReserve.mul(ethPriceNormalized).div(base);
+      }
+
+      const totalUSD = (new BN(daiAmount.toString())).add(ethValue);
+      const totalLPTokens = await pair.totalSupply(); // Total token amount of Liq pool
+      const priceOfLp = totalUSD.mul(base).div(totalLPTokens)
+      
+
       const lockedLPT = parseInt(await lockContract.tokensLocked(owner));
       const mintedUND = parseInt(await unboundDai.checkLoan(owner, lockContract.address));
-      const burnAmountUND = mintedUND / 2;
-      const unlockAmountLPT =
-        lockedLPT - ((((mintedUND - burnAmountUND) * stablecoinDecimal) / decimal) * CREnd) / CRNorm / priceLPT;
 
-      const LPtokens = parseInt(await pair.balanceOf.call(owner));
+      
+      const LPtokens = parseInt(await pair.balanceOf(owner));
+      const tokenBalBefore = await unboundDai.balanceOf(owner);
+      const burnAmountUND = parseInt(mintedUND * 0.4);
+      
+      const unlockAmountLPT = parseInt((lockedLPT * burnAmountUND) / mintedUND);
 
       // burn
       await helper.advanceBlockNumber(blockLimit);
@@ -242,17 +341,45 @@ contract("unboundSystem decimals19", function (_accounts) {
 
     it("LLC - other user can't pay off someone elses loan", async () => {
       let LPTbal = await pair.balanceOf(owner);
-      let LPtokens = parseInt(LPTbal.words[0] / 3);
-      const totalUSD = daiAmount * 2; // Total value in Liquidity pool
-      const totalLPTokens = parseInt(await pair.totalSupply()); // Total token amount of Liq pool
-      const LPTValueInDai = parseInt(((totalUSD * LPtokens) / totalLPTokens) * (decimal / stablecoinDecimal)); //% value of Liq pool in Dai
-      const loanAmount = parseInt((LPTValueInDai * loanRate) / rateBalance); // Loan amount that user can get
-      const feeAmount = parseInt((loanAmount * feeRate) / rateBalance); // Amount of fee
+      let LPtokens = LPTbal.div(new BN("3"));
+
+      const reserves = await pair.getReserves();
+    
+      const ethPriceNormalized = (new BN(ethPrice.toString())).mul(new BN("10000000000"));
+      
+      let ethReserve;
+      let ethValue;
+      if (reserves._reserve0.toString() === daiAmount.toString()) {
+        ethReserve = new BN(reserves._reserve1.toString());
+        ethValue = ethReserve.mul(ethPriceNormalized).div(base);
+        
+      } else {
+        ethReserve = new BN(reserves._reserve0.toString());
+        ethValue = ethReserve.mul(ethPriceNormalized).div(base);
+      }
+      
+
+      const totalUSD = (new BN((daiAmount / 10).toString())).add(ethValue);
+      
+
+      const totalLPTokens = await pair.totalSupply.call(); // Total token amount of Liq pool
+      const priceOfLp = totalUSD.mul(base).div(totalLPTokens)
+
+      // const oraclePrice = await oracle.latestAnswer();
+      // const LPTValueInDai = LPtokens.mul(oraclePrice).div(base);
+      const LPTValueInDai = (priceOfLp.mul(LPtokens)).div(base);
+
+      const loanRateBN = new BN(loanRate.toString());
+      const feeRateBN = new BN(feeRate.toString());
+      const rateBalanceBN = new BN(rateBalance.toString());
+      const loanAmount = LPTValueInDai.mul(loanRateBN).div(rateBalanceBN); // Loan amount that user can get
+      
+      const feeAmount = (loanAmount.mul(feeRateBN).div(rateBalanceBN)); // Amount of fee
 
       // first mint
       await helper.advanceBlockNumber(blockLimit);
       await pair.approve(lockContract.address, LPtokens);
-      await lockContract.lockLPT(LPtokens, loanAmount - feeAmount);
+      await lockContract.lockLPT(LPtokens, loanAmount.sub(feeAmount));
 
       // user A balance before
       let tokenBal = await unboundDai.balanceOf(owner);
