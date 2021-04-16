@@ -23,7 +23,9 @@ jobs:
       - name: install truffle
         run: npm install truffle
       - name: install firefly
-        run: sudo apt-get install ./firefly_amd64_bionic.deb
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ./firefly_amd64_bionic.deb
       - name: start firefly
         run: |
           firefly compile
