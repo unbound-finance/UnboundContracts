@@ -25,8 +25,8 @@ contract UnboundDollar is IERC20 {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
-    event Mint(address user, uint256 newMint);
-    event Burn(address user, uint256 burned);
+    event Mint(address user, address LLCAddr, uint256 newMint);
+    event Burn(address user, address LLCAddr, uint256 burned);
 
     // Admin Change in-prog
     event ChangingAdmin(address indexed oldAdmin, address indexed newAdmin);
@@ -35,12 +35,12 @@ contract UnboundDollar is IERC20 {
     event AdminChanged(address indexed newAdmin);
 
     // Admin Events
-    event NewValuator (address indexed newValuingAddr);
-    event NewDevFund (address indexed newDevAddr);
-    event NewSafu (address indexed newSafuAddr);
-    event NewStaking (address indexed newStakingAddr);
-    event NewStakeShare (uint256 newRate);
-    event NewSafuShare (uint256 newRate);
+    event NewValuator(address indexed newValuingAddr);
+    event NewDevFund(address indexed newDevAddr);
+    event NewSafu(address indexed newSafuAddr);
+    event NewStaking(address indexed newStakingAddr);
+    event NewStakeShare(uint256 newRate);
+    event NewSafuShare(uint256 newRate);
 
     mapping(address => uint256) private _balances;
     mapping(address => mapping(address => uint256)) private _allowances;
@@ -111,14 +111,14 @@ contract UnboundDollar is IERC20 {
 
         // MUST BE MANUALLY CHANGED TO UND LIQ pool.
         _stakeAddr = Safu;
-        
+
         uint256 chainId;
         // get chainId of the chain, required for permit
-        
+
         assembly {
             chainId := chainid()
         }
-        
+
         // To verify permit() signature
         DOMAIN_SEPARATOR = keccak256(
             abi.encode(
@@ -272,20 +272,20 @@ contract UnboundDollar is IERC20 {
         require(account != address(0), "ERC20: mint to the zero address");
         require(msg.sender == _valuator, "Call does not originate from Valuator");
         require(feeAmount > 0, "UND: Not allowed 0 fee");
-        
+
         // Credits user with their UND loan, minus fees
         _balances[account] = _balances[account].add(loanAmount.sub(feeAmount));
-        
+
         // store total to distribute later
         storedFee = storedFee.add(feeAmount);
-        
+
         // adding total amount of new tokens to totalSupply
         _totalSupply = _totalSupply.add(loanAmount);
 
         // crediting loan to user
         _loaned[account][LLCAddr] = _loaned[account][LLCAddr].add(loanAmount);
 
-        emit Mint(account, loanAmount);
+        emit Mint(account, LLCAddr, loanAmount);
     }
 
     // BURN function. Only callable from Valuing.
@@ -310,7 +310,7 @@ contract UnboundDollar is IERC20 {
         _totalSupply = _totalSupply.sub(toBurn);
 
         // This event could be renamed for easier identification.
-        emit Burn(account, toBurn);
+        emit Burn(account, LLCAddr, toBurn);
     }
 
     // Checks how much UND the user has minted (and owes to get liquidity back)
