@@ -267,10 +267,11 @@ contract LiquidityLockContract is Pausable {
 
     // Emergency Unlock function - can only unlock ALL LP at once.
     // Only when contract is Paused
-    function EmergencyUnlockLPT(uint256 uTokenAmt) external whenPaused {
-        require(uTokenAmt > 0, "Cannot unlock nothing");
+    function emergencyUnlockLPT() external whenPaused {
         require(nextBlock[msg.sender] <= block.number, "LLC: user must wait");
-        require(uTokenAmt == unboundContract.checkLoan(msg.sender, address(this)), "LLC-Emergency: Can only pay back loan in full");
+        uint256 uTokenAmt = unboundContract.checkLoan(msg.sender, address(this));
+        require(unboundContract.balanceOf(msg.sender) >= uTokenAmt, "LLC-Emergency: Insufficient UND");
+        
         // sets nextBlock
         nextBlock[msg.sender] = block.number.add(blockLimit);
 
@@ -333,7 +334,7 @@ contract LiquidityLockContract is Pausable {
     }
 
     // Checks if sender is owner
-    function isOwner() internal view returns (bool) {
+    function isOwner() public view returns (bool) {
         return msg.sender == _owner;
     }
 

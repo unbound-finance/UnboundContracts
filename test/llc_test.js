@@ -179,5 +179,40 @@ contract("LLC", function (_accounts) {
       const balance = parseInt(await und.balanceOf(owner));
       assert.isTrue(balance > beforeBalance, "valuing address is incorrect");
     });
+
+    it("can set pausable", async () => {
+      await expectRevert(lockContract.emergencyUnlockLPT(), "Pausable: not paused");
+      await lockContract.setPause();
+      await expectRevert(lockContract.lockLPT(100, 1), "Pausable: paused");
+      await expectRevert(lockContract.unlockLPT(10), "Pausable: paused");
+      await lockContract.setUnpause();
+    })
+
+    it("can emergency unlock", async () => {
+      const LPBal = await pair.balanceOf(owner);
+      const ownerToLock = LPBal.div(new BN("4"));
+
+      await helper.advanceBlockNumber(blockLimit);
+      await pair.approve(lockContract.address, ownerToLock);
+      await lockContract.lockLPT(ownerToLock, 1);
+      await helper.advanceBlockNumber(blockLimit);
+      const LPBalSend = await pair.balanceOf(owner);
+
+      await pair.transfer(safu, LPBalSend);
+
+      await pair.approve(lockContract.address, LPBalSend, {from: safu});
+      await lockContract.lockLPT(LPBalSend, 1, {from: safu});
+      await helper.advanceBlockNumber(blockLimit);
+      const safuUND = await und.balanceOf(safu);
+      await und.transfer(owner, safuUND, {from: safu});
+
+      const undBalBefore = await und.balanceOf(owner);
+      const checkLoan = await und.checkLoan(owner, lockContract.address);
+      await lockContract.setPause();
+      await lockContract.emergencyUnlockLPT();
+      const undBalFinal = await und.balanceOf(owner);
+      assert.equal(undBalFinal.toString(), undBalBefore.sub(checkLoan).toString(), "wrong balance");
+
+    })
   });
 });
