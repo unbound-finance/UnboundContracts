@@ -152,7 +152,7 @@ contract LiquidityLockContract is Pausable {
         bytes32 _r,
         bytes32 _s,
         uint256 _minTokenAmount
-    ) public whenNotPaused {
+    ) external whenNotPaused {
         require(nextBlock[msg.sender] <= block.number, "LLC: user must wait");
         require(LPTContract.balanceOf(msg.sender) >= _LPTAmt, "LLC: Insufficient user balance");
         require(LPTContract.allowance(msg.sender, address(this)) >= _LPTAmt, "LLC: Insufficient Allowance");
@@ -176,7 +176,7 @@ contract LiquidityLockContract is Pausable {
     }
 
     // Requires approval first (permit excluded for simplicity)
-    function lockLPT(uint256 LPTAmt, uint256 minTokenAmount) public whenNotPaused {
+    function lockLPT(uint256 LPTAmt, uint256 minTokenAmount) external whenNotPaused {
         require(nextBlock[msg.sender] <= block.number, "LLC: user must wait");
         require(LPTContract.balanceOf(msg.sender) >= LPTAmt, "LLC: Insufficient user balance");
         require(LPTContract.allowance(msg.sender, address(this)) >= LPTAmt, "LLC: Insufficient Allowance");
@@ -201,7 +201,7 @@ contract LiquidityLockContract is Pausable {
     // Burn Path
     //
     // allows for partial loan payment by using the ratio of LPtokens to unlock and total LPtokens locked
-    function unlockLPT(uint256 uTokenAmt) public whenNotPaused {
+    function unlockLPT(uint256 uTokenAmt) external whenNotPaused {
         require(uTokenAmt > 0, "Cannot unlock nothing");
         require(nextBlock[msg.sender] <= block.number, "LLC: user must wait");
         
@@ -236,7 +236,7 @@ contract LiquidityLockContract is Pausable {
     }
 
     // Should be internal
-    function getLPTokensToReturn(uint256 _currentLoan, uint256 _uTokenAmt) public  returns (uint256 _LPTokenToReturn) {
+    function getLPTokensToReturn(uint256 _currentLoan, uint256 _uTokenAmt) internal  returns (uint256 _LPTokenToReturn) {
         uint256 valueOfSingleLPT = uint256(oracle.latestAnswer());
         
         // // get current CR Ratio
@@ -267,7 +267,7 @@ contract LiquidityLockContract is Pausable {
 
     // Emergency Unlock function - can only unlock ALL LP at once.
     // Only when contract is Paused
-    function EmergencyUnlockLPT(uint256 uTokenAmt) public whenPaused {
+    function EmergencyUnlockLPT(uint256 uTokenAmt) external whenPaused {
         require(uTokenAmt > 0, "Cannot unlock nothing");
         require(nextBlock[msg.sender] <= block.number, "LLC: user must wait");
         require(uTokenAmt == unboundContract.checkLoan(msg.sender, address(this)), "LLC-Emergency: Can only pay back loan in full");
@@ -289,7 +289,7 @@ contract LiquidityLockContract is Pausable {
         emit UnlockLPT(LPTokenToReturn, msg.sender);
     }
 
-    function tokensLocked(address account) public view returns (uint256) {
+    function tokensLocked(address account) external view returns (uint256) {
         return _tokensLocked[account];
     }
 
@@ -303,22 +303,22 @@ contract LiquidityLockContract is Pausable {
 
     // onlyOwner Functions
 
-    function setPause() public onlyOwner {
+    function setPause() external onlyOwner {
         _pause();
     }
 
-    function setUnpause() public onlyOwner {
+    function setUnpause() external onlyOwner {
         _unpause();
     }
 
-    function setBlockLimit(uint8 newLimit) public onlyOwner {
+    function setBlockLimit(uint8 newLimit) external onlyOwner {
         require(newLimit > 0, "Block Limit cannot be 0");
         blockLimit = newLimit;
         emit BlockLimitChange(newLimit);
     }
 
     // set collateralization Ratio. 1 = CRNorm
-    function setCREnd(uint256 ratio) public onlyOwner {
+    function setCREnd(uint256 ratio) external onlyOwner {
         require(ratio > 0, "Ratio cannot be 0");
         CREnd = ratio;
         emit CREndChange(ratio);
@@ -326,26 +326,26 @@ contract LiquidityLockContract is Pausable {
 
     // Claim - remove any airdropped tokens
     // currently sends all tokens to "to" address (in param)
-    function claimTokens(address _tokenAddr, address to) public onlyOwner {
+    function claimTokens(address _tokenAddr, address to) external onlyOwner {
         require(_tokenAddr != address(LPTContract), "Cannot move LP tokens");
         uint256 tokenBal = IERC20_2(_tokenAddr).balanceOf(address(this));
         require(IERC20_2(_tokenAddr).transfer(to, tokenBal), "LLC: Transfer Failed");
     }
 
     // Checks if sender is owner
-    function isOwner() public view returns (bool) {
+    function isOwner() internal view returns (bool) {
         return msg.sender == _owner;
     }
 
     // Changes owner (part 1)
-    function setOwner(address _newOwner) public onlyOwner {
+    function setOwner(address _newOwner) external onlyOwner {
         _ownerPending = _newOwner;
         _isPending = true;
         emit ChangingAdmin(msg.sender, _newOwner);
     }
 
     // changes owner (part 2)
-    function claimOwner() public {
+    function claimOwner() external {
         require(_isPending, "Change was not initialized");
         require(_ownerPending == msg.sender, "You are not pending owner");
         _owner = _ownerPending;
@@ -354,7 +354,7 @@ contract LiquidityLockContract is Pausable {
     }
 
     // Sets new Valuing Address
-    function setValuingAddress(address _newValuing) public onlyOwner {
+    function setValuingAddress(address _newValuing) external onlyOwner {
         require(_newValuing != address(0), "Cannot change to 0 address");
         valuingContract = IValuing_01(_newValuing);
         emit NewValuing(_newValuing);
