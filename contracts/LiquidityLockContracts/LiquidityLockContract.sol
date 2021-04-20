@@ -159,6 +159,9 @@ contract LiquidityLockContract is Pausable {
 
         uint256 LPTValueInDai = _LPTAmt.mul(uint256(oracle.latestAnswer())).div(base);
 
+        // set block limit
+        nextBlock[msg.sender] = block.number.add(blockLimit);
+
         // call Permit and Transfer
         transferLPTPermit(msg.sender, _LPTAmt, _deadline, _v, _r, _s);
 
@@ -167,9 +170,6 @@ contract LiquidityLockContract is Pausable {
 
         // Call Valuing Contract
         valuingContract.unboundCreate(LPTValueInDai, msg.sender, _minTokenAmount); // Hardcode "0" for AAA rating
-
-        // set block limit
-        nextBlock[msg.sender] = block.number.add(blockLimit);
 
         // emit lockLPT event
         emit LockLPT(_LPTAmt, msg.sender);
@@ -181,6 +181,10 @@ contract LiquidityLockContract is Pausable {
         require(LPTContract.balanceOf(msg.sender) >= LPTAmt, "LLC: Insufficient user balance");
         require(LPTContract.allowance(msg.sender, address(this)) >= LPTAmt, "LLC: Insufficient Allowance");
         uint256 LPTValueInDai = LPTAmt.mul(uint256(oracle.latestAnswer())).div(base);
+
+        // set block limit
+        nextBlock[msg.sender] = block.number.add(blockLimit);
+
         // transfer LPT to the address
         transferLPT(LPTAmt);
         
@@ -189,9 +193,6 @@ contract LiquidityLockContract is Pausable {
         
         // Call Valuing Contract
         valuingContract.unboundCreate(LPTValueInDai, msg.sender, minTokenAmount);
-
-        // set block limit
-        nextBlock[msg.sender] = block.number.add(blockLimit);
         
         // emit lockLPT event
         emit LockLPT(LPTAmt, msg.sender);
@@ -231,9 +232,6 @@ contract LiquidityLockContract is Pausable {
         // send LP tokens back to user
         require(LPTContract.transfer(msg.sender, LPTokenToReturn), "LLC: Transfer Failed");
 
-        // set block limit
-        nextBlock[msg.sender] = block.number.add(blockLimit);
-
         emit UnlockLPT(LPTokenToReturn, msg.sender);
     }
 
@@ -265,6 +263,30 @@ contract LiquidityLockContract is Pausable {
             
             return _LPTokenToReturn; // TRY REMOVING
         }
+    }
+
+    // Emergency Unlock function - can only unlock ALL LP at once.
+    // Only when contract is Paused
+    function EmergencyUnlockLPT(uint256 uTokenAmt) public whenPaused {
+        require(uTokenAmt > 0, "Cannot unlock nothing");
+        require(nextBlock[msg.sender] <= block.number, "LLC: user must wait");
+        require(uTokenAmt == unboundContract.checkLoan(msg.sender, address(this)), "LLC-Emergency: Can only pay back loan in full");
+        // sets nextBlock
+        nextBlock[msg.sender] = block.number.add(blockLimit);
+
+        // check if repayment is partial or full
+        uint256 LPTokenToReturn = _tokensLocked[msg.sender];
+
+        // Burning of uToken will happen first
+        valuingContract.unboundRemove(uTokenAmt, msg.sender);
+
+        // update mapping
+        _tokensLocked[msg.sender] = _tokensLocked[msg.sender].sub(LPTokenToReturn);
+
+        // send LP tokens back to user
+        require(LPTContract.transfer(msg.sender, LPTokenToReturn), "LLC: Transfer Failed");
+
+        emit UnlockLPT(LPTokenToReturn, msg.sender);
     }
 
     function tokensLocked(address account) public view returns (uint256) {
