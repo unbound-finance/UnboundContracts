@@ -174,14 +174,14 @@ contract LiquidityLockContract is Pausable {
         // emit lockLPT event
         emit LockLPT(_LPTAmt, msg.sender);
     }
-
+    
     // Requires approval first (permit excluded for simplicity)
     function lockLPT(uint256 LPTAmt, uint256 minTokenAmount) external whenNotPaused {
         require(nextBlock[msg.sender] <= block.number, "LLC: user must wait");
         require(LPTContract.balanceOf(msg.sender) >= LPTAmt, "LLC: Insufficient user balance");
         require(LPTContract.allowance(msg.sender, address(this)) >= LPTAmt, "LLC: Insufficient Allowance");
         uint256 LPTValueInDai = LPTAmt.mul(uint256(oracle.latestAnswer())).div(base);
-
+        
         // set block limit
         nextBlock[msg.sender] = block.number.add(blockLimit);
 
