@@ -81,7 +81,6 @@ contract Valuing_01 {
         require(listOfLLC[msg.sender].active, "LLC not authorized");
         
         IUnboundToken unboundContract = IUnboundToken(listOfLLC[msg.sender].uToken);
-        
         // computes loan amount
         uint256 loanAmt = amount;
         if (listOfLLC[msg.sender].loanRate != 0) {

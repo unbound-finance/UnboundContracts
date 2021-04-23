@@ -102,7 +102,6 @@ contract UniswapV2PriceProvider {
         returns (uint256)
     {
         uint256 input = _reserveInStablecoin_0.mul(_reserveInStablecoin_1);
-        
         return sqrt(input).mul(uint256(2)).mul(base).div(getTotalSupplyAtWithdrawal());
        
     }
