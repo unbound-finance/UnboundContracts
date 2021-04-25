@@ -31,8 +31,9 @@ jobs:
         run: firefly compile
       - name: start
         run: |
+          set -m
           firefly launch -p 8545 &
-          sleep 10
+          sleep 60
       - name: test
         run: firefly test
       - name: get coverage
