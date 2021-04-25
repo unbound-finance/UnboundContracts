@@ -14,26 +14,27 @@ jobs:
       - name: checkout
         uses: actions/checkout@v2
       - name: setup Node
-        uses: actions/setup-node@v2.1.5
-        with:
-          node-version: 10.x
-          registry-url: "https://registry.npmjs.org"
+        run: |
+          sudo apt-get update
+          sudo apt-get install npm
+        # uses: actions/setup-node@v2.1.5
+        # with:
+        #   node-version: 10.x
+        #   registry-url: "https://registry.npmjs.org"
+      - name: install firefly
+        run: sudo apt-get install -y ./firefly_amd64_bionic.deb
       - name: install modules
         run: npm install
       - name: install truffle
         run: npm install truffle
-      - name: install firefly
+      - name: compile
+        run: firefly compile
+      - name: start
         run: |
-          sudo apt-get update
-          sudo apt-get install -y ./firefly_amd64_bionic.deb
-      - name: start firefly
-        run: |
-          firefly compile
           firefly launch -p 8545 &
-      - name: run firefly test
-        run: |
           sleep 10
-          firefly test
+      - name: test
+        run: firefly test
       - name: get coverage
         run: firefly coverage -p 8545
       - name: close firefly
