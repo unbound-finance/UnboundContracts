@@ -77,23 +77,23 @@ contract Valuing_01 {
         address user,
         uint256 minTokenAmount
     ) external {
+        require(user != address(0), "Valuator: cannot be zero address");
+        require(user != address(this), "valuator: cannot be this address");
         require(amount > 0, "Cannot valuate nothing");
         require(listOfLLC[msg.sender].active, "LLC not authorized");
         
         IUnboundToken unboundContract = IUnboundToken(listOfLLC[msg.sender].uToken);
         // computes loan amount
-        uint256 loanAmt = amount;
-        if (listOfLLC[msg.sender].loanRate != 0) {
-            loanAmt = amount.mul(listOfLLC[msg.sender].loanRate).div(rateBalance);
-            require(loanAmt > 0, "Cannot mint 0 loan value");
-        }
+        
+        uint256 loanAmt = amount.mul(listOfLLC[msg.sender].loanRate).div(rateBalance);
+        require(loanAmt > 0, "Cannot mint 0 loan value");
+       
         
         // computes fee amount
-        uint256 feeAmt = 0;
-        if (listOfLLC[msg.sender].feeRate != 0) {
-            require(loanAmt.mul(listOfLLC[msg.sender].feeRate) >= rateBalance, "Too small loan value to pay the fee");
-            feeAmt = loanAmt.mul(listOfLLC[msg.sender].feeRate).div(rateBalance);
-        }
+        
+        // require(loanAmt.mul(listOfLLC[msg.sender].feeRate) >= rateBalance, "Too small loan value to pay the fee");
+        uint256 feeAmt = loanAmt.mul(listOfLLC[msg.sender].feeRate).div(rateBalance);
+        
         
         require(minTokenAmount <= loanAmt.sub(feeAmt), "Valuing: minting less tokens than minimum amount");
         
@@ -103,6 +103,8 @@ contract Valuing_01 {
 
     // Loan repayment Intermediary - only called from LLC
     function unboundRemove(uint256 toUnlock, address user) external {
+        require(user != address(0), "Valuator: cannot be zero address");
+        require(user != address(this), "valuator: cannot be this address");
         require(listOfLLC[msg.sender].active, "LLC not authorized");
 
         // obtains amount of loan user owes (in uToken)
@@ -167,8 +169,6 @@ contract Valuing_01 {
 
     // Disables an LLC:
     function disableLLC(address LLC) external onlyOwner {
-        // listOfLLC[LLC].feeRate = 0;
-        // listOfLLC[LLC].loanRate = 0;
         listOfLLC[LLC].active = false;
         emit LLCDisable(LLC);
     }

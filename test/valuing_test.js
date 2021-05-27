@@ -132,6 +132,9 @@ contract("Valuing", function (_accounts) {
       await expectRevert(valueContract.setOwner(owner), "Ownable: caller is not the owner");
     });
 
-    
+    it("unboundCreate/remove blocks addresses", async () => {
+      await expectRevert(valueContract.unboundCreate(200, valueContract.address, 2000), "valuator: cannot be this address");
+      await expectRevert(valueContract.unboundRemove(200, valueContract.address), "valuator: cannot be this address");
+    })
   });
 });
