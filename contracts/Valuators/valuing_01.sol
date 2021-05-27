@@ -127,6 +127,11 @@ contract Valuing_01 {
         uint32 loan,
         uint32 fee
     ) external onlyOwner {
+        checkAddress(LLC);
+        checkAddress(uToken);
+        require(!listOfLLC[LLC].active, "valuator: cannot activate active LLC");
+        require(fee > 0 && fee <= rateBalance, "Valuator: invalid fee amount");
+        require(loan > 0 && loan <= rateBalance, "Valuator: invalid loan amount");
         // add uToken to mint
         listOfLLC[LLC].uToken = uToken;
         // Enter 2500 for 0.25%, 25000 for 2.5%, and 250000 for 25%.
@@ -138,20 +143,32 @@ contract Valuing_01 {
 
     // changes loanRate only
     function changeLoanRate(address LLC, uint32 loan) external onlyOwner {
+        checkAddress(LLC);
+        require(loan > 0 && loan <= rateBalance, "Valuator: invalid loan amount");
+        require(listOfLLC[LLC].active, "Valuator: LLC Inactive");
         listOfLLC[LLC].loanRate = loan;
         emit LTVChange(LLC, loan);
     }
 
     // changes feeRate only
     function changeFeeRate(address LLC, uint32 fee) external onlyOwner {
+        checkAddress(LLC);
+        require(fee > 0 && fee <= rateBalance, "Valuator: invalid fee amount");
+        require(listOfLLC[LLC].active, "Valuator: LLC Inactive");
         listOfLLC[LLC].feeRate = fee;
         emit FeeChange(LLC, fee);
     }
 
+    function checkAddress(address target) internal {
+        require(target != address(0), "Valuator: cannot be zero address");
+        require(target != address(this), "valuator: cannot be this address");
+        require(target != _owner, "valuator: target cannot be owner");
+    }
+
     // Disables an LLC:
     function disableLLC(address LLC) external onlyOwner {
-        listOfLLC[LLC].feeRate = 0;
-        listOfLLC[LLC].loanRate = 0;
+        // listOfLLC[LLC].feeRate = 0;
+        // listOfLLC[LLC].loanRate = 0;
         listOfLLC[LLC].active = false;
         emit LLCDisable(LLC);
     }
