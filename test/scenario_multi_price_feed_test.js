@@ -111,7 +111,7 @@ contract("Scenario(multi price feed)", function (_accounts) {
       await expectRevert(lockContract.lockLPT(dummyNumber + 900000000000, 0), "LLC: Insufficient user balance")
       await expectRevert(lockContract.lockLPT(dummyNumber, 0), "LLC: Insufficient Allowance")
       await pair.approve(lockContract.address, dummyNumber);
-      await expectRevert(lockContract.lockLPT(dummyNumber, 0), "Too small loan value to pay the fee");
+      await expectRevert(lockContract.lockLPT(dummyNumber, 0), "UND: Not allowed 0 fee");
       await priceFeedEth.setPrice(ethPrice);
     });
 

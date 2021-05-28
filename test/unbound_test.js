@@ -210,7 +210,7 @@ contract("UND", function (_accounts) {
       const anyNumber = 123;
 
       await pair.approve(lockContract.address, lockAmount);
-      await expectRevert(lockContract.lockLPT(lockAmount, anyNumber), "Too small loan value to pay");
+      await expectRevert(lockContract.lockLPT(lockAmount, anyNumber), "Valuing: minting less tokens than minimum amount");
     });
 
     it("fails to lockLPT() with minTokenAmount which is more than minting amount", async () => {
