@@ -174,26 +174,26 @@ contract LiquidityLockContract is Pausable {
         // emit lockLPT event
         emit LockLPT(_LPTAmt, msg.sender);
     }
-    
+
     // Requires approval first (permit excluded for simplicity)
     function lockLPT(uint256 LPTAmt, uint256 minTokenAmount) external whenNotPaused {
         require(nextBlock[msg.sender] <= block.number, "LLC: user must wait");
         require(LPTContract.balanceOf(msg.sender) >= LPTAmt, "LLC: Insufficient user balance");
         require(LPTContract.allowance(msg.sender, address(this)) >= LPTAmt, "LLC: Insufficient Allowance");
         uint256 LPTValueInDai = LPTAmt.mul(uint256(oracle.latestAnswer())).div(base);
-        
+
         // set block limit
         nextBlock[msg.sender] = block.number.add(blockLimit);
 
         // transfer LPT to the address
         transferLPT(LPTAmt);
-        
+
         // map locked tokens to user address
         _tokensLocked[msg.sender] = _tokensLocked[msg.sender].add(LPTAmt);
-        
+
         // Call Valuing Contract
         valuingContract.unboundCreate(LPTValueInDai, msg.sender, minTokenAmount);
-        
+
         // emit lockLPT event
         emit LockLPT(LPTAmt, msg.sender);
     }
@@ -204,13 +204,13 @@ contract LiquidityLockContract is Pausable {
     function unlockLPT(uint256 uTokenAmt) external whenNotPaused {
         require(uTokenAmt > 0, "Cannot unlock nothing");
         require(nextBlock[msg.sender] <= block.number, "LLC: user must wait");
-        
+
         // sets nextBlock
         nextBlock[msg.sender] = block.number.add(blockLimit);
 
         // get current amount of uToken Loan
         uint256 currentLoan = unboundContract.checkLoan(msg.sender, address(this));
-        
+
         // Make sure uToken to pay back is less than or equal to total owed.
         require(currentLoan >= uTokenAmt, "Insufficient liquidity locked");
 
@@ -238,10 +238,10 @@ contract LiquidityLockContract is Pausable {
     // Should be internal
     function getLPTokensToReturn(uint256 _currentLoan, uint256 _uTokenAmt) internal  returns (uint256 _LPTokenToReturn) {
         uint256 valueOfSingleLPT = uint256(oracle.latestAnswer());
-        
+
         // // get current CR Ratio
         uint256 CRNow = (valueOfSingleLPT.mul(_tokensLocked[msg.sender])).mul(1000).div(_currentLoan);
-        
+
         uint256 _LPTokenToReturn;
         // multiply by 21 (adding 3 to 18), to account for the multiplication by 1000 above.
         if (CREnd.mul(10**21).div(CRNorm) <= CRNow) {
@@ -249,18 +249,19 @@ contract LiquidityLockContract is Pausable {
             _LPTokenToReturn = (_tokensLocked[msg.sender].mul(_uTokenAmt)).div(_currentLoan);
             return _LPTokenToReturn; // TRY REMOVING
         } else {
+
             // value of users locked LP before paying loan
             uint256 valueStart = valueOfSingleLPT.mul(_tokensLocked[msg.sender]);
-            
+
             uint256 loanAfter = _currentLoan.sub(_uTokenAmt);
             // _LPTokenToReturn = valueStart.sub(valueAfter).div(valueOfSingleLPT);
-            
+
             // Value After - Collateralization Ratio times LoanAfter (divided by CRNorm, then normalized with valueOfSingleLPT)
-            uint256 valueAfter = CREnd.mul(loanAfter).div(CRNorm);
-            
+            uint256 valueAfter = CREnd.mul(loanAfter).div(CRNorm).mul(base);
+
             // LPT to send back. This number should have 18 decimals
             _LPTokenToReturn = valueStart.sub(valueAfter).div(valueOfSingleLPT);
-            
+
             return _LPTokenToReturn; // TRY REMOVING
         }
     }
@@ -271,7 +272,7 @@ contract LiquidityLockContract is Pausable {
         require(nextBlock[msg.sender] <= block.number, "LLC: user must wait");
         uint256 uTokenAmt = unboundContract.checkLoan(msg.sender, address(this));
         require(unboundContract.balanceOf(msg.sender) >= uTokenAmt, "LLC-Emergency: Insufficient UND");
-        
+
         // sets nextBlock
         nextBlock[msg.sender] = block.number.add(blockLimit);
 
