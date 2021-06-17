@@ -188,9 +188,14 @@ contract("LLC", function (_accounts) {
       await lockContract.setUnpause();
     })
 
-    it("can emergency unlock", async () => {
+    it("can unlock when ", async () => {
+
+      assert.equal(await und.checkLoan(safu, lockContract.address), 0)
+
       const LPBal = await pair.balanceOf(owner);
       const ownerToLock = LPBal.div(new BN("4"));
+
+      const lb0 = await pair.balanceOf(lockContract.address)
 
       await helper.advanceBlockNumber(blockLimit);
       await pair.approve(lockContract.address, ownerToLock);
@@ -203,16 +208,21 @@ contract("LLC", function (_accounts) {
       await pair.approve(lockContract.address, LPBalSend, {from: safu});
       await lockContract.lockLPT(LPBalSend, 1, {from: safu});
       await helper.advanceBlockNumber(blockLimit);
-      const safuUND = await und.balanceOf(safu);
-      await und.transfer(owner, safuUND, {from: safu});
+      const safuUND = await und.balanceOf(owner);
+      await und.transfer(safu, safuUND);
 
-      const undBalBefore = await und.balanceOf(owner);
-      const checkLoan = await und.checkLoan(owner, lockContract.address);
-      await lockContract.setPause();
-      await lockContract.emergencyUnlockLPT();
-      const undBalFinal = await und.balanceOf(owner);
-      assert.equal(undBalFinal.toString(), undBalBefore.sub(checkLoan).toString(), "wrong balance");
+          // Let's bring the down the price a little so it becomes undercollateralized.
+      await priceFeedEth.setPrice(108093000000);
+
+      assert.equal(await pair.balanceOf(owner), 0);
+
+      await lockContract.unlockLPT(123335, {from: safu});
+      const lb1 = await pair.balanceOf(lockContract.address)
+
+      assert.equal((await pair.balanceOf(safu)).toString(), "3155");
+
 
     })
+
   });
 });
