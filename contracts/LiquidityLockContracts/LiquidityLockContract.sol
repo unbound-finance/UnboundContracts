@@ -250,7 +250,7 @@ contract LiquidityLockContract is Pausable {
             return _LPTokenToReturn; // TRY REMOVING
         } else {
             // value of users locked LP before paying loan
-            uint256 valueStart = valueOfSingleLPT.mul(_tokensLocked[msg.sender]);
+            uint256 valueStart = valueOfSingleLPT.mul(_tokensLocked[msg.sender]).div(base);
             
             uint256 loanAfter = _currentLoan.sub(_uTokenAmt);
             // _LPTokenToReturn = valueStart.sub(valueAfter).div(valueOfSingleLPT);
