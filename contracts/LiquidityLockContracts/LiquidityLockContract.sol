@@ -259,7 +259,7 @@ contract LiquidityLockContract is Pausable {
             uint256 valueAfter = CREnd.mul(loanAfter).div(CRNorm);
             
             // LPT to send back. This number should have 18 decimals
-            _LPTokenToReturn = valueStart.sub(valueAfter).div(valueOfSingleLPT);
+            _LPTokenToReturn = valueStart.sub(valueAfter).mul(base).div(valueOfSingleLPT);
             
             return _LPTokenToReturn; // TRY REMOVING
         }
