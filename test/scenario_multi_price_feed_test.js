@@ -412,7 +412,7 @@ contract("Scenario(multi price feed)", function (_accounts) {
       
       const CREndBN = new BN(CREnd.toString());
       const CRNormBN = new BN(CRNorm.toString());
-      const valueAfter = CREndBN.mul(loanAfter).div(CRNormBN);
+      const valueAfter = CREndBN.mul(loanAfter.mul(new BN("1000000000000000000"))).div(CRNormBN);
 
       const unlockAmountLPT = valueStart.sub(valueAfter).div(priceOfLp);
       

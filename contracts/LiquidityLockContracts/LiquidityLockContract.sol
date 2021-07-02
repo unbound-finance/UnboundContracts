@@ -250,16 +250,16 @@ contract LiquidityLockContract is Pausable {
             return _LPTokenToReturn; // TRY REMOVING
         } else {
             // value of users locked LP before paying loan
-            uint256 valueStart = valueOfSingleLPT.mul(_tokensLocked[msg.sender]).div(base);
+            uint256 valueStart = valueOfSingleLPT.mul(_tokensLocked[msg.sender]);
             
             uint256 loanAfter = _currentLoan.sub(_uTokenAmt);
             // _LPTokenToReturn = valueStart.sub(valueAfter).div(valueOfSingleLPT);
             
             // Value After - Collateralization Ratio times LoanAfter (divided by CRNorm, then normalized with valueOfSingleLPT)
-            uint256 valueAfter = CREnd.mul(loanAfter).div(CRNorm);
+            uint256 valueAfter = (CREnd.mul(loanAfter).div(CRNorm)).mul(1e18);
             
             // LPT to send back. This number should have 18 decimals
-            _LPTokenToReturn = valueStart.sub(valueAfter).mul(base).div(valueOfSingleLPT);
+            _LPTokenToReturn = valueStart.sub(valueAfter).div(valueOfSingleLPT);
             
             return _LPTokenToReturn; // TRY REMOVING
         }
