@@ -29,7 +29,7 @@ const infuraKey = "a4dcdfe968254cd4a2a30381e3558541";
 // const PrivateKeyProvider = require("truffle-privatekey-provider");
 
 
-const mnemonic =
+const mnemonicPhrase =
   "comic bomb maximum census jaguar sad nerve document divide cherry double labor";
 const privateKey = "1dcd88d8dee9babcb9e220697d28942f630848331bcd8bf81b3b30cab54166fc"
 module.exports = {
@@ -71,6 +71,16 @@ module.exports = {
     // },
     // Useful for deploying to a public network.
     // NB: It's important to wrap the provider as a function.
+    matic: {
+      provider: () => new HDWalletProvider({
+        privateKeys: [privateKey],
+        providerOrUrl: `https://rpc-mumbai.maticvigil.com/v1/ -- enter key here ---`
+      }),
+      network_id: 80001,
+      confirmations: 2,
+      timeoutBlocks: 200,
+      skipDryRun: true
+    },
     kovan: {
       provider: () =>
         new HDWalletProvider(
